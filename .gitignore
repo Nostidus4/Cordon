@@ -34,3 +34,6 @@ Frontend/.screenshots/
 .idea/
 .vscode/
 *.swp
+
+# Issue drafts (local planning only)
+.issues-draft/
