@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { ShaderMaterial, Vector2, Vector4 } from "three";
 import { env } from "./env";
+import { currentTier } from "./quality";
 import { ISLAND } from "./layout";
 
-const MAX_LAMPS = 24;
+const MAX_LAMPS = 16; // lamp reflections: capped (each iteration is per-pixel work)
 
 const vert = /* glsl */ `
 varying vec3 vW;
@@ -19,6 +20,7 @@ uniform float uTime;
 uniform float uNight;
 uniform vec2 uLamps[${MAX_LAMPS}];
 uniform int uLampCount;
+uniform float uLow; // 1 on the low tier: no noise-based foam / glints / caustics, no lamp reflections
 uniform vec4 uIsland; // minX, maxX, minZ, maxZ
 varying vec3 vW;
 
@@ -53,35 +55,44 @@ void main() {
   col += (h - 0.55) * mix(0.10, 0.05, uNight);
 
   // caustic-like soft bands in the shallows
-  float caust = pow(abs(sin(p.x*0.5 + w2*3.0 + t*0.8) * sin(p.y*0.43 + w2*3.0 - t*0.7)), 3.0);
-  col += vec3(0.45, 0.85, 1.0) * caust * shallow * mix(0.14, 0.06, uNight);
+  if (uLow < 0.5) {
+    float caust = pow(abs(sin(p.x*0.5 + w2*3.0 + t*0.8) * sin(p.y*0.43 + w2*3.0 - t*0.7)), 3.0);
+    col += vec3(0.45, 0.85, 1.0) * caust * shallow * mix(0.14, 0.06, uNight);
+  }
 
   // foam ring where water meets the island, with animated ripples
   float ripple = 0.5 + 0.5*sin(d*1.6 - t*1.3 + w2*4.0);
   float foamBand = smoothstep(3.6 + ripple*1.2, 0.2, d) * smoothstep(-0.6, 0.4, d);
-  float foamNoise = smoothstep(0.35, 0.8, noise(p*0.9 + t*0.15));
+  float foamNoise = uLow < 0.5 ? smoothstep(0.35, 0.8, noise(p*0.9 + t*0.15)) : 0.6;
   float outer = smoothstep(7.0, 5.2, d) * smoothstep(3.2, 4.4, d + ripple*1.0) * foamNoise * 0.55;
   float foam = clamp(foamBand * (0.55 + 0.6*foamNoise) + outer, 0.0, 1.0);
   col = mix(col, mix(vec3(0.95, 0.98, 1.0), vec3(0.55, 0.65, 0.95), uNight), foam * 0.9);
 
   // glints: soft sparkles by day, moonlit glints by night
-  float g = sin(p.x*0.55 + t*0.9 + sin(p.y*0.21 + t*0.4)*2.0) * sin(p.y*0.47 - t*0.7 + sin(p.x*0.17)*2.0);
-  float sp = smoothstep(0.88, 1.0, g) * smoothstep(0.55, 0.9, noise(p*1.7 + t*0.4));
-  col += mix(vec3(1.0), vec3(0.6, 0.7, 1.0), uNight) * sp * mix(0.55, 0.3, uNight);
+  if (uLow < 0.5) {
+    float g = sin(p.x*0.55 + t*0.9 + sin(p.y*0.21 + t*0.4)*2.0) * sin(p.y*0.47 - t*0.7 + sin(p.x*0.17)*2.0);
+    float sp = smoothstep(0.88, 1.0, g) * smoothstep(0.55, 0.9, noise(p*1.7 + t*0.4));
+    col += mix(vec3(1.0), vec3(0.6, 0.7, 1.0), uNight) * sp * mix(0.55, 0.3, uNight);
+  }
 
   // night: neon / lamp reflections as wavy vertical streaks near the shore
   vec2 down = normalize(vec2(-1.0, 1.0)); // toward the camera on the ground plane
   vec2 side = vec2(-down.y, down.x);
-  vec3 refl = vec3(0.0);
-  for (int i = 0; i < ${MAX_LAMPS}; i++) {
-    if (i >= uLampCount) break;
-    vec2 r = p - uLamps[i];
-    float along = dot(r, down);
-    float across = dot(r, side) + sin(along*0.9 + t*1.8 + float(i))*0.35;
-    float streak = exp(-across*across*1.6) * smoothstep(-1.0, 3.0, along) * exp(-max(along, 0.0)*0.16);
-    refl += streak * (0.5 + 0.5*sin(along*1.7 - t*2.4 + float(i)*1.3));
+  // (skipped entirely by day and on the low tier; only lamps within reach of this pixel matter)
+  if (uNight > 0.02 && uLow < 0.5 && d < 60.0) {
+    vec3 refl = vec3(0.0);
+    for (int i = 0; i < ${MAX_LAMPS}; i++) {
+      if (i >= uLampCount) break;
+      vec2 r = p - uLamps[i];
+      float along = dot(r, down);
+      if (along < -1.0 || along > 30.0) continue; // streak is ~0 outside this band (exp(-along*0.16) < 1%)
+      float across = dot(r, side) + sin(along*0.9 + t*1.8 + float(i))*0.35;
+      if (abs(across) > 3.2) continue;
+      float streak = exp(-across*across*1.6) * smoothstep(-1.0, 3.0, along) * exp(-max(along, 0.0)*0.16);
+      refl += streak * (0.5 + 0.5*sin(along*1.7 - t*2.4 + float(i)*1.3));
+    }
+    col += vec3(1.0, 0.72, 0.36) * refl * 0.65 * uNight * smoothstep(60.0, 2.0, d);
   }
-  col += vec3(1.0, 0.72, 0.36) * refl * 0.65 * uNight * smoothstep(60.0, 2.0, d);
   // building / neon glow spilling on the water
   col += vec3(0.25, 0.45, 1.0) * smoothstep(14.0, 0.0, d) * 0.10 * uNight * (0.7 + 0.3*sin(t*0.8 + p.x*0.2));
 
@@ -101,6 +112,7 @@ export function waterMaterial() {
         uNight: { value: 1 },
         uLamps: { value: Array.from({ length: MAX_LAMPS }, () => new Vector2()) },
         uLampCount: { value: 0 },
+        uLow: { value: 0 },
         uIsland: { value: new Vector4(ISLAND.minX, ISLAND.maxX, ISLAND.minZ, ISLAND.maxZ) },
       },
     });
@@ -123,6 +135,7 @@ export default function Water({ y = -2.2 }: { y?: number }) {
   useFrame(({ clock }) => {
     mat.uniforms.uTime.value = clock.elapsedTime;
     mat.uniforms.uNight.value = env.night;
+    mat.uniforms.uLow.value = currentTier() === "low" ? 1 : 0;
   });
   return (
     <mesh position={[0, y, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => {}}>

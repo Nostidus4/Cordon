@@ -28,10 +28,11 @@ export function classify(m: Material, into: EnvMats) {
 
 export const newEnvMats = (): EnvMats => ({ windows: [], lamps: [] });
 
-export function applyEnv(e: EnvMats) {
+/** `lit` (0..~1.3) is the assembly switch-on factor: windows and lamps stay dark until the lights cascade reaches them. */
+export function applyEnv(e: EnvMats, lit = 1) {
   const k = env.night;
-  for (const w of e.windows) w.m.emissiveIntensity = w.day + k * 1.9;
-  for (const l of e.lamps) l.m.emissiveIntensity = l.day + k * 3.2;
+  for (const w of e.windows) w.m.emissiveIntensity = lit * (w.day + k * 1.9);
+  for (const l of e.lamps) l.m.emissiveIntensity = lit * (l.day + k * 3.2);
 }
 
 /** Ground positions of lamp lights found in a loaded model (clustered), for fake light pools. */

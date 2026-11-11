@@ -10,6 +10,7 @@ import type { CityStageProps, PickTarget, SceneId } from "./contract";
 import { CityLayer } from "./CityLayer";
 import { isStageScene, neighborScene, sceneFromPath, scenePath, type StageScene } from "./logic";
 import { useStageStore } from "./stageStore";
+import { useLoadStore } from "./loadStore";
 import { TopBar } from "./TopBar";
 import { useStageDevHooks } from "./devHooks";
 import { useEnsureScene } from "./useEnsureScene";
@@ -34,6 +35,7 @@ export default function StagePage() {
   const city = useStageStore((s) => s.city);
   const nightPref = useStageStore((s) => s.nightPref);
   const autoNight = useStageStore((s) => s.autoNight);
+  const cardsReady = useLoadStore((s) => s.assembled); // stepper + overlay cards pop in once the city has assembled (or 3D is off)
   const reset = useDemoReset();
   useStageDevHooks();
   useRememberRequestNumbers();
@@ -91,8 +93,9 @@ export default function StagePage() {
   return (
     <div className="stage fixed inset-0 overflow-hidden bg-[#6f8ff3]" data-scene={scene}>
       <CityLayer {...props} />
-      <TopBar scene={scene} night={night} onGo={go} onNight={(n) => useStageStore.getState().setNightPref(n)} onReset={onReset} resetting={reset.isPending} />
+      {cardsReady ? <TopBar scene={scene} night={night} onGo={go} onNight={(n) => useStageStore.getState().setNightPref(n)} onReset={onReset} resetting={reset.isPending} /> : null}
       <main className="pointer-events-none absolute inset-0 z-20" id="stage-overlay">
+        {cardsReady ? <>
         {(scene === "look" || scene === "try") && (graph?.policyVersion ?? 1) >= 2 && !preparing ? (
           <div className="pointer-events-auto absolute left-1/2 top-[84px] -translate-x-1/2">
             <ToyCard className="flex items-center gap-3 py-2 pl-5 pr-2.5" style={{ borderRadius: 999 }} label="Đang ở chính sách mới">
@@ -115,6 +118,7 @@ export default function StagePage() {
         {scene === "fix" ? <FixScene key="fix" /> : null}
         {scene === "incident" ? <IncidentScene key="incident" /> : null}
         {scene === "request" ? <RequestScene key="request" /> : null}
+        </> : null}
       </main>
       <p className="pointer-events-none absolute bottom-1.5 right-3 z-10 text-[11px] font-semibold" style={{ color: "#fff", textShadow: "0 1px 3px rgba(30,20,80,.8)" }}>
         Mây Labs là giả định · chạy trên mạng thử nghiệm · tiền thử, không có giá trị

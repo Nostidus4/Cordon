@@ -16,7 +16,11 @@ export default function Sky() {
         className="absolute inset-0 transition-opacity duration-[2000ms]"
         style={{ opacity: night ? 1 : 0, background: "radial-gradient(ellipse at 50% 85%, #2e1a6e 0%, #130f4a 45%, #070a2c 100%)" }}
       />
-      <div className="absolute inset-0 transition-opacity duration-[2000ms]" style={{ opacity: night ? 1 : 0 }}>
+      {/* hidden (not painted, animations idle) once the cross-fade to day has finished */}
+      <div
+        className="absolute inset-0"
+        style={{ opacity: night ? 1 : 0, visibility: night ? "visible" : "hidden", transition: `opacity 2s, visibility 0s linear ${night ? 0 : 2}s` }}
+      >
         {stars.map((st, i) => (
           <span key={i} className="city-star absolute rounded-full bg-white" style={{ left: `${st.x}%`, top: `${st.y}%`, width: st.z, height: st.z, opacity: st.o, animationDelay: `${st.d}s` }} />
         ))}

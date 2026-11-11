@@ -17,7 +17,7 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
   const mode = useUiStore((s) => s.mode);
   const setMode = useUiStore((s) => s.setMode);
   return (
-    <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-4 pt-3.5">
+    <header className="stage-topbar-in pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-4 pt-3.5">
       <Link to="/" onClick={() => onGo("intro")} className="toy-card pointer-events-auto flex items-center gap-2.5 py-1.5 pl-2.5 pr-4 no-underline" style={{ borderRadius: 999 }} aria-label="Về đầu: Mây Labs (giả định)">
         <ShieldIcon size={30} />
         <span className="font-toy text-[17px] font-bold leading-none" style={{ color: "var(--ink)" }}>Mây Labs <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>(giả định)</span></span>

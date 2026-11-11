@@ -24,6 +24,7 @@ export default function CameraRig() {
   const size = useThree((s) => s.size);
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const goal = useRef<{ target: Vector3; zoom: number; lambda: number } | null>(null);
+  const cssCache = useRef({ scale: "", vis: "" });
   const base = fitZoom(size.width, size.height);
 
   const goalFor = (sel: string | null, lambda: number) => {
@@ -92,8 +93,17 @@ export default function CameraRig() {
     controls.update();
     // card scale follows zoom (kept readable)
     const k = MathUtils.clamp(0.72 + 0.2 * (camera.zoom / Math.max(base, 1)), 0.72, 1.1);
-    document.documentElement.style.setProperty("--card-scale", k.toFixed(3));
-    document.documentElement.style.setProperty("--label-vis", camera.zoom / Math.max(base, 1) >= 0.75 ? "1" : "0");
+    // only touch the DOM when a value changes (each write invalidates style for every card)
+    const sc = k.toFixed(3);
+    const vis = camera.zoom / Math.max(base, 1) >= 0.75 ? "1" : "0";
+    if (sc !== cssCache.current.scale) {
+      cssCache.current.scale = sc;
+      document.documentElement.style.setProperty("--card-scale", sc);
+    }
+    if (vis !== cssCache.current.vis) {
+      cssCache.current.vis = vis;
+      document.documentElement.style.setProperty("--label-vis", vis);
+    }
   });
   return null;
 }

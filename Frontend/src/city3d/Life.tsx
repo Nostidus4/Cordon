@@ -11,6 +11,7 @@ const A = 7;
 export default function Life() {
   const arrows = useRef<InstancedMesh>(null);
   const o = useMemo(() => new Object3D(), []);
+  const shown = useRef(true); // matrices start collapsed on the first frame
   const B04 = getPlacement("B04").position;
   const START: [number, number] = [B04[0] + 4, B04[2] + 12];
   const END: [number, number] = [ASSEMBLY[0] + 1, ASSEMBLY[1] - 1];
@@ -21,6 +22,8 @@ export default function Life() {
 
     const evac = sc.id === "evac";
     const show = evac && sc.elapsed >= 3 && sc.elapsed < 17;
+    if (!show && !shown.current) return; // nothing visible and nothing to hide: skip the matrix work
+    shown.current = show;
     for (let i = 0; i < A; i++) {
       const u = (i / A + t * 0.25) % 1;
       o.position.set(MathUtils.lerp(START[0], END[0], u), 0.5 + Math.sin(t * 6 + i) * 0.1, MathUtils.lerp(START[1], END[1], u));
@@ -29,8 +32,10 @@ export default function Life() {
       o.updateMatrix();
       arrows.current?.setMatrixAt(i, o.matrix);
     }
-    if (arrows.current) arrows.current.instanceMatrix.needsUpdate = true;
-
+    if (arrows.current) {
+      arrows.current.instanceMatrix.needsUpdate = true;
+      arrows.current.visible = show;
+    }
   });
 
   return (

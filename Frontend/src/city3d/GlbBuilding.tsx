@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { asset, DRACO } from "./assets";
+import { litAt, markReady, POP_ORDER } from "./assembly";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import { Box3, Group, MathUtils, Mesh, Vector3, type Material, type MeshStandardMaterial, type Object3D } from "three";
@@ -23,6 +24,11 @@ type Kind = "spin" | "beacon" | "pop" | "fill" | "fade" | "holo";
 
 function tintHidden(o: Object3D): boolean {
   for (let p: Object3D | null = o; p; p = p.parent) if (p.name.toLowerCase().includes("tint")) return true;
+  return false;
+}
+
+function underNode(o: Object3D, name: string): boolean {
+  for (let p: Object3D | null = o; p; p = p.parent) if (p.name === name) return true;
   return false;
 }
 
@@ -65,7 +71,8 @@ export default function GlbBuilding({ code, anim, onHotspot }: Props) {
     root.traverse((o) => {
       const mesh = o as Mesh;
       if (mesh.isMesh) {
-        mesh.castShadow = true;
+        // only the building body casts (the shadow map is static-ish: small props / decals / state signs would just cost draw calls)
+        mesh.castShadow = underNode(mesh, `${code}_static`);
         mesh.receiveShadow = true;
         const arr = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
         const out = arr.map((m) => {
@@ -136,6 +143,13 @@ export default function GlbBuilding({ code, anim, onHotspot }: Props) {
         fx.push({ pivot, kind, axis, baseY: pivot.position.y, mats });
       }
     }
+    // freeze local matrices of everything static (animated pivots keep auto-update)
+    const pivots = new Set<Object3D>(fx.map((f) => f.pivot));
+    root.traverse((o) => {
+      if (pivots.has(o)) return;
+      o.updateMatrix();
+      o.matrixAutoUpdate = false;
+    });
     const hs = root.getObjectByName(`${code}_hotspot`);
     let hotspot: Vector3 | null = null;
     if (hs) hotspot = hs.getWorldPosition(new Vector3());
@@ -148,9 +162,27 @@ export default function GlbBuilding({ code, anim, onHotspot }: Props) {
   }, [setup]);
   useEffect(() => {
     onHotspot(setup.hotspot);
-  }, [setup, onHotspot]);
+    markReady(code);
+  }, [setup, onHotspot, code]);
+  useEffect(
+    () => () => {
+      // materials are per-instance clones: release them with the building
+      const seen = new Set<Material>();
+      setup.root.traverse((o) => {
+        const m = (o as Mesh).material as Material | Material[] | undefined;
+        if (!m) return;
+        for (const mm of Array.isArray(m) ? m : [m]) {
+          if (seen.has(mm)) continue;
+          seen.add(mm);
+          mm.dispose();
+        }
+      });
+    },
+    [setup],
+  );
 
   const applied = useRef<BuildingState | null>(null);
+  const litIdx = Math.max(0, POP_ORDER.indexOf(code));
   useFrame((_, dt) => {
     const a = anim.current;
     if (applied.current !== a.state) {
@@ -174,7 +206,7 @@ export default function GlbBuilding({ code, anim, onHotspot }: Props) {
         m.emissiveIntensity = k * 0.3;
       }
     }
-    applyEnv(setup.envMats);
+    applyEnv(setup.envMats, litAt(litIdx));
     const inc = a.state === "incident";
     const since = a.t - a.since;
     for (const f of setup.fx) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Html } from "@react-three/drei";
 import type { Group } from "three";
+import { useAssembly } from "../assembly";
 import { cards } from "../cardRegistry";
 import { LINE_BASE } from "../cardLayout";
 
@@ -11,6 +12,7 @@ export function ToyLabel({ id, position, dot, glyph, children }: { id: string; p
   const anchor = useRef<Group>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const line = useRef<HTMLSpanElement>(null);
+  const assembled = useAssembly((s) => s.assembled);
   useEffect(() => {
     const key = `toy:${id}`;
     const t = setInterval(() => {
@@ -30,7 +32,7 @@ export function ToyLabel({ id, position, dot, glyph, children }: { id: string; p
         <div
           ref={wrap}
           className="flex flex-col items-center"
-          style={{ transform: "translate(-50%,-100%) scale(var(--card-scale,1))", transformOrigin: "50% 100%", opacity: "var(--label-vis,1)" as never, fontFamily: TOY_FONT }}
+          style={{ transform: "translate(-50%,-100%) scale(var(--card-scale,1))", transformOrigin: "50% 100%", opacity: (assembled ? "var(--label-vis,1)" : 0) as never, transition: "opacity 0.35s", fontFamily: TOY_FONT }}
         >
           <span
             className="inline-flex select-none items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-[1px] text-[12.5px] font-semibold leading-tight"

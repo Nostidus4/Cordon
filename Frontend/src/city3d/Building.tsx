@@ -1,8 +1,9 @@
-import { Component, Suspense, useCallback, useRef, useState, type ReactNode } from "react";
+import { Component, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard } from "@react-three/drei";
 import { MathUtils, type Group, type Mesh, type MeshBasicMaterial, type Vector3 } from "three";
 import { useBuildingAnim } from "./anim";
+import { markReady, nowS, timeline } from "./assembly";
 import { STATE_COLOR, type BuildingDef } from "./buildings";
 import { stageHooks, useCityStore } from "./cityStore";
 import type { BuildingCode } from "../stage/contract";
@@ -12,13 +13,14 @@ import LabelCard from "./LabelCard";
 import { getPlacement } from "./layout";
 import PlaceholderBuilding from "./PlaceholderBuilding";
 
-class Boundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+class Boundary extends Component<{ fallback: ReactNode; code: string; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
   componentDidCatch(err: unknown) {
-    console.warn("[city3d] glb failed to load, using placeholder", err);
+    if (import.meta.env.DEV) console.warn("[city3d] glb failed to load, using placeholder", err);
+    markReady(this.props.code); // the placeholder takes its place in the assembly
   }
   render() {
     return this.state.failed ? this.props.fallback : this.props.children;
@@ -32,6 +34,7 @@ export default function Building({ def, hasGlb }: { def: BuildingDef; hasGlb: bo
   const vaultLock = useCityStore((s) => s.scenario.id === "vault");
   const select = useCityStore((s) => s.select);
   const hover = useCityStore((s) => s.hover);
+  const popG = useRef<Group>(null);
   const lift = useRef<Group>(null);
   const ring = useRef<Group>(null);
   const badge = useRef<Mesh>(null);
@@ -41,9 +44,20 @@ export default function Building({ def, hasGlb }: { def: BuildingDef; hasGlb: bo
   const [hotspot, setHotspot] = useState<Vector3 | null>(null);
   const onHotspot = useCallback((v: Vector3 | null) => setHotspot(v), []);
 
+  useEffect(() => {
+    if (!hasGlb) markReady(def.code); // procedural placeholder: nothing to wait for
+  }, [hasGlb, def.code]);
+
   // cartoon squash-and-stretch bounce on hover/select
   useFrame(() => {
     const a = anim.current;
+    // assembly: hidden until scheduled, then springs up from the ground
+    const tl = timeline;
+    if (popG.current && tl) {
+      const p = tl.pop(def.code, nowS());
+      popG.current.visible = p.visible;
+      popG.current.scale.set(p.sxz, p.sy, p.sxz);
+    }
     if (lift.current) {
       lift.current.scale.set(1 - 0.035 * a.bounce, 1 + 0.08 * a.bounce, 1 - 0.035 * a.bounce);
       lift.current.position.y = a.hover * 0.5;
@@ -79,6 +93,7 @@ export default function Building({ def, hasGlb }: { def: BuildingDef; hasGlb: bo
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
+     <group ref={popG}>
       <group ref={ring} visible={false} raycast={noRaycast}>
         <mesh position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={noRaycast}>
           <ringGeometry args={[rr, rr + 0.9, 64]} />
@@ -115,7 +130,7 @@ export default function Building({ def, hasGlb }: { def: BuildingDef; hasGlb: bo
         }}
       >
         {hasGlb ? (
-          <Boundary fallback={placeholder}>
+          <Boundary fallback={placeholder} code={def.code}>
             <Suspense fallback={placeholder}>
               <GlbBuilding code={def.code} anim={anim} onHotspot={onHotspot} />
             </Suspense>
@@ -124,6 +139,7 @@ export default function Building({ def, hasGlb }: { def: BuildingDef; hasGlb: bo
           placeholder
         )}
       </group>
+     </group>
       <LabelCard def={def} position={tagPos} />
     </group>
   );

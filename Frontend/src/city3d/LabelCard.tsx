@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Html } from "@react-three/drei";
 import type { Group } from "three";
+import { useAssembly } from "./assembly";
 import { cards } from "./cardRegistry";
 import { LINE_BASE } from "./cardLayout";
 import { STATE_CHIP, STATE_COLOR, STATE_ICON, type BuildingDef } from "./buildings";
@@ -32,6 +33,7 @@ export default function LabelCard({ def, position }: { def: BuildingDef; positio
     };
   }, [def.code]);
   const showCards = useCityStore((s) => s.cards);
+  const assembled = useAssembly((s) => s.assembled); // cards appear once the city has finished assembling
   const border = state === "normal" ? def.color : STATE_COLOR[state];
   const dot = STATE_COLOR[state];
 
@@ -42,7 +44,7 @@ export default function LabelCard({ def, position }: { def: BuildingDef; positio
       <div ref={wrap}
         className="flex flex-col items-center transition-opacity duration-500"
         data-dim={dim}
-        style={{ transform: "translate(-50%,-100%) scale(var(--card-scale,1))", transformOrigin: "50% 100%", opacity: dim ? 0 : 1, pointerEvents: dim ? "none" : undefined }}
+        style={{ transform: "translate(-50%,-100%) scale(var(--card-scale,1))", transformOrigin: "50% 100%", opacity: dim || !assembled ? 0 : 1, pointerEvents: dim || !assembled ? "none" : undefined }}
       >
         <button
           type="button"

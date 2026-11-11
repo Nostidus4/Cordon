@@ -1,7 +1,9 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AdditiveBlending, CanvasTexture, Color, Object3D, type InstancedMesh, type MeshBasicMaterial } from "three";
+import { lifeAt, litAt, POP_ORDER } from "./assembly";
 import { env } from "./env";
+import { LEVELS, useQuality } from "./quality";
 import { noRaycast } from "./fx";
 import { ISLAND } from "./layout";
 
@@ -37,8 +39,9 @@ export function LampPools({ spots }: { spots: [number, number][] }) {
     if (ref.current) ref.current.instanceMatrix.needsUpdate = true;
   }, [spots]);
   useFrame(() => {
-    if (mat.current) mat.current.opacity = env.night * 0.6;
-    if (ref.current) ref.current.visible = env.night > 0.02;
+    const k = env.night * litAt(POP_ORDER.length);
+    if (mat.current) mat.current.opacity = Math.min(k, 1) * 0.6;
+    if (ref.current) ref.current.visible = k > 0.02;
   });
   if (!spots.length) return null;
   return (
@@ -51,6 +54,11 @@ export function LampPools({ spots }: { spots: [number, number][] }) {
 
 /** Soft drifting fireflies above parks; fade in with night. */
 export function Fireflies({ count = 70 }: { count?: number }) {
+  const low = useQuality((s) => LEVELS[s.level].tier === "low");
+  return low ? null : <FirefliesImpl count={count} />;
+}
+
+function FirefliesImpl({ count }: { count: number }) {
   const ref = useRef<InstancedMesh>(null);
   const o = useMemo(() => new Object3D(), []);
   const seeds = useMemo(() => {
@@ -68,10 +76,12 @@ export function Fireflies({ count = 70 }: { count?: number }) {
     const m = ref.current;
     if (!m) return;
     const t = clock.elapsedTime;
-    m.visible = env.night > 0.03;
+    const vis = env.night * lifeAt();
+    m.visible = vis > 0.03; // by day: no per-frame matrix work at all
+    if (!m.visible) return;
     seeds.forEach((s, i) => {
       o.position.set(s.x + Math.sin(t * s.sp + s.p) * 3, s.y + Math.sin(t * s.sp * 1.7 + s.p) * 1.2, s.z + Math.cos(t * s.sp * 0.8 + s.p) * 3);
-      o.scale.setScalar(env.night * (0.5 + 0.5 * Math.sin(t * 2 * s.sp + s.p * 3)) + 0.0001);
+      o.scale.setScalar(vis * (0.5 + 0.5 * Math.sin(t * 2 * s.sp + s.p * 3)) + 0.0001);
       o.updateMatrix();
       m.setMatrixAt(i, o.matrix);
     });

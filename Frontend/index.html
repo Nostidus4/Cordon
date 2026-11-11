@@ -3,12 +3,48 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6f8ff3" />
+    <title>GuardianAI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <title>GuardianAI</title>
+    <!-- non-blocking font CSS (display=swap); only the weights the app uses -->
+    <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" /></noscript>
+    <style>
+      html, body { margin: 0; background: #070a1c; }
+      /* first paint on the stage routes ("/" and "/s/*"): the blurred city poster + loader card, before any JS runs. Removed by StageLoader / main.tsx. */
+      #boot { display: none; position: fixed; inset: 0; z-index: 1; background: #6f8ff3 url(%BASE_URL%stage-city-day-sm.jpg) center / cover; }
+      html[data-boot] #boot { display: block; }
+      html[data-boot] body { background: #6f8ff3; }
+      #boot::before { content: ""; position: absolute; inset: 0; backdrop-filter: blur(6px); }
+      #boot i { position: absolute; left: 50%; top: 50%; box-sizing: border-box; width: min(380px, calc(100vw - 32px)); transform: translate(-50%, -50%); padding: 18px 22px 16px; border: 3px solid #fff; border-radius: 26px; background: #fff8ee; box-shadow: 0 5px 0 #e9d5b0, 0 22px 34px -14px rgba(60, 30, 130, .5); font: normal 700 22px/1.15 "Baloo 2", system-ui, sans-serif; color: #2d2250; }
+      #boot i::after { content: ""; display: block; margin-top: 12px; height: 18px; border-radius: 999px; background: #fdeed6; border: 3px solid #fff; box-sizing: border-box; }
+    </style>
+    <script>
+      (function () {
+        var base = "%BASE_URL%", p = location.pathname;
+        if (p.indexOf(base) === 0) p = "/" + p.slice(base.length);
+        if (p === "/" || p === "" || p.indexOf("/s/") === 0) {
+          document.documentElement.setAttribute("data-boot", "1");
+          /* stage routes only: warm the 3D assets in parallel with the JS (dashboards, and the "lite" mode, never pay for them) */
+          var lite = /[?&]lite=1/.test(location.search) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
+          if (lite) return;
+          var add = function (rel, href, as, extra) {
+            var l = document.createElement("link");
+            l.rel = rel; l.href = href; if (as) l.as = as; if (extra) l.crossOrigin = "anonymous";
+            document.head.appendChild(l);
+          };
+          add("preload", base + "models/city/index.json", "fetch", 1);
+          add("preload", base + "models/city/city_base.glb", "fetch", 1);
+          add("preload", base + "draco/draco_wasm_wrapper.js", "fetch", 1);
+          add("preload", base + "draco/draco_decoder.wasm", "fetch", 1);
+          /*__STAGE_MODULEPRELOAD__*/
+        }
+      })();
+    </script>
   </head>
   <body>
+    <div id="boot" aria-hidden="true"><i>Đang dựng thành phố…</i></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
