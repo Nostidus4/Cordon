@@ -81,3 +81,56 @@ describe("assembly timeline", () => {
     for (let t = day.lightsAt; t < day.lightsAt + 2; t += 0.05) expect(day.lit(0, t)).toBeLessThanOrEqual(1);
   });
 });
+
+describe("assembly gate ('Bước vào thành phố')", () => {
+  const ready = (tl: Timeline) => ALL.forEach((k) => tl.markReady(k));
+
+  it("does not start before arm(), then starts after the short audio lead", () => {
+    const tl = new Timeline({ expected: ALL, gated: true });
+    ready(tl);
+    for (const now of [0, 1, 5, 11]) { tl.update(now); expect(tl.baseAt).toBe(-1); expect(tl.island(now)).toBe(0); expect(tl.pop("B01", now).visible).toBe(false); }
+    tl.arm(20);
+    tl.update(20.05); // inside the lead: still waiting
+    expect(tl.baseAt).toBe(-1);
+    tl.update(20 + T.armLead + 0.01);
+    expect(tl.baseAt).toBeGreaterThan(20);
+    expect(tl.popStart("B01")).toBeGreaterThan(tl.baseAt);
+    tl.update(30);
+    expect(tl.finished).toBe(true);
+  });
+
+  it("assembles silently by itself if nobody taps within T.gate seconds of the assets being ready", () => {
+    const tl = new Timeline({ expected: ALL, gated: true });
+    ready(tl);
+    tl.update(0);
+    tl.update(T.gate - 0.5);
+    expect(tl.armed).toBe(false);
+    tl.update(T.gate + 0.1);
+    expect(tl.armed).toBe(true);
+    tl.update(T.gate + 1);
+    expect(tl.baseAt).toBeGreaterThan(0);
+  });
+
+  it("falls back even when the base asset never arrives", () => {
+    const tl = new Timeline({ expected: ALL, gated: true });
+    tl.update(0);
+    tl.update(T.deadline + T.gate + 1);
+    expect(tl.armed).toBe(true);
+  });
+
+  it("ungated and reduced-motion timelines are unchanged: they start immediately", () => {
+    const a = new Timeline({ expected: ALL }); ready(a); a.update(0);
+    expect(a.baseAt).toBe(0);
+    const r = new Timeline({ expected: ALL, gated: true, reduced: true }); ready(r); r.update(0);
+    expect(r.armed).toBe(true);
+    expect(r.baseAt).toBe(0);
+  });
+
+  it("arm() is idempotent", () => {
+    const tl = new Timeline({ expected: ALL, gated: true });
+    tl.arm(5); tl.arm(50);
+    ready(tl); tl.update(6);
+    expect(tl.baseAt).toBeGreaterThan(5);
+    expect(tl.baseAt).toBeLessThan(7);
+  });
+});

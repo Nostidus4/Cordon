@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Building2, LayoutDashboard, Radar, Scale, ScrollText, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import "../../stage/toy.css";
+import { useAudioUnlock } from "../../audio/director";
+import { SoundToggle } from "../../audio/SoundToggle";
 import "./system.css";
 import { SCENE_META, STAGE_SCENES } from "../../stage/logic";
 import { ShieldIcon, useReduced } from "../../stage/ui";
@@ -74,6 +76,7 @@ export default function SystemPage() {
   const reduced = useReduced();
   const { tab } = useParams();
   const total = useFeed((s) => s.total);
+  useAudioUnlock(); // soft clicks on tabs/buttons; the speaker toggle sits in the top bar
   useSystemFeed(); // page level: tab switches never remount the stream tap
   useSysInvalidation(qc);
   useSystemDevHooks();
@@ -103,6 +106,7 @@ export default function SystemPage() {
             })}
           </nav>
           <div className="flex items-center gap-3" style={{ marginLeft: "auto" }}>
+            <SoundToggle />
             <span className="sx-chip" data-t="ok" title="tin trên stream kể từ lúc mở trang" style={{ background: "rgba(255,255,255,.85)" }}><span className="sx-dot" data-live="true" />{total}</span>
             <span className="sx-scenedots" aria-label="Các cảnh">
               {STAGE_SCENES.map((s) => <Link key={s} to={`/s/${s}`} title={`Cảnh ${SCENE_META[s].n}: ${SCENE_META[s].label}`} style={{ background: SCENE_DOT[s] }}>{SCENE_META[s].n}</Link>)}

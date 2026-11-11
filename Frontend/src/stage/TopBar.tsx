@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { RotateCcw } from "lucide-react";
+import { SoundToggle } from "../audio/SoundToggle";
 import { useUiStore } from "../store/uiStore";
 import type { SceneId } from "./contract";
 import { SCENE_META, STAGE_SCENES, type StageScene } from "./logic";
@@ -23,7 +24,7 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
         <span className="font-toy text-[17px] font-bold leading-none" style={{ color: "var(--ink)" }}>Mây Labs <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>(giả định)</span></span>
       </Link>
 
-      <nav aria-label="Năm cảnh" className="toy-card pointer-events-auto flex items-center gap-1 p-1.5" style={{ borderRadius: 999 }}>
+      <nav aria-label="Năm cảnh" data-sfx="off" className="toy-card pointer-events-auto flex items-center gap-1 p-1.5" style={{ borderRadius: 999 }}>
         {STAGE_SCENES.map((s) => {
           const active = scene === s;
           const done = !active && reached.includes(s);
@@ -42,6 +43,7 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
       </nav>
 
       <div className="pointer-events-auto flex items-center gap-2">
+        <SoundToggle />
         <div className="toy-card toy-pill-toggle" role="group" aria-label="Ngày hay đêm" style={{ borderRadius: 999, padding: 4 }}>
           <button type="button" aria-pressed={!night} onClick={() => onNight(false)}><SunIcon size={18} /><span className="hidden 2xl:inline">Ngày</span></button>
           <button type="button" aria-pressed={night} onClick={() => onNight(true)}><MoonIcon size={18} /><span className="hidden 2xl:inline">Đêm</span></button>

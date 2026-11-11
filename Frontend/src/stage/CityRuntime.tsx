@@ -59,12 +59,13 @@ function ProgressProbe() {
 /** After the reveal: `assembled` comes from the city (src/city3d build-up animation); if it never does, a timeout lets the cards in. */
 function AssembleWatch() {
   const phase = useLoadStore((s) => s.phase);
+  const gate = useLoadStore((s) => s.gate);
   useEffect(() => onAssembled(() => { useLoadStore.getState().setRevealed(); useLoadStore.getState().setAssembled(); }), []);
   useEffect(() => {
-    if (phase !== "revealed") return;
+    if (phase !== "revealed" || gate !== "open") return; // still waiting for the visitor's tap: nothing to fall back from
     const id = window.setTimeout(() => useLoadStore.getState().setAssembled(), ASSEMBLE_FALLBACK_MS);
     return () => window.clearTimeout(id);
-  }, [phase]);
+  }, [phase, gate]);
   return null;
 }
 

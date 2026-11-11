@@ -38,7 +38,9 @@ export function CityLayer(props: CityStageProps) {
   // decided once per page load, before any 3D code is requested
   useState(() => { const r = probeLite(); if (r) useLoadStore.getState().setLite(r); });
   const lite = phase === "lite";
-  const ready = phase === "revealed";
+  const gate = useLoadStore((s) => s.gate);
+  const [gatedAtStart] = useState(gate === "wait");
+  const ready = phase === "revealed" && gate === "open"; // behind the "Bước vào thành phố" gate the poster stays up
   const [mountedReady] = useState(ready); // already revealed earlier in this session (came back to the stage): no fade
   useEffect(() => { document.getElementById("boot")?.remove(); }, []); // the static first-paint poster from index.html
   useEffect(() => {
@@ -57,7 +59,7 @@ export function CityLayer(props: CityStageProps) {
   return (
     <>
       <div className="absolute inset-0 bg-[#6f8ff3]" data-city-layer data-ready={show ? "1" : "0"}
-        style={{ opacity: show ? 1 : 0, transform: show || reduced ? "none" : "scale(1.07)", transition: reduced || mountedReady ? "none" : "opacity 900ms ease-out, transform 1500ms cubic-bezier(.22,1,.36,1)" }}>
+        style={{ opacity: show ? 1 : 0, transform: show || reduced ? "none" : "scale(1.07)", transition: reduced || mountedReady ? "none" : (gatedAtStart ? "opacity 450ms ease-out, transform" : "opacity 900ms ease-out, transform 1500ms cubic-bezier(.22,1,.36,1)") }}>
         <Suspense fallback={null}><CityRuntime {...props} /></Suspense>
       </div>
       <StageLoader night={props.night} />

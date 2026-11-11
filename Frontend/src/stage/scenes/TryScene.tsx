@@ -75,7 +75,7 @@ export function TryScene() {
           <div className="mt-4 grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-3">
             <Tile label="Rủi ro thật" tone="red" foot={<>{t ? fmtPercent(t.percentOfMainTreasury) : "…"} quỹ chính · gồm quan hệ tự khai, chưa kiểm chứng</>}>
               <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0" style={{ color: "var(--red-ink)" }}>
-                <Counter value={toNum(counter)} className="num" style={{ fontSize: "clamp(40px, 3.7vw, 54px)", color: "var(--red-ink)" }} duration={0.35} />
+                <Counter value={toNum(counter)} className="num" style={{ fontSize: "clamp(40px, 3.7vw, 54px)", color: "var(--red-ink)" }} duration={0.35} tick="up" />
                 <span className="font-toy text-[18px] font-bold">/ngày</span>
               </div>
             </Tile>

@@ -2,6 +2,8 @@
 // Routes: "/" (intro) and "/s/:scene" (look | try | fix | incident | request). ←/→ change scene, Space = next recommended action.
 import { useCallback, useEffect, useMemo } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useStageAudio } from "../audio/director";
+import { sfx } from "../audio/sounds";
 import { useDemoReset } from "../hooks/useDemoReset";
 import { useGraph } from "../hooks/useGraph";
 import { useStreamBridge } from "../hooks/useStream";
@@ -68,13 +70,15 @@ export default function StagePage() {
   }, [scene, go]);
 
   const onPick = useCallback((t: PickTarget) => useStageStore.getState().setPicked(t), []);
+  const onHover = useCallback((t: PickTarget | null) => { if (t) sfx.tick(); }, []);
   const night = nightPref ?? autoNight;
+  useStageAudio(scene ?? "intro", night);
 
   const props: CityStageProps = useMemo(() => ({
-    scene: scene ?? "intro", shot: "overview", showDomain: false, graph, night, onPick, ...city,
+    scene: scene ?? "intro", shot: "overview", showDomain: false, graph, night, onPick, onHover, ...city,
     // the intro never shows the domain layer, whatever a scene says
     ...(scene === "intro" ? { showDomain: false } : null),
-  }), [scene, graph, night, onPick, city]);
+  }), [scene, graph, night, onPick, onHover, city]);
 
   const onReset = () => reset.mutate(undefined, {
     onSuccess: () => {

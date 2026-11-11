@@ -2,6 +2,7 @@
 import { animate, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import type { MemberId } from "../types";
+import { sfx } from "../audio/sounds";
 
 export const useReduced = () => !!useReducedMotion();
 
@@ -10,6 +11,7 @@ export function ToyCard({ children, className = "", style, tone, delay = 0, labe
   children: ReactNode; className?: string; style?: CSSProperties; tone?: "red" | "sky"; delay?: number; label?: string;
 } & Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "children">) {
   const reduced = useReduced();
+  useEffect(() => { const id = setTimeout(() => sfx.pop(), delay * 1000 + 60); return () => clearTimeout(id); }, [delay]); // cards "pop" in
   return (
     <motion.section
       aria-label={label}
@@ -49,20 +51,24 @@ export function ToyButton({ color = "violet", size, pulse, done, icon, children,
 
 // ---------- counter ----------
 /** Eases a number toward `value` (display units, plain number); `format` renders it. */
-export function useEasedNumber(value: number, duration = 0.5): number {
+export function useEasedNumber(value: number, duration = 0.5, tick?: "up" | "down"): number {
   const reduced = useReduced();
   const [shown, setShown] = useState(value);
   const prev = useRef(value);
+  const first = useRef(true);
   useEffect(() => {
     if (reduced) { setShown(value); prev.current = value; return; }
+    // rolling-counter ticks while the number climbs ("up" rises in pitch, "down" falls like a slot machine)
+    if (tick && !first.current && value > prev.current) sfx.rollTicks(Math.min(duration, 1.2), tick, Math.round(duration * 14) + 2);
+    first.current = false;
     const c = animate(prev.current, value, { duration, ease: [0.22, 1, 0.36, 1], onUpdate: (v) => { prev.current = v; setShown(v); } });
     return () => c.stop();
-  }, [value, duration, reduced]);
+  }, [value, duration, reduced, tick]);
   return shown;
 }
 const group = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-export function Counter({ value, className = "num", style, duration }: { value: number; className?: string; style?: CSSProperties; duration?: number }) {
-  const v = useEasedNumber(value, duration);
+export function Counter({ value, className = "num", style, duration, tick }: { value: number; className?: string; style?: CSSProperties; duration?: number; /** soft rolling ticks while the number climbs */ tick?: "up" | "down" }) {
+  const v = useEasedNumber(value, duration, tick);
   return <span className={className} style={style} aria-label={group(value)}>{group(v)}</span>;
 }
 

@@ -9,7 +9,7 @@ export const POP_ORDER = ["B08", "B01", "B03", "B02", "B06", "B07", "B04", "B05"
 export const CLUSTERS = ["trees", "lamps", "flowers", "boats"] as const;
 export type Cluster = (typeof CLUSTERS)[number];
 
-export const T = { rise: 0.9, pop: 0.45, stagger: 0.12, sprout: 0.6, sproutStep: 0.14, surr: 0.8, deadline: 8 };
+export const T = { rise: 0.9, pop: 0.45, stagger: 0.12, sprout: 0.6, sproutStep: 0.14, surr: 0.8, deadline: 8, gate: 12, armLead: 0.15 };
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const easeOutCubic = (u: number) => 1 - Math.pow(1 - u, 3);
@@ -32,6 +32,8 @@ export interface TimelineOptions {
   reduced?: boolean;
   /** night amount 0..1 sampled when the lights start (night: quick cascade, day: soft sweep) */
   night?: () => number;
+  /** wait for `arm()` (the visitor taps "Bước vào thành phố") before anything starts; assembles silently anyway after T.gate seconds */
+  gated?: boolean;
 }
 
 export class Timeline {
@@ -49,11 +51,24 @@ export class Timeline {
   private lightDur = 0.25;
   private born = -1;
   private nightFn: () => number;
+  /** false while waiting for the visitor's tap */
+  armed: boolean;
+  private startAt = 0;
+  private gateSince = -1;
 
   constructor(o: TimelineOptions) {
     this.expected = new Set(o.expected);
     this.reduced = !!o.reduced;
     this.nightFn = o.night ?? (() => 1);
+    this.armed = !o.gated || this.reduced;
+  }
+
+  /** The visitor tapped: start (a hair later, so the audio context is running) and restart the deadline clock. */
+  arm(now: number) {
+    if (this.armed) return;
+    this.armed = true;
+    this.startAt = now + (this.reduced ? 0 : T.armLead);
+    this.born = now;
   }
 
   markReady(key: string) {
@@ -70,6 +85,13 @@ export class Timeline {
   /** Advance the schedule (idempotent). Cheap: call every frame until `finished`. */
   update(now: number) {
     if (this.born < 0) this.born = now;
+    if (!this.armed) {
+      if (this.gateSince < 0 && this.has("base")) this.gateSince = now;
+      const stuck = this.gateSince >= 0 ? now - this.gateSince > T.gate : now - this.born > T.deadline + T.gate;
+      if (!stuck) return;
+      this.arm(now); // nobody tapped: assemble silently so the page never feels stuck
+    }
+    if (now < this.startAt) return;
     const timedOut = now - this.born > T.deadline;
     const r = this.reduced;
     if (this.baseAt < 0 && (this.has("base") || timedOut)) {
@@ -126,6 +148,10 @@ export class Timeline {
   popStart(code: string) {
     return this.popAt.get(code) ?? -1;
   }
+  /** time the cluster starts sprouting, -1 if not yet scheduled */
+  sproutStart(c: Cluster) {
+    return this.sproutAt.get(c) ?? -1;
+  }
   sprout(c: Cluster, now: number) {
     const at = this.sproutAt.get(c);
     if (at === undefined) return 0;
@@ -165,8 +191,18 @@ export const nowS = () => performance.now() / 1000;
 export const litAt = (idx: number) => (timeline ? timeline.lit(idx, nowS()) : 1);
 export const lifeAt = () => (timeline ? timeline.life(nowS()) : 1);
 
+/** Stage: is the "Bước vào thành phố" tap required before the city assembles? Set before the 3D runtime mounts. */
+let gateRequired = false;
+let armed = false;
+export const setAssemblyGate = (required: boolean) => { gateRequired = required; if (!required) armed = true; };
+/** The visitor tapped (or the stage skipped the gate): the assembly may start now. Remembered for the page's lifetime. */
+export function armAssembly() {
+  armed = true;
+  timeline?.arm(nowS());
+}
+
 export function startAssembly(o: TimelineOptions) {
-  timeline = new Timeline(o);
+  timeline = new Timeline({ ...o, gated: gateRequired && !armed });
   useAssembly.setState({ assembled: false, running: true });
 }
 export function resetAssembly() {

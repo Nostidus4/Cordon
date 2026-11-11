@@ -16,6 +16,7 @@ const StagePage = lazy(() => import("./stage/StagePage"));
 const CityPage = lazy(() => import("./pages/city/CityPage"));
 const KitPage = lazy(() => import("./pages/kit/KitPage"));
 const SystemPage = lazy(() => import("./pages/system/SystemPage"));
+const SoundPage = import.meta.env.DEV ? lazy(() => import("./pages/sound/SoundPage")) : null;
 
 /** /city renders full-screen without shell chrome; only a small back pill is overlaid. */
 function CityRoute() {
@@ -65,6 +66,7 @@ export const router = createBrowserRouter([
       },
       ...DETAIL.map((p) => ({ path: p, element: <Redirect to={`/chi-tiet/${p}`} /> })),
       { path: "_kit", element: <Redirect to="/chi-tiet/_kit" /> },
+      ...(SoundPage ? [{ path: "_sound", element: <Suspense fallback={<RouteSkeleton kind="full" />}><SoundPage /></Suspense> }] : []), // dev only: audition every cue
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { sfx } from "../../audio/sounds";
 import { useActions } from "../../hooks/useActions";
 import { useAttempts } from "../../hooks/useAttempts";
 import { useCityStates } from "../../hooks/useCityStates";
@@ -114,7 +115,7 @@ export function IncidentScene() {
 
   const act = {
     agent: () => actions.runAgent.mutate(),
-    attack: () => { setAttacking(true); actions.runScene4.mutate(undefined, { onError: () => setAttacking(false) }); },
+    attack: () => { sfx.alarm(); setAttacking(true); actions.runScene4.mutate(undefined, { onError: () => setAttacking(false) }); },
     lock: () => actions.lock.mutate({ principalId: "minh", member: "lan" }),
     step7: () => actions.step7.mutate(),
   };
@@ -135,7 +136,7 @@ export function IncidentScene() {
             <span className="rounded-full px-2.5 py-0.5 text-[12px] font-bold" style={{ background: "#ffd9d2", color: "var(--red-d)" }}>mô phỏng</span>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5 whitespace-nowrap">
-            <Counter value={nums.leftTotal} className="num" style={{ fontSize: 50, color: "var(--red-ink)" }} duration={0.5} />
+            <Counter value={nums.leftTotal} className="num" style={{ fontSize: 50, color: "var(--red-ink)" }} duration={0.5} tick="down" />
             <span className="font-toy text-[16px] font-bold" style={{ color: "var(--red-ink)" }}>/ {LEFT_FULL.toLocaleString("vi-VN")}</span>
           </div>
           <div className="toy-body" style={{ fontSize: 13.5 }}>công ty mất trong một ngày</div>

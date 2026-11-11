@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { segmentAnswer } from "../components/assistant/AnswerView";
+import { sfx } from "../audio/sounds";
 import { useAssistant } from "../hooks/useAssistant";
 import { ASSISTANT_QUESTIONS } from "../shared/assistantQuestions";
 import type { AssistantAnswer, MemberId } from "../types";
@@ -34,12 +35,15 @@ export function AssistantBubble({ questionIds, screen, principalIds, proposalId,
     if (busy.current) return;
     busy.current = true;
     setTurn({ id: q.id });
+    sfx.typing(0.8);
     const t0 = Date.now();
     try {
       const a = await ask({ question: q.text, context: { screen, principalIds, proposalId } });
       const wait = Math.max(0, 700 - (Date.now() - t0));
       if (wait && !reduced) await new Promise((r) => setTimeout(r, wait));
       setTurn({ id: q.id, a });
+      sfx.reveal();
+      if (a.warnings?.some((w) => w.code === "CONFLICT_OF_INTEREST")) setTimeout(() => sfx.caution(), 500);
       onAnswer?.(a, q.id);
     } catch { setTurn(null); } finally { busy.current = false; }
   };
@@ -98,13 +102,14 @@ export function AssistantBubble({ questionIds, screen, principalIds, proposalId,
 export function MemberButton({ member, name, state, onClick, reason, busy }: {
   member: MemberId; name: string; state: "ready" | "approved" | "waiting" | "blocked"; onClick?: () => void; reason?: string; busy?: boolean;
 }) {
-  const disabled = state !== "ready" || !!busy;
+  const disabled = (state !== "ready" && state !== "blocked") || !!busy;
+  const blocked = state === "blocked";
   const label = state === "approved" ? "Đã duyệt" : state === "blocked" ? "Không được duyệt · xung đột lợi ích" : state === "waiting" ? "Chưa duyệt" : "Duyệt";
   return (
     <div className="flex w-[116px] flex-col items-center gap-1.5 text-center">
-      <button type="button" disabled={disabled} onClick={onClick} aria-label={`${name}: ${label}`} title={reason}
+      <button type="button" disabled={disabled} aria-disabled={blocked || disabled} data-sfx="off" onClick={blocked ? () => sfx.nope() : onClick} aria-label={`${name}: ${label}`} title={reason}
         className="relative grid size-[68px] place-items-center rounded-full border-[3px] bg-white p-0"
-        style={{ borderColor: state === "approved" ? "var(--teal-d)" : state === "blocked" ? "#e5b8b0" : "#e9d5b0", cursor: disabled ? "default" : "pointer", boxShadow: state === "ready" ? "0 4px 0 var(--edge)" : "none", transition: "transform 100ms" }}>
+        style={{ borderColor: state === "approved" ? "var(--teal-d)" : state === "blocked" ? "#e5b8b0" : "#e9d5b0", cursor: state === "ready" && !disabled ? "pointer" : "default", boxShadow: state === "ready" ? "0 4px 0 var(--edge)" : "none", transition: "transform 100ms" }}>
         <FaceAvatar member={member} size={56} dim={state === "blocked" || state === "waiting"} />
         {state === "approved" ? <span className="absolute -bottom-1 -right-1 grid size-7 place-items-center rounded-full border-2 border-white text-white" style={{ background: "var(--teal-d)" }}><CheckIcon size={15} /></span> : null}
         {state === "blocked" ? <span className="absolute -bottom-1 -right-1 grid size-7 place-items-center rounded-full border-2 border-white text-white" style={{ background: "var(--red)" }} aria-hidden>✕</span> : null}

@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
+import { useCueOnRise } from "../../audio/useSound";
+import { sfx } from "../../audio/sounds";
 import { useFindings } from "../../hooks/useFindings";
 import { useGraph } from "../../hooks/useGraph";
 import { useSimulate } from "../../hooks/useSimulate";
@@ -24,6 +26,7 @@ export function LookScene() {
   useEffect(() => { const t = setTimeout(() => setShot("overview"), 3600); return () => clearTimeout(t); }, []);
 
   const hasR1 = !!findings?.some((f) => f.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && f.principalId === "minh");
+  useCueOnRise(hasR1, () => { setTimeout(() => sfx.flag(), 450); }, true);
   const minh = graph?.districts.find((d) => d.principalId === "minh");
   const keys = sim?.reachedKeys.map((r) => graph?.nodes.find((n) => n.id === `k:${r.key}`)).filter((n): n is NonNullable<typeof n> => !!n) ?? [];
   const youThink = sim ? Number(BigInt(sim.totals.youThink.raw) / 1_000_000n) : 20000;

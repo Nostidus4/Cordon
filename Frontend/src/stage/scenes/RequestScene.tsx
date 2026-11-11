@@ -1,6 +1,8 @@
 // Scene 5 · Xin thêm quyền (spec §4.4 scene 5, F1/F2): request #12 and the linked "give the rebalancing assistant to Huy" request.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCueOnIncrease, useCueOnRise } from "../../audio/useSound";
+import { sfx } from "../../audio/sounds";
 import { useActions } from "../../hooks/useActions";
 import { useProposals } from "../../hooks/useProposals";
 import { fmtPercent, percentOf, rawToBig, toBase } from "../../lib/format";
@@ -51,6 +53,8 @@ export function RequestScene() {
   // never render 0 / 0%: real numbers or a skeleton (see requestNumbers)
   const nums = requestNumbers(p12, p13, minhLocked, getRemembered());
   const huyConflicted = nums?.p13.huyConflicted ?? false;
+  useCueOnRise(huyConflicted, () => { setTimeout(() => sfx.caution(), 350); }, true);
+  useCueOnIncrease(p13 ? p13.approvals.length : null, (n) => sfx.approve(n - 1));
 
   return (
     <>

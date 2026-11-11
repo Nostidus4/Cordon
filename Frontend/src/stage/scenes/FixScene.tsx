@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useCueOnIncrease } from "../../audio/useSound";
+import { sfx } from "../../audio/sounds";
 import { api } from "../../lib/api";
 import { useActions } from "../../hooks/useActions";
 import { useFindings } from "../../hooks/useFindings";
@@ -29,7 +31,15 @@ export function FixScene() {
   const approved = new Set(merge?.approvals.map((a) => a.member) ?? []);
   const [burst, setBurst] = useState(0);
   const prev = useRef(status);
-  useEffect(() => { if (prev.current !== "done" && status === "done") setBurst((b) => b + 1); prev.current = status; }, [status]);
+  useEffect(() => {
+    if (prev.current !== "done" && status === "done") {
+      setBurst((b) => b + 1);
+      // execution: arpeggio, then the keys fly into the fence, then the shared gate appears
+      sfx.execute({ delay: 0.45 }); sfx.keysFly(5, { delay: 1.4 }); sfx.gateChime({ delay: 2.6 });
+    }
+    prev.current = status;
+  }, [status]);
+  useCueOnIncrease(merge ? approved.size : null, (n) => sfx.approve(n - 1));
   const [busy, setBusy] = useState(false);
 
   const city = useMemo<Partial<CityStageProps>>(() => ({ shot: status === "done" ? "gate" : "district-minh", showDomain: true }), [status]);
