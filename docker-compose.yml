@@ -1,0 +1,33 @@
+services:
+  api:
+    build: ./Backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: ./Backend/.env
+        required: false
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./Frontend
+      args:
+        VITE_API_MODE: live
+        VITE_BASE: /
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Postgres (later): enable with `docker compose --profile db up`, then point the api at it.
+  # db:
+  #   image: postgres:16
+  #   profiles: [db]
+  #   environment:
+  #     POSTGRES_USER: guardian
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+  #     POSTGRES_DB: guardian
+  #   volumes: [pgdata:/var/lib/postgresql/data]
+# volumes:
+#   pgdata:

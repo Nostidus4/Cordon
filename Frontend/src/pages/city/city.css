@@ -1,0 +1,6 @@
+.city-root { font-family: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.city-root * { font-family: inherit; }
+@keyframes city-twinkle { 0%, 100% { opacity: 0.35; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }
+.city-star { animation: city-twinkle 3.6s ease-in-out infinite; }
+.city-card:hover { filter: brightness(1.12); }
+@media (prefers-reduced-motion: reduce) { .city-star { animation: none; } }

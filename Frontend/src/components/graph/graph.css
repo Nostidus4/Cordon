@@ -1,0 +1,27 @@
+@import "@xyflow/react/dist/style.css";
+
+/* React Flow skin: transparent canvas, no default node chrome */
+.gv-flow-root.react-flow { background: transparent; --xy-edge-stroke-default: transparent; }
+.gv-flow-root .react-flow__node { cursor: pointer; }
+.gv-flow-root .react-flow__pane { cursor: grab; }
+.gv-flow-root .react-flow__pane:active { cursor: grabbing; }
+.gv-flow-root .react-flow__handle { opacity: 0; width: 2px; height: 2px; min-width: 0; min-height: 0; border: 0; pointer-events: none; }
+.gv-flow-root .react-flow__attribution { display: none; }
+
+@keyframes gv-dash { to { stroke-dashoffset: -28; } }
+@keyframes gv-hit {
+  0% { box-shadow: 0 0 0 0 rgb(255 107 122 / 0.85), 0 0 0 1px rgb(255 107 122 / 0.9); transform: scale(0.94); }
+  40% { transform: scale(1.06); }
+  100% { box-shadow: 0 0 0 16px rgb(255 107 122 / 0), 0 0 22px -2px rgb(255 107 122 / 0.55); transform: scale(1); }
+}
+@keyframes gv-amber { 0%, 100% { outline-color: rgb(255 191 60 / 0.95); outline-offset: 3px; } 50% { outline-color: rgb(255 191 60 / 0.55); outline-offset: 5px; } }
+@keyframes gv-flag { 0%, 100% { box-shadow: 0 0 0 1px rgb(255 191 60 / 0.55), 0 0 0 0 rgb(255 191 60 / 0.3); } 50% { box-shadow: 0 0 0 1px rgb(255 191 60 / 0.8), 0 0 26px 0 rgb(255 191 60 / 0.28); } }
+@keyframes gv-origin { 0%, 100% { box-shadow: 0 0 0 2px rgb(255 107 122 / 0.9), 0 0 30px 0 rgb(229 56 75 / 0.55); } 50% { box-shadow: 0 0 0 3px rgb(255 107 122 / 1), 0 0 48px 6px rgb(229 56 75 / 0.75); } }
+
+.gv-edge-flow { stroke-dasharray: 5 9; animation: gv-dash 1.1s linear infinite; }
+.gv-key-hit { animation: gv-hit 0.9s cubic-bezier(0.22, 1, 0.36, 1) 1; }
+.gv-amber { outline: 2.5px solid rgb(255 191 60); outline-offset: 3px; animation: gv-amber 1.6s ease-in-out infinite; }
+.gv-flag { animation: gv-flag 2.6s ease-in-out infinite; }
+.gv-origin { animation: gv-origin 1.5s ease-in-out infinite; }
+.gv-hatch { background-image: repeating-linear-gradient(135deg, transparent 0 7px, rgb(255 255 255 / 0.05) 7px 14px); }
+@media (prefers-reduced-motion: reduce) { .gv-edge-flow, .gv-flag, .gv-amber, .gv-origin { animation: none; } }

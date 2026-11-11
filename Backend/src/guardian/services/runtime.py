@@ -1,0 +1,237 @@
+"""Process-wide Runtime: SimChain + in-memory stores + SSE event bus + graph version.
+
+TODO(persistence): attempts/scenario_runs/proposals/agent_runs/assistant_logs are in memory only
+(spec §8.2 wants Postgres). Keep the `Stores` surface small (add/get/list/clear) so a DB-backed
+implementation can replace it without touching services.
+
+Concurrency: route handlers are `async def` and call the sync SimChain without awaiting in the
+middle of a chain operation, so chain access is serialised by the event loop. SimChain
+subscriber callbacks are bridged to SSE through `EventBus.publish` (thread-safe).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any
+
+from guardian.chain.base import ChainEvent
+from guardian.chain.sim import SimChain
+from guardian.core.config import Settings
+from guardian.core.demo_guard import DemoGuard
+from guardian.domain.snapshot import KeyState, PolicySnapshot
+from guardian.graph.findings import compute_findings
+from guardian.services import views
+from guardian.services.event_bus import EventBus
+
+
+@dataclass
+class AttemptRec:
+    id: int
+    scenario_run_id: str | None
+    step: int | None
+    display_time: str | None
+    signer: str  # seed id (key_*, council_*)
+    signer_label: str
+    principal_id: str | None
+    action: str  # pay | swap | lock | raw_call
+    outcome: str  # ok | reverted | blocked_at_protocol | blocked (simulate said no, not sent)
+    reason_code: str | None
+    tx_hash: str | None
+    error_raw: str | None
+    block: int | None
+    ts: int
+    amount: dict[str, str] | None = None
+    token: str | None = None
+    to: str | None = None
+    to_label: str | None = None
+    principal_spent_after: dict[str, str] | None = None
+    key_spent_after: dict[str, str] | None = None
+    simulated: bool = True
+    source: str = "server"  # server | agent | external
+
+
+@dataclass
+class ScenarioRunRec:
+    id: str
+    status: str  # running | waiting_lock | completed | failed
+    delay: float
+    started_at: int
+    policy_version: int
+    finished_at: int | None = None
+    error: str | None = None
+
+
+@dataclass
+class ProposalRec:
+    id: int
+    title: str
+    subject_principal: str | None
+    change: dict[str, Any] | None
+    calls: list[dict[str, Any]]  # graph vocabulary (what describe_vi / the UI read)
+    description_vi: list[str]
+    risk_report: dict[str, Any]  # raw graph.risk_report dict, frozen at proposal time
+    risk_report_hash: str
+    proposer: str
+    created_at: int
+    finding_id: str | None = None
+    report_basis: str = "live"  # live | policy_v2_reference (seeded request #12)
+    executed_at: int | None = None
+    executed_tx_hash: str | None = None
+
+
+@dataclass
+class AgentRunRec:
+    id: int
+    ts: int
+    outcome: str  # swapped | blocked | no_action | reverted
+    decision: dict[str, Any] | None
+    reason_text: str | None
+    reason_source: str | None
+    reason_hash: str | None
+    tx_hash: str | None
+    reason_code: str | None
+    attempt_id: int | None
+    balances: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class AssistantLogRec:
+    id: int
+    ts: int
+    question_id: str | None
+    question: str
+    answer: str
+    numbers_verified: bool
+    screen: str | None = None
+
+
+@dataclass
+class ConflictRec:
+    ts: int
+    member: str
+    proposal_id: int
+
+
+class Stores:
+    """In-memory stores (see module TODO)."""
+
+    def __init__(self) -> None:
+        self.clear()
+
+    def clear(self) -> None:
+        self.attempts: list[AttemptRec] = []
+        self.runs: dict[str, ScenarioRunRec] = {}
+        self.proposals: dict[int, ProposalRec] = {}
+        self.agent_runs: list[AgentRunRec] = []
+        self.assistant_logs: list[AssistantLogRec] = []
+        self.conflicts: list[ConflictRec] = []
+        self._ids = 0
+
+    def next_id(self) -> int:
+        self._ids += 1
+        return self._ids
+
+
+class Runtime:
+    def __init__(
+        self,
+        settings: Settings,
+        chain: SimChain | None = None,
+        clock: Callable[[], float] = time.time,
+    ) -> None:
+        if settings.chain_mode != "sim":
+            raise NotImplementedError(
+                "CHAIN_MODE=l1 is not implemented yet: only CHAIN_MODE=sim (in-memory SimChain). "
+                "A web3 adapter implementing ChainPort is a future task."
+            )
+        self.settings = settings
+        self.clock = clock
+        self.chain: SimChain = chain or SimChain()
+        self.bus = EventBus()
+        self.guard = DemoGuard(settings)
+        self.stores = Stores()
+        self.graph_version = 1
+        self.scenario_tasks: dict[str, asyncio.Task[None]] = {}
+        self._last_city: list[tuple[str, str, str]] | None = None
+        self._unsubscribe = self.chain.subscribe(self._on_chain_event)
+
+    # ------------------------------------------------------------------ lifecycle
+    def bind_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
+        self.bus.bind_loop(loop)
+
+    async def shutdown(self) -> None:
+        for t in list(self.scenario_tasks.values()):
+            t.cancel()
+        self._unsubscribe()
+
+    # ------------------------------------------------------------------ helpers
+    def now(self) -> int:
+        return int(self.clock())
+
+    def snapshot(self) -> PolicySnapshot:
+        return self.chain.snapshot()
+
+    def findings(self) -> list[dict[str, Any]]:
+        return compute_findings(self.snapshot())
+
+    def token_decimals(self) -> dict[str, int]:
+        return {t.address: t.decimals for t in self.snapshot().tokens}
+
+    def key_by_seed(self, seed_id: str, snap: PolicySnapshot | None = None) -> KeyState:
+        for k in (snap or self.snapshot()).keys.values():
+            if k.seed_id == seed_id:
+                return k
+        raise KeyError(seed_id)
+
+    def label_of(self, address_or_seed: str) -> str:
+        snap = self.snapshot()
+        for k in snap.keys.values():
+            if k.seed_id == address_or_seed or k.address == address_or_seed:
+                return k.label
+        for m in snap.council:
+            if address_or_seed in (m.id, m.address, f"council_{m.id}"):
+                return m.label
+        for r in snap.recipients:
+            if address_or_seed in (r.seed_id, r.address):
+                return r.label
+        return address_or_seed
+
+    # ------------------------------------------------------------------ SSE bridge
+    def _on_chain_event(self, ev: ChainEvent) -> None:
+        self.bus.publish("event", views.api_event(ev, self.token_decimals()))
+
+    def publish(self, event_type: str, data: dict[str, Any]) -> None:
+        self.bus.publish(event_type, data)
+
+    def city_states(self) -> dict[str, Any]:
+        from guardian.services.city_state import compute_city_states
+
+        return compute_city_states(self)
+
+    def notify_state_changed(
+        self, proposal_ids: tuple[int, ...] = (), force_city: bool = False, graph: bool = True
+    ) -> None:
+        """Call after any state-changing operation: graph_updated, proposal_updated, city_updated."""
+        from guardian.services.proposal_service import proposal_out
+
+        if graph:
+            self.graph_version += 1
+            snap = self.snapshot()
+            self.publish(
+                "graph_updated",
+                {
+                    "graphVersion": self.graph_version,
+                    "policyVersion": snap.policy_version,
+                    "block": snap.block,
+                },
+            )
+        for pid in proposal_ids:
+            self.publish("proposal_updated", proposal_out(self, pid))
+        city = self.city_states()
+        comparable = [(b["id"], b["state"], b["reasonVi"]) for b in city["buildings"]]
+        if force_city or self._last_city != comparable:
+            self._last_city = comparable
+            self.publish("city_updated", city)

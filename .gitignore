@@ -1,0 +1,36 @@
+# Dependencies / build output
+node_modules/
+dist/
+.vite/
+coverage/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Logs / OS
+*.log
+.DS_Store
+
+# Secrets (examples stay tracked)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Blender backups (Blender/out/*.blend stays tracked)
+*.blend1
+Blender/previews/
+
+# Local artefacts
+Frontend/.screenshots/
+
+# IDEs
+.idea/
+.vscode/
+*.swp

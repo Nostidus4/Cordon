@@ -1,0 +1,86 @@
+/* GuardianAI design tokens. Night palette shared with the 3D city (deep navy / violet, glass surfaces).
+   Semantic colors are fixed by spec §10.1 and never used for decoration:
+   teal = ok / approved · amber = attention / near cap · red = affected / blocked · grey = locked.
+   Meaning is never carried by color alone: always pair with ✓ ▲ ✕ ◐ + text (spec §12). All text pairs >= 4.5:1 on --color-bg. */
+@theme {
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+  /* surfaces */
+  --color-bg: #070a1c;
+  --color-bg-2: #0b1030;
+  --color-surface: #11163a;
+  --color-surface-2: #181e4a;
+  --color-glass: rgb(20 26 66 / 0.55);
+  --color-glass-strong: rgb(24 30 74 / 0.78);
+  --color-line: rgb(148 160 255 / 0.14);
+  --color-line-strong: rgb(148 160 255 / 0.28);
+
+  /* text (contrast on #070a1c: text 15.8, muted 8.2, faint 5.0) */
+  --color-text: #eceefe;
+  --color-muted: #aab1d6;
+  --color-faint: #8189b4;
+
+  /* brand */
+  --color-brand: #8b7cf6;
+  --color-brand-strong: #6d5ef0;
+  --color-brand-soft: rgb(139 124 246 / 0.16);
+  --color-accent: #4cc9f0;
+
+  /* semantic (spec §10.1) */
+  --color-ok: #34e0b4;
+  --color-ok-soft: rgb(52 224 180 / 0.14);
+  --color-warn: #ffbf3c;
+  --color-warn-soft: rgb(255 191 60 / 0.15);
+  --color-bad: #ff6b7a;
+  --color-bad-strong: #e5384b;
+  --color-bad-soft: rgb(255 107 122 / 0.15);
+  --color-lock: #9aa3c4;
+  --color-lock-soft: rgb(154 163 196 / 0.15);
+  --color-sim: #b79bff; /* "mô phỏng" evidence, simulated data */
+
+  /* radius */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  /* shadows */
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 10px 30px -12px rgb(0 0 0 / 0.6);
+  --shadow-pop: 0 24px 60px -16px rgb(0 0 0 / 0.75), 0 0 0 1px var(--color-line-strong);
+  --shadow-glow-brand: 0 0 0 1px rgb(139 124 246 / 0.5), 0 8px 32px -8px rgb(109 94 240 / 0.6);
+  --shadow-glow-bad: 0 0 0 1px rgb(255 107 122 / 0.55), 0 10px 36px -8px rgb(229 56 75 / 0.65);
+  --shadow-glow-ok: 0 0 0 1px rgb(52 224 180 / 0.4), 0 8px 28px -8px rgb(52 224 180 / 0.45);
+
+  /* motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-pulse-ring: pulse-ring 1.8s var(--ease-out) infinite;
+  --animate-float-in: float-in 420ms var(--ease-out) both;
+}
+
+:root {
+  color-scheme: dark;
+  --nav-h: 56px;
+  --topbar-h: 56px;
+  --footer-h: 36px;
+  --brand-gradient: linear-gradient(135deg, #8b7cf6 0%, #4cc9f0 100%);
+  --panel-gradient: linear-gradient(160deg, rgb(139 124 246 / 0.10), rgb(76 201 240 / 0.03) 45%, transparent 70%);
+}
+
+@keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 80%, 100% { box-shadow: 0 0 0 8px transparent; opacity: 1; } }
+@keyframes float-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes alarm { 0%, 100% { box-shadow: var(--shadow-glow-bad); } 50% { box-shadow: 0 0 0 2px rgb(255 107 122 / 0.9), 0 12px 48px -4px rgb(229 56 75 / 0.9); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+:root { --chrome-h: 148px; /* TopBar 56 + NavBar 56 + Footer 36: page area height = calc(100vh - var(--chrome-h)) */ }

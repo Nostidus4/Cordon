@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public testnet addresses in seed data; minified third-party Draco decoder"
+paths = [
+  '''Backend/seed/.*\.json''',
+  '''Frontend/public/draco/.*''',
+]

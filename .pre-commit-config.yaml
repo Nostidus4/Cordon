@@ -1,0 +1,57 @@
+# Install: uvx pre-commit install --hook-type pre-commit --hook-type pre-push
+# NOTE: Frontend/src is excluded from whitespace/eof fixers while several agents edit it.
+# Remove EXCLUDE_FE_SRC (the `exclude:` lines below) to re-enable.
+default_install_hook_types: [pre-commit, pre-push]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(Frontend/src/|.*\.(md|glb|blend))
+      - id: end-of-file-fixer
+        exclude: ^(Frontend/src/|.*\.(glb|blend))
+      - id: check-yaml
+      - id: check-json
+        exclude: ^Frontend/tsconfig.*\.json$
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=5000]
+        exclude: ^(Blender/out/|Frontend/public/models/|Frontend/public/.*\.(jpg|png))
+      - id: detect-private-key
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.12
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^Backend/
+      - id: ruff-format
+        files: ^Backend/
+
+  - repo: local
+    hooks:
+      - id: frontend-lint
+        name: frontend lint (eslint)
+        entry: npm --prefix Frontend run lint
+        language: system
+        files: ^Frontend/(src|eslint\.config\.js|vite\.config\.ts)
+        pass_filenames: false
+      - id: frontend-typecheck
+        name: frontend typecheck (tsc --noEmit)
+        entry: npm --prefix Frontend run typecheck
+        language: system
+        files: ^Frontend/(src|tsconfig.*\.json|vite\.config\.ts)
+        pass_filenames: false
+      - id: backend-pytest
+        name: backend pytest
+        entry: uv run --directory Backend pytest -q
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

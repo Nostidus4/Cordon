@@ -1,0 +1,375 @@
+{
+  "org": {
+    "id": "may_labs",
+    "name": "Mây Labs"
+  },
+  "policy_version": 1,
+  "main_treasury": 2000000000000,
+  "vault_balances": {
+    "tUSDC": 200000000000,
+    "tTKB": 0
+  },
+  "contracts": {
+    "policy_vault": "0x2ee8c4af078847c958532F0F29963E9081a17484",
+    "principal_registry": "0xe0749d9537dC6ea723b8e8aEbCfD512b76c5d002",
+    "guardian_council": "0xA1b2ad17C8A593E83731193Fcc20DCEBb3d1435a",
+    "bridge_escrow": "0x91A979800BA1866a6669754dd9b1bBd3845BDf25"
+  },
+  "tokens": [
+    {
+      "seed_id": "tUSDC",
+      "symbol": "tUSDC",
+      "decimals": 6,
+      "allowed": true,
+      "address": "0x30D62F815A2E548beE990d1f362fab09D0D18A1C"
+    },
+    {
+      "seed_id": "tTKB",
+      "symbol": "tTKB",
+      "decimals": 18,
+      "allowed": true,
+      "address": "0x3C8F020dBa586BBaF1004BabC81947D68459DB56"
+    },
+    {
+      "seed_id": "tSCAM",
+      "symbol": "tSCAM",
+      "decimals": 18,
+      "allowed": false,
+      "address": "0xB699e0aF637C37E0542d498d8e36bC78Aef6F8C3"
+    }
+  ],
+  "dex": {
+    "rate": {
+      "tUSDC_per_tTKB_num": 1,
+      "den": 1
+    },
+    "note": "1 tTKB = 1 tUSDC (spec 6.6)"
+  },
+  "principals": [
+    {
+      "id": "minh",
+      "label": "Anh Minh",
+      "kind": "HUMAN",
+      "daily_cap": 0,
+      "locked": false
+    },
+    {
+      "id": "agent_data",
+      "label": "Trợ lý Dữ liệu",
+      "kind": "AGENT",
+      "daily_cap": 0,
+      "locked": false
+    },
+    {
+      "id": "agent_intl_pay",
+      "label": "Trợ lý Thanh toán quốc tế",
+      "kind": "AGENT",
+      "daily_cap": 0,
+      "locked": false
+    },
+    {
+      "id": "agent_rebalance",
+      "label": "Trợ lý Cân đối",
+      "kind": "AGENT",
+      "daily_cap": 0,
+      "locked": false
+    },
+    {
+      "id": "svc_payment",
+      "label": "Phần mềm thanh toán",
+      "kind": "SERVICE",
+      "daily_cap": 0,
+      "locked": false
+    },
+    {
+      "id": "huy",
+      "label": "Anh Huy",
+      "kind": "HUMAN",
+      "daily_cap": 0,
+      "locked": false
+    },
+    {
+      "id": "lan",
+      "label": "Chị Lan",
+      "kind": "HUMAN",
+      "daily_cap": 0,
+      "locked": false
+    }
+  ],
+  "keys": [
+    {
+      "seed_id": "key_minh",
+      "address": "0xFBF0927D8fF0845912002Bf65B2fAC64f0Eb5eC1",
+      "label": "Khoá anh Minh",
+      "kind": "HUMAN",
+      "principal_id": "minh",
+      "daily_cap": 20000000000,
+      "active": true,
+      "allow_listed": true
+    },
+    {
+      "seed_id": "key_agent_data",
+      "address": "0x3a619E5447Ec3c67ef688f8C7F48E6b68B9aBe11",
+      "label": "Khoá Trợ lý Dữ liệu",
+      "kind": "AGENT",
+      "principal_id": "agent_data",
+      "daily_cap": 20000000000,
+      "active": true,
+      "allow_listed": true
+    },
+    {
+      "seed_id": "key_agent_intl_pay",
+      "address": "0xaeF7bDD1F723e24cB578bA60AAe40C7f684Ea0ac",
+      "label": "Khoá Trợ lý Thanh toán quốc tế",
+      "kind": "AGENT",
+      "principal_id": "agent_intl_pay",
+      "daily_cap": 20000000000,
+      "active": true,
+      "allow_listed": true
+    },
+    {
+      "seed_id": "key_agent_rebalance",
+      "address": "0x96f7e1D1b894ca752FAA781918550DF764646787",
+      "label": "Khoá Trợ lý Cân đối",
+      "kind": "AGENT",
+      "principal_id": "agent_rebalance",
+      "daily_cap": 20000000000,
+      "active": true,
+      "allow_listed": true
+    },
+    {
+      "seed_id": "key_svc_payment",
+      "address": "0xd534b502A76fa6030B252203fA94c23cB3Ebaa6a",
+      "label": "Khoá phần mềm thanh toán",
+      "kind": "SERVICE",
+      "principal_id": "svc_payment",
+      "daily_cap": 20000000000,
+      "active": true,
+      "allow_listed": true
+    },
+    {
+      "seed_id": "key_huy_1",
+      "address": "0xb1970880E109b8C30b28d6925c5f7dFE87BC4d67",
+      "label": "Khoá anh Huy (1)",
+      "kind": "HUMAN",
+      "principal_id": "huy",
+      "daily_cap": 20000000000,
+      "active": true,
+      "allow_listed": true
+    },
+    {
+      "seed_id": "key_huy_2",
+      "address": "0xe3B4F4144A9215a2e0CaDB74F48dBb6eFe948e13",
+      "label": "Khoá anh Huy (2)",
+      "kind": "HUMAN",
+      "principal_id": "huy",
+      "daily_cap": 20000000000,
+      "active": true,
+      "allow_listed": true
+    },
+    {
+      "seed_id": "key_lan",
+      "address": "0x429153f1367162Ce093b7cFa3399349f7E0712d3",
+      "label": "Khoá chị Lan",
+      "kind": "HUMAN",
+      "principal_id": "lan",
+      "daily_cap": 10000000000,
+      "active": true,
+      "allow_listed": true
+    }
+  ],
+  "declared_edges": [
+    {
+      "id": "e:minh-controls-agent_data",
+      "from_principal": "minh",
+      "to": "agent_data",
+      "relation": "controls",
+      "note": "anh Minh tạo và giữ khoá trên máy anh",
+      "source": "declared"
+    },
+    {
+      "id": "e:minh-controls-agent_intl_pay",
+      "from_principal": "minh",
+      "to": "agent_intl_pay",
+      "relation": "controls",
+      "note": "anh Minh tạo và giữ khoá trên máy anh",
+      "source": "declared"
+    },
+    {
+      "id": "e:minh-controls-agent_rebalance",
+      "from_principal": "minh",
+      "to": "agent_rebalance",
+      "relation": "controls",
+      "note": "anh Minh tạo và giữ khoá trên máy anh",
+      "source": "declared"
+    },
+    {
+      "id": "e:minh-admins-svc_payment",
+      "from_principal": "minh",
+      "to": "svc_payment",
+      "relation": "admins",
+      "note": "máy chủ do anh Minh quản trị",
+      "source": "declared"
+    }
+  ],
+  "council": [
+    {
+      "id": "trang",
+      "label": "Chị Trang",
+      "address": "0x1342B9A27b1752Cd8cA9d893f0A1003315D0A8e8",
+      "seed_id": "council_trang",
+      "principal_id": null
+    },
+    {
+      "id": "lan",
+      "label": "Chị Lan",
+      "address": "0xB3A84cD8AA6FAF7F24C3BE62E4c2A8bbec0438F4",
+      "seed_id": "council_lan",
+      "principal_id": "lan"
+    },
+    {
+      "id": "huy",
+      "label": "Anh Huy",
+      "address": "0x4c75D2F66763Fb0ea7635028882028Ed395c2744",
+      "seed_id": "council_huy",
+      "principal_id": "huy"
+    }
+  ],
+  "recipients": [
+    {
+      "seed_id": "vendor_data_api",
+      "address": "0x55aeCE454E08B37b16B5e64aD8e346635424510d",
+      "label": "Nhà cung cấp dữ liệu API",
+      "allowed": true
+    },
+    {
+      "seed_id": "vendor_cloud",
+      "address": "0x9b94b642795fBCC6FbF423A04B0dAedE432d259D",
+      "label": "Nhà cung cấp cloud",
+      "allowed": true
+    },
+    {
+      "seed_id": "vendor_intl_design",
+      "address": "0x154BB4F1c79746687c32BC5ffa6852BD432F491E",
+      "label": "Nhà cung cấp thiết kế quốc tế",
+      "allowed": true
+    },
+    {
+      "seed_id": "stranger_wallet",
+      "address": "0xd7C00ADAB1fa0Efce746A93722163514798cC928",
+      "label": "Ví người lạ",
+      "allowed": false
+    }
+  ],
+  "protocols": [
+    {
+      "seed_id": "mock_dex",
+      "address": "0x60C9Cf084Ab6A1b648bdC60E5F1472e61b44a669",
+      "label": "MockDEX",
+      "selector": "0x10b84623",
+      "allowed": true
+    },
+    {
+      "seed_id": "evil_dex",
+      "address": "0x2507A0451f191b525E91E498258D238b121A0DcE",
+      "label": "EvilDEX",
+      "selector": "0x10b84623",
+      "allowed": false
+    }
+  ],
+  "policy_v2": {
+    "title": "Gom 5 khoá về khu minh, hạn mức chung 30.000",
+    "subject_principal": "minh",
+    "calls": [
+      {
+        "target": "registry",
+        "fn": "moveKey",
+        "args": {
+          "key": "0x3a619E5447Ec3c67ef688f8C7F48E6b68B9aBe11",
+          "to": "minh"
+        }
+      },
+      {
+        "target": "registry",
+        "fn": "moveKey",
+        "args": {
+          "key": "0xaeF7bDD1F723e24cB578bA60AAe40C7f684Ea0ac",
+          "to": "minh"
+        }
+      },
+      {
+        "target": "registry",
+        "fn": "moveKey",
+        "args": {
+          "key": "0x96f7e1D1b894ca752FAA781918550DF764646787",
+          "to": "minh"
+        }
+      },
+      {
+        "target": "registry",
+        "fn": "moveKey",
+        "args": {
+          "key": "0xd534b502A76fa6030B252203fA94c23cB3Ebaa6a",
+          "to": "minh"
+        }
+      },
+      {
+        "target": "vault",
+        "fn": "setPrincipalDailyCap",
+        "args": {
+          "principal_id": "minh",
+          "cap": 30000000000
+        }
+      },
+      {
+        "target": "vault",
+        "fn": "bumpPolicyVersion",
+        "args": {}
+      }
+    ],
+    "approvers": [
+      "lan",
+      "trang"
+    ]
+  },
+  "request_12": {
+    "id": 12,
+    "title": "Tăng hạn mức chung khu minh 30.000 -> 130.000",
+    "subject_principal": "minh",
+    "calls": [
+      {
+        "target": "vault",
+        "fn": "setPrincipalDailyCap",
+        "args": {
+          "principal_id": "minh",
+          "cap": 130000000000
+        }
+      },
+      {
+        "target": "vault",
+        "fn": "bumpPolicyVersion",
+        "args": {}
+      }
+    ],
+    "suggestion": {
+      "title": "Gợi ý: giao Trợ lý Cân đối cho anh Huy",
+      "subject_principal": "huy",
+      "note": "Khu nhận thêm khoá phải khai subjectPrincipal = huy nên anh Huy không được duyệt (xung đột lợi ích).",
+      "calls": [
+        {
+          "target": "registry",
+          "fn": "moveKey",
+          "args": {
+            "key": "0x96f7e1D1b894ca752FAA781918550DF764646787",
+            "to": "huy"
+          }
+        },
+        {
+          "target": "vault",
+          "fn": "bumpPolicyVersion",
+          "args": {}
+        }
+      ]
+    }
+  }
+}
