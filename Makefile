@@ -1,4 +1,4 @@
-.PHONY: contracts-build abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild
+.PHONY: contracts-build abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status
 
 API_URL ?= http://localhost:8000
 
@@ -46,3 +46,21 @@ contracts-build:
 # Regenerate Backend/src/guardian/chain/abis/*.json from contracts/src/interfaces/*.sol
 abis:
 	contracts/scripts/export-abis.sh
+
+# Guardian L1 (docs: contracts/genesis/README.md). Local targets use throwaway test keys only.
+l1-local-up:
+	bash infra/l1/l1-local.sh up
+
+l1-local-verify:
+	bash infra/l1/l1-local.sh verify
+
+l1-local-down:
+	bash infra/l1/l1-local.sh down
+
+# Fuji: needs FUJI_KEY, ROSTER and I_UNDERSTAND=fuji (see infra/l1/deploy-fuji.sh).
+deploy-l1:
+	bash infra/l1/deploy-fuji.sh
+
+# Needs L1_RPC_URL (and optionally L1_CHAIN_ID) in the environment.
+l1-status:
+	bash infra/l1/health.sh

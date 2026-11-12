@@ -1,0 +1,17 @@
+# Example systemd unit for the Guardian L1 validator node (copy to /etc/systemd/system/).
+# Adjust User, paths and flags to the host. Restart=always brings the node back within seconds
+# after a crash or `kill`; the data dir keeps chain state. Not yet exercised on a real host.
+[Unit]
+Description=Avalanche node (Guardian L1 validator)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=avalanche
+ExecStart=/opt/avalanche/avalanchego --config-file=/etc/avalanchego/config.json
+Restart=always
+RestartSec=5
+LimitNOFILE=32768
+
+[Install]
+WantedBy=multi-user.target

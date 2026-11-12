@@ -30,6 +30,9 @@ Blender/previews/
 # Local artefacts
 Frontend/.screenshots/
 
+# Local L1 state
+infra/l1/.env.l1-local
+
 # IDEs
 .idea/
 .vscode/

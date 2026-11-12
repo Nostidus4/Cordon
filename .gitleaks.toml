@@ -2,8 +2,9 @@
 useDefault = true
 
 [allowlist]
-description = "Public testnet addresses in seed data; minified third-party Draco decoder"
+description = "Public testnet addresses in seed data and genesis rosters (addresses only); minified third-party Draco decoder"
 paths = [
   '''Backend/seed/.*\.json''',
+  '''contracts/genesis/(roster\..*|genesis)\.json''',
   '''Frontend/public/draco/.*''',
 ]
