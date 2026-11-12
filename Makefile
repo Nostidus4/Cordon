@@ -34,7 +34,7 @@ demo-reset:
 	curl -fsS -X POST $(API_URL)/api/demo/reset
 
 demo-scene4:
-	cd Backend && uv run guardian-attacker scene4 --step all
+	cd Backend && uv run guardian-attacker scene4 --step all --simulate-lock
 
 blender-rebuild:
 	@test -x Blender/scripts/rebuild.sh || { echo "Blender/scripts/rebuild.sh not found"; exit 1; }
