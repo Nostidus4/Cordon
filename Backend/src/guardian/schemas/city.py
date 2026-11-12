@@ -24,4 +24,5 @@ class CityStates(CamelModel):
     buildings: list[Building]
     updated_at: int
     policy_version: int
+    policy_label: int
     graph_version: int

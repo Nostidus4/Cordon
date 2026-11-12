@@ -26,6 +26,10 @@ Chủ trì: Nostidus4 · Issue: `L1-001`, `L1-002`, `L1-003` · Spec: [../../spe
 3. Deployer tự gỡ mình (`setNone(DEPLOYER)`) trên cả hai.
 4. `VerifyHandover` đọc `readAllowList` và fail nếu Deployer còn quyền (T15 bản thật); `emergencyLock` thử trên L1 thật phải làm `readAllowList(key) = 0` (T8 bản thật).
 
+### OPS-003: reset bằng deploy lại (local)
+
+Sau bàn giao deployer không còn role, nên `ResetOpen` nhờ Council cũ `setEnabled` deployer; bộ mới được deploy và seed; Council cũ chuyển admin hai precompile sang Council mới bằng một proposal (`setAdmin(mới)` x2, `setNone(cũ)` x2, chỉ được vì Council cho phép `setAdmin` tới một contract khác); `ResetSwitch` xong thì deployer không còn role (`VerifyHandover` pass) và Council cũ không còn role. Xem `docs/DEVELOPMENT.md`.
+
 ## Nghiệm thu
 
 - RPC trả block; giao dịch từ địa chỉ ngoài AllowList bị từ chối (D1).

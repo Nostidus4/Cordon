@@ -47,6 +47,8 @@ export interface District {
 export interface GraphSnapshot {
   version: number;
   policyVersion: number;
+  /** Version to show: raw - baseline + 1 (v1 at the start of scene 1). Absent in the mock, where raw is already that. */
+  policyLabel?: number;
   block: number;
   nodes: GraphNode[];
   edges: GraphEdge[];

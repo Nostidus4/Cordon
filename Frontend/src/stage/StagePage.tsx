@@ -26,6 +26,7 @@ import { FixScene } from "./scenes/FixScene";
 import { IncidentScene } from "./scenes/IncidentScene";
 import { RequestScene } from "./scenes/RequestScene";
 import "./toy.css";
+import { policyLabel } from "../lib/policy";
 
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
 
@@ -102,7 +103,7 @@ export default function StagePage() {
       {cardsReady ? <TopBar scene={scene} night={night} onGo={go} onNight={(n) => useStageStore.getState().setNightPref(n)} onReset={onReset} resetting={reset.isPending} /> : null}
       <main className="pointer-events-none absolute inset-0 z-20" id="stage-overlay">
         {cardsReady ? <>
-        {(scene === "look" || scene === "try") && (graph?.policyVersion ?? 1) >= 2 && !preparing ? (
+        {(scene === "look" || scene === "try") && (policyLabel(graph) ?? 1) >= 2 && !preparing ? (
           <div className="pointer-events-auto absolute left-1/2 top-[84px] -translate-x-1/2">
             <ToyCard className="flex items-center gap-3 py-2 pl-5 pr-2.5" style={{ borderRadius: 999 }} label="Đang ở chính sách mới">
               <span className="toy-body" style={{ color: "var(--ink)", fontWeight: 700 }}>Đang ở chính sách mới</span>

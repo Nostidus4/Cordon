@@ -20,6 +20,7 @@ import { LEFT_FULL, incidentNumbers, nextIncidentAction, recipientVi, signerShor
 import { Tile } from "../parts";
 import { useCityProps, usePrimaryAction, useStageStore } from "../stageStore";
 import { CheckIcon, Counter, CrossIcon, GateIcon, KindIcon, Ribbon, ToyButton, ToyCard, WarnIcon } from "../ui";
+import { policyLabel } from "../../lib/policy";
 
 const sortAttempts = (a: Attempt[]) => [...a].sort((x, y) => x.step - y.step || x.ts.localeCompare(y.ts));
 const U = 1_000_000n;
@@ -92,7 +93,7 @@ export function IncidentScene() {
   const attempts = useMemo(() => sortAttempts(replayAttempts ?? live), [replayShown, replayAttempts === null, live]);
 
   const minh = graph?.districts.find((d) => d.principalId === "minh");
-  const policyV2 = (graph?.policyVersion ?? 1) >= 2 || replay;
+  const policyV2 = (policyLabel(graph) ?? 1) >= 2 || replay;
   const nums = useMemo(() => incidentNumbers(attempts, { districtLocked: replay ? false : !!minh?.locked, capRaw: minh?.dailyCap?.raw ?? (replay ? "30000000000" : null) }), [attempts, minh, replay]);
   useEffect(() => { if (nums.attackDone || attempts.length === 0) setAttacking(false); }, [nums.attackDone, attempts.length]);
   useStream((m) => { if (m.type === "reset") setAttacking(false); }, ["reset"]);

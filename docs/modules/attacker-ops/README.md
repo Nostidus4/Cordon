@@ -36,7 +36,8 @@ make demo-scene4 · make demo-reset · make deploy-cchain · make topup
 - `OPS-001` xong: `attacker/steps.py` (dry-run lấy lý do → gửi tx thật → `StepReport`) và `attacker/cli.py` chạy trên mọi `ChainPort`; hiện dùng `SimChain` (tự áp policy v2 + bước 0 của agent trước khi chạy, tắt bằng `--no-prepare`); `--chain l1` báo chưa có adapter (OPS-004). Test: `Backend/tests/test_attacker_cli.py` tái hiện bảng 4.3 gồm bước 7 không có tx hash. `make demo-scene4` chạy `--step all --simulate-lock`.
 - Mỗi bước đã gửi được `POST /api/attempts` (kèm `scenarioRunId`, `step`) hoặc ghi `--record` JSONL; `--dry-run` không gửi và không báo gì.
 - `.env.attacker` (git-ignored, mẫu `Backend/.env.attacker.example`) giữ 5 khoá test; trên sim ký bằng seed id nên không bắt buộc, khoá không bao giờ được in.
-- Còn lại: `tests/e2e/test_scene_all.py` chỉ có docstring (OPS-004); `make demo-reset` gọi `POST /api/demo/reset` (OPS-003).
+- `OPS-003` xong ở local: `make demo-reset` (`infra/l1/demo-reset.sh`). Sim: `POST /api/demo/reset`. L1 đang chạy: Council cũ bật lại deployer, deploy bộ mới (`Deploy`, `Seed`), bật lại khoá đã bị khoá, Council cũ chuyển quyền hai precompile sang Council mới rồi bỏ role của mình, `VerifySeed` + `VerifyHandover`, ghi `policyBaseline` và file deployments (đổi tên nguyên tử), rồi `POST /api/demo/reset` để API nạp lại không restart (xoá `attempts`/`scenario_runs`/proposals, giữ `events`, seed request #12 với id 12). Từng pha được đo thời gian. Chi tiết: `docs/DEVELOPMENT.md`. Chưa chạy trên Fuji.
+- Còn lại: `tests/e2e/test_scene_all.py` chỉ có docstring (OPS-004).
 
 ## Issue
 

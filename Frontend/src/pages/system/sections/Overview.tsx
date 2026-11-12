@@ -13,6 +13,7 @@ import { useNow } from "../data";
 import { useFeed } from "../feed";
 import { playFullScenario, STEP_LABEL, type ScenarioStep } from "../scenario";
 import { Chip, Stat } from "../ui";
+import { policyLabel } from "../../../lib/policy";
 
 const fmtUptime = (s: number) => {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
@@ -34,7 +35,7 @@ export function Overview() {
       <Stat k="Chain" v={sim ? "sim" : "Guardian L1"} tone={sim ? "warn" : "ok"} />
       <Stat k="API" v={env.apiMode} />
       <Stat k="Block mới nhất" v={health ? <Counter value={health.l1.block} className="tnum" /> : "…"} />
-      <Stat k="Policy" v={health ? `v${health.policyVersion}` : "…"} tone={health && health.policyVersion > 1 ? "violet" : undefined} />
+      <Stat k="Policy" v={health ? `v${policyLabel(health)}` : "…"} tone={health && (policyLabel(health) ?? 1) > 1 ? "violet" : undefined} />
       <Stat k="Sự kiện" v={<Counter value={events?.length ?? 0} className="tnum" />} />
       <Stat k="Lần thử OK / chặn" v={<><span style={{ color: "var(--ok-ink)" }}>{ok}</span><span style={{ color: "var(--ink-2)", fontWeight: 600 }}> / </span><span style={{ color: blocked ? "var(--red-ink)" : "var(--ink-2)" }}>{blocked}</span></>} />
       <Stat k="Uptime" v={fmtUptime(uptime)} />
@@ -50,7 +51,7 @@ export function Controls() {
   const [busy, setBusy] = useState<ScenarioStep | null>(null);
   const minhLocked = graph?.districts.find((d) => d.principalId === "minh")?.locked ?? false;
   const paused = graph?.nodes.find((n) => n.id === "vault")?.data.paused === true;
-  const v2 = (health?.policyVersion ?? 1) >= 2;
+  const v2 = (policyLabel(health) ?? 1) >= 2;
   const rest = () => useFeed.getState().rest1(true);
   const act = <T,>(m: { mutate: (v: T) => void }, v: T) => { rest(); m.mutate(v); };
   const full = async () => {

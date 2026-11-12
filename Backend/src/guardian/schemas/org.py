@@ -15,6 +15,7 @@ class OrgOut(CamelModel):
     name: str
     fictional: bool
     policy_version: int
+    policy_label: int
     main_treasury: JsonDict
     vault: JsonDict
     council: list[CouncilMemberOut]

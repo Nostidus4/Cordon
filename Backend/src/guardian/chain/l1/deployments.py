@@ -32,6 +32,7 @@ class Deployments:
     chain_id: int | None = None
     rpc_url: str | None = None
     deploy_block: int = 0  # first block to scan for labels and candidate allow-list entries
+    policy_baseline: int = 1  # vault.policyVersion() right after seed + handover: "policy v1"
 
     @property
     def value_token(self) -> str | None:
@@ -65,6 +66,7 @@ def parse_deployments(data: dict[str, Any]) -> Deployments:
         chain_id=data.get("chainId"),
         rpc_url=data.get("rpcUrl"),
         deploy_block=int(data.get("deployBlock", 0)),
+        policy_baseline=int(data.get("policyBaseline", 1)),
     )
 
 

@@ -58,9 +58,9 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 
 | Method | Path | Mô tả | Trạng thái |
 |---|---|---|---|
-| GET | `/health` | block L1/C, `indexerLagBlocks`, agent, `demoMode`, `chainMode`, `simulated`; thêm cảnh báo block đứng (issue API-004) | có |
+| GET | `/health` | block L1/C, `indexerLagBlocks`, agent, `demoMode`, `chainMode`, `simulated`, `policyVersion` (thô) và `policyLabel` (số hiển thị, mục 4.1); thêm cảnh báo block đứng (issue API-004) | có |
 | GET | `/org` | công ty, quỹ chính, kho, Council | có |
-| GET | `/graph` | `GraphSnapshot` | có |
+| GET | `/graph` | `GraphSnapshot` (`policyVersion` thô + `policyLabel`, mục 4.1) | có |
 | GET | `/city/states` | trạng thái 8 công trình cho thành phố 3D | có |
 | POST | `/simulate` | `{compromised[], change?}` → `SimResult` (có `before/after` khi có `change`) | có |
 | GET | `/findings` | findings đang mở (id dạng `R1_MULTI_KEY_NO_SHARED_CAP:minh`) | có |
@@ -78,7 +78,15 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 | GET | `/agent/runs` | bảng `agent_runs`, cũ nhất trước | **thiếu** (API-003) |
 | POST | `/scenario/scene4/run`, `/scenario/scene4/step7` | chạy kịch bản từ server | có |
 | GET | `/scenario/runs`, `/scenario/runs/{id}` | các lần chạy (Replay dùng) | có |
-| POST | `/demo/reset`, `/demo/policy-v2` | đặt lại về đầu cảnh 1; áp policy v2 qua đường Council thật | có |
+| POST | `/demo/reset`, `/demo/policy-v2` | đặt lại về đầu cảnh 1 (sim: tua lại chain trong bộ nhớ; l1: nạp lại bộ contract mới mà `make demo-reset` vừa deploy, mục 4.2); áp policy v2 qua đường Council thật | có |
+
+### 4.1 `policyVersion` và `policyLabel`
+
+`policyVersion` là `vault.policyVersion()` nguyên văn. Mỗi proposal được thực thi bump nó một lần, kể cả các proposal seed và bàn giao, nên trên chain thật bộ vừa dựng xong đọc **4** (sim và anvil: 1). `policyLabel = policyVersion - policyBaseline + 1` là số người dùng thấy: v1 ở đầu cảnh 1, v2 sau proposal gom khu. `policyBaseline` là `policyVersion()` ngay sau khi seed + bàn giao xong, do script ghi vào file deployments (`policyBaseline`, mặc định 1 khi file không có). Có trong `GraphSnapshot`, `/health`, `/org`, `/city/states`, SSE `graph_updated` và `reset`. Frontend dùng `policyLabel` (`Frontend/src/lib/policy.ts`, mock không có thì lấy `policyVersion`) cho mọi nhãn và mọi phép thử "đã lên policy v2".
+
+### 4.2 `POST /demo/reset`
+
+Cùng hợp đồng HTTP ở sim và l1: trả `{status, policyVersion, policyLabel, graphVersion, seededProposalId}`. Trên l1, sổ cái không tua lại được (bộ đếm vault theo ngày UTC), nên `make demo-reset` deploy **bộ contract mới** rồi gọi endpoint này. Endpoint nạp lại file deployments không cần restart (`Runtime.reload_deployment`: chain mới, indexer mới từ `deployBlock` mới), xoá `attempts`/`scenario_runs`/`proposals`, **giữ** `event_log` (event của các bộ cũ), seed request #12 trên Council mới (script để bộ đếm Council ở 11 nên id là 12) và phát SSE `reset`. File lỗi hoặc không đọc được: `502 RELOAD_FAILED`, API giữ bộ cũ.
 
 Mọi endpoint ký (`actions`, `agent/run-once`, `demo/*`, `proposals` POST, `scenario/*`) chỉ hoạt động khi `DEMO_MODE` bật, có rate limit và log. `DEMO_MODE` không bao giờ bật trên mạng thật (`core/demo_guard.py`).
 
@@ -92,11 +100,11 @@ Mỗi message: `event: <type>` + `data: <JSON>`.
 |---|---|
 | `event` | `EventOut` (một `ChainEvent` đã bọc tiền) |
 | `attempt` | `AttemptOut` |
-| `graph_updated` | `{graphVersion, policyVersion, block}` |
+| `graph_updated` | `{graphVersion, policyVersion, policyLabel, block}` |
 | `proposal_updated` | `ProposalOut` |
 | `agent_run` | `AgentRunOut` |
 | `city_updated` | `CityStates` |
-| `reset` | `{at, policyVersion, graphVersion, block}` |
+| `reset` | `{at, policyVersion, policyLabel, graphVersion, block}` |
 
 Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`SSE_EVENT_TYPES`) và `Frontend/src/types/stream.ts` (`STREAM_TYPES`). Frontend phải bỏ qua type lạ, và tự kết nối lại khi mất kết nối.
 

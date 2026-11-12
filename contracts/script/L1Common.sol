@@ -38,8 +38,18 @@ abstract contract L1Common is Script {
         return vm.envOr("DEPLOYMENTS_OUT", string.concat("../Backend/deployments/", network, "-l1.json"));
     }
 
+    /// @dev The deployment being replaced by a demo-reset (OPS-003): `OLD_DEPLOYMENTS`, default the live file.
+    function oldDeploymentsPath() internal view returns (string memory) {
+        string memory network = vm.envOr("NETWORK", string("local"));
+        return vm.envOr("OLD_DEPLOYMENTS", string.concat("../Backend/deployments/", network, "-l1.json"));
+    }
+
     function loadDeployment() internal view returns (Dep memory d) {
-        string memory j = vm.readFile(deploymentsPath());
+        return loadDeploymentFrom(deploymentsPath());
+    }
+
+    function loadDeploymentFrom(string memory path) internal view returns (Dep memory d) {
+        string memory j = vm.readFile(path);
         d.registry = vm.parseJsonAddress(j, ".contracts.registry");
         d.vault = vm.parseJsonAddress(j, ".contracts.vault");
         d.council = vm.parseJsonAddress(j, ".contracts.council");

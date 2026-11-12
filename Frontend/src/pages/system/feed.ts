@@ -69,7 +69,7 @@ const describe = (m: StreamMessage): string => {
     case "event": return `${m.data.name} @${m.data.block}`;
     case "proposal_updated": return `#${m.data.proposalId} ${m.data.status} (${m.data.approvals}/2)`;
     case "agent_run": return `${m.data.decision.action} · ${m.data.outcome}`;
-    case "graph_updated": return `v${m.data.policyVersion} · block ${m.data.block}`;
+    case "graph_updated": return `v${m.data.policyLabel ?? m.data.policyVersion} · block ${m.data.block}`;
     case "city_updated": return "8 tòa nhà";
     case "reset": return "đặt lại";
   }

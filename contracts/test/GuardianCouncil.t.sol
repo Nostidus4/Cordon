@@ -652,6 +652,38 @@ contract GuardianCouncilTest is MayLabsBase {
         vm.stopPrank();
     }
 
+    function test_setAdmin_toSuccessorContract_handsOverBothPrecompiles() public {
+        GuardianCouncil next = new GuardianCouncil(
+            [MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], [bytes32(0), LAN, HUY], address(registry), address(vault)
+        );
+        Call[] memory calls = new Call[](4);
+        calls[0] = _call(TX_ALLOWLIST, abi.encodeCall(IAllowList.setAdmin, (address(next))));
+        calls[1] = _call(CONTRACT_DEPLOYER_ALLOWLIST, abi.encodeCall(IAllowList.setAdmin, (address(next))));
+        calls[2] = _call(TX_ALLOWLIST, abi.encodeCall(IAllowList.setNone, (address(gc))));
+        calls[3] = _call(CONTRACT_DEPLOYER_ALLOWLIST, abi.encodeCall(IAllowList.setNone, (address(gc))));
+        uint256 id = _propose(MEMBER_TRANG, bytes32(0), calls);
+        _approve(MEMBER_LAN, id);
+        _approve(MEMBER_HUY, id);
+        assertEq(_role(address(next)), 2, "successor is admin of the Tx list");
+        assertEq(deployerAllowList.readAllowList(address(next)), 2, "successor is admin of the deployer list");
+        assertEq(_role(address(gc)), 0, "old council has no Tx role");
+        assertEq(deployerAllowList.readAllowList(address(gc)), 0, "old council has no deployer role");
+    }
+
+    function test_setAdmin_toEoaSelfOrBadCalldata_isRejected() public {
+        vm.startPrank(MEMBER_LAN);
+        Call[] memory c = _one(_call(TX_ALLOWLIST, abi.encodeCall(IAllowList.setAdmin, (KEY_MINH))));
+        vm.expectRevert(IGuardianCouncil.UnknownCall.selector);
+        gc.propose("t", bytes32(0), c, RISK);
+        c = _one(_call(CONTRACT_DEPLOYER_ALLOWLIST, abi.encodeCall(IAllowList.setAdmin, (address(gc)))));
+        vm.expectRevert(IGuardianCouncil.UnknownCall.selector);
+        gc.propose("t", bytes32(0), c, RISK);
+        c = _one(_call(TX_ALLOWLIST, abi.encodePacked(IAllowList.setAdmin.selector, uint8(1))));
+        vm.expectRevert(IGuardianCouncil.BadCallArgs.selector);
+        gc.propose("t", bytes32(0), c, RISK);
+        vm.stopPrank();
+    }
+
     function test_proposeRejectsEmptyListAndShortCalldata() public {
         vm.startPrank(MEMBER_LAN);
         vm.expectRevert(IGuardianCouncil.BadCallArgs.selector);

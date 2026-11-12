@@ -8,6 +8,7 @@ import { useGraph } from "../../hooks/useGraph";
 import type { LiveTile } from "./VaultDiagram";
 import { ABOUT_HERO, HOW_IT_WORKS, LEGAL, LIMITS, VAULT_MODEL } from "./content";
 import { VaultDiagram } from "./VaultDiagram";
+import { policyLabel } from "../../lib/policy";
 
 const ICONS = { map: MapIcon, simulate: FlaskConical, cordon: FileCheck2 } as const;
 const enter = (i: number) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: i * 0.07, duration: 0.45, ease: [0.22, 1, 0.36, 1] as const } });
@@ -37,7 +38,7 @@ export default function AboutPage() {
       <motion.section {...enter(1)} className="mb-6" data-tour="about-vault" aria-label={VAULT_MODEL.title}>
         <Card strong>
           <CardHeader title={VAULT_MODEL.title} en={VAULT_MODEL.en} right={<span className="max-w-sm text-right text-xs text-faint">{VAULT_MODEL.note}</span>} />
-          <VaultDiagram tiles={tiles} policyVersion={graph?.policyVersion} main={org?.mainTreasury.balance.display ?? VAULT_MODEL.main.fallback} vault={org ? org.vault.usdc.display : VAULT_MODEL.vault.fallback} />
+          <VaultDiagram tiles={tiles} policyVersion={policyLabel(graph)} main={org?.mainTreasury.balance.display ?? VAULT_MODEL.main.fallback} vault={org ? org.vault.usdc.display : VAULT_MODEL.vault.fallback} />
         </Card>
       </motion.section>
 

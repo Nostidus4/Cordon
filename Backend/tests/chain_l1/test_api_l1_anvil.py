@@ -5,8 +5,9 @@ same numbers as the sim (`tests/test_api.py::test_full_flow`): district spent 5.
 attacker total 20.000, step 7 `blocked_at_protocol` without a hash. The chain is the real contracts on
 anvil; the node's Tx AllowList rejection is emulated by `AllowListEnforcingProvider`.
 
-Not available on L1 (documented in docs/modules/chain-adapter/README.md): `POST /api/demo/reset`
-answers 409 `RESET_NOT_SUPPORTED_ON_L1` (a real ledger cannot be rewound; redeploy instead).
+`POST /api/demo/reset` on L1 (OPS-003) reloads the deployment the deployments file holds (a fresh set that
+`make demo-reset` deployed); `test_reset_on_l1_reloads_the_new_deployment` stands in for the script by deploying a
+second set on the same node and pointing the runtime at it.
 """
 
 from __future__ import annotations
@@ -19,14 +20,16 @@ import httpx
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
+from web3 import Web3
 
 from guardian.chain.l1 import L1Chain
+from guardian.chain.l1.signers import NodeSigner, SignerRegistry
 from guardian.core.config import Settings
 from guardian.core.demo_guard import DemoModeError
 from guardian.main import create_app
 from guardian.services.runtime import Runtime
 from guardian.shared.scenario4 import SCENARIO4_STEPS
-from tests.chain_l1.anvil_env import Env
+from tests.chain_l1.anvil_env import AllowListEnforcingProvider, Env, deploy_may_labs
 from tests.conftest import collect_sse
 
 R1_MINH = "R1_MULTI_KEY_NO_SHARED_CAP:minh"
@@ -82,9 +85,51 @@ async def test_health_reports_a_real_chain(c: httpx.AsyncClient, l1_app: FastAPI
     assert disp(org["vault"]["balance"]) == "200.000"
 
 
-async def test_reset_is_not_supported_on_l1(c: httpx.AsyncClient) -> None:
-    r = await c.post("/api/demo/reset")
-    assert r.status_code == 409 and r.json()["error"]["code"] == "RESET_NOT_SUPPORTED_ON_L1"
+async def test_reset_on_l1_reloads_the_new_deployment(
+    c: httpx.AsyncClient, l1_app: FastAPI, env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    rt = l1_app.state.runtime
+    # dirty the first deployment: policy v2 executed, one attempt recorded
+    p = await post(c, "/api/proposals", {"member": "lan", "findingId": R1_MINH}, ok=201)
+    await post(c, f"/api/proposals/{p['id']}/approve", {"member": "lan"})
+    await post(c, f"/api/proposals/{p['id']}/approve", {"member": "trang"})
+    assert (await c.get("/api/graph")).json()["policyVersion"] == 2
+    await post(
+        c,
+        "/api/attempts",
+        {"signer": "key_minh", "action": "pay", "outcome": "reverted"},
+        ok=201,
+    )
+    old_vault = rt.chain.dep.vault
+    events_before = len(rt.event_log)
+    assert events_before > 0 and rt.stores.attempts
+
+    # what `make demo-reset` does: a fresh set on the same node (a baseline of 1: nothing bumped it)
+    env2 = deploy_may_labs(env.anvil)
+    env2.fund_and_impersonate_all()
+    w3 = Web3(AllowListEnforcingProvider(env.anvil.url))
+    signers = SignerRegistry(
+        [NodeSigner(e["address"]) for e in (*env2.seed["keys"], *env2.seed["council"])]
+    )
+    monkeypatch.setattr(
+        "guardian.chain.l1.startup.build_l1_chain",
+        lambda settings: L1Chain(w3, env2.dep, env2.seed, signers=signers),
+    )
+    r = await post(c, "/api/demo/reset")
+    assert r["status"] == "ok" and r["policyVersion"] == 1 and r["policyLabel"] == 1
+
+    assert rt.chain.dep.vault == env2.dep.vault != old_vault
+    g = (await c.get("/api/graph")).json()
+    assert g["policyVersion"] == 1 and g["policyLabel"] == 1 and len(g["districts"]) == 7
+    assert all(d["spentToday"]["raw"] == "0" and not d["locked"] for d in g["districts"])
+    assert (await c.get("/api/attempts")).json() == []
+    assert len(rt.event_log) >= events_before  # events of the old deployment are kept
+    proposals = (await c.get("/api/proposals")).json()
+    assert [x["id"] for x in proposals] == [r["seededProposalId"]]
+    assert proposals[0]["reportBasis"] == "policy_v2_reference"
+    # a second reset right after the first also works
+    again = await post(c, "/api/demo/reset")
+    assert again["status"] == "ok"
 
 
 async def test_full_flow_on_l1_matches_the_sim_numbers(

@@ -119,6 +119,7 @@ def build_graph(snapshot: PolicySnapshot, findings: list[dict[str, Any]]) -> dic
     return {
         "version": GRAPH_VERSION,
         "policyVersion": s.policy_version,
+        "policyLabel": s.policy_label,
         "block": s.block,
         "nodes": nodes,
         "edges": edges,

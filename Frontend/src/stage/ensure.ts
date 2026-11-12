@@ -4,6 +4,7 @@
 import { api } from "../lib/api";
 import type { MemberId, Proposal } from "../types";
 import type { SceneId } from "./contract";
+import { policyLabel } from "../lib/policy";
 
 export type Prereq = "any" | "v2";
 /** What each scene needs. look/try/fix work in either policy (they show a "chơi lại" chip instead of resetting). */
@@ -17,7 +18,7 @@ export function ensureV2(): Promise<void> {
   if (inflight) return inflight;
   inflight = (async () => {
     const g = await api.getGraph();
-    if (g.policyVersion >= 2) return;
+    if ((policyLabel(g) ?? 1) >= 2) return;
     let merge = (await api.getProposals()).filter(isMerge).sort((a, b) => b.id - a.id)[0];
     if (!merge) {
       const f = (await api.getFindings()).find((x) => x.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && x.principalId === "minh" && x.suggestedChange);
