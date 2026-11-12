@@ -43,6 +43,7 @@ interface IPolicyVault {
     event AllowChanged(uint8 kind, bytes32 subject, bytes4 selector, bool allowed);
     event PolicyVersionBumped(uint256 version);
     event TopUpRecorded(bytes32 indexed cChainTxHash, uint256 amount);
+    event TopUpOperatorChanged(address oldOperator, address newOperator);
 
     // ---------------------------------------------------------------- errors
     // Contract-originated reason codes (CONTRACTS.md section 5)
@@ -73,6 +74,9 @@ interface IPolicyVault {
     function tokenAllowed(address token) external view returns (bool);
     function protocolAllowed(address target, bytes4 selector) external view returns (bool);
     function recipientAllowed(address to) external view returns (bool);
+    /// @dev Address allowed to call `recordTopUp` besides the Council. Set in the constructor,
+    ///      afterwards changeable only by the Council. Must not be the deployer after handover.
+    function topUpOperator() external view returns (address);
 
     // ------------------------------------------------- spending (msg.sender is the key)
     function pay(address token, address to, uint256 amount, bytes32 memoHash) external;
@@ -105,7 +109,10 @@ interface IPolicyVault {
     function setRecipientAllowed(address to, bool allowed) external;
     function bumpPolicyVersion() external;
     /// @notice Records a simulated C-Chain top-up. Moves no funds.
-    /// @dev Access: the Council contract or the deployer (treasury operator, fixed at construction).
-    ///      Anyone else reverts `NotTopUpOperator`.
+    /// @dev Access: the Council contract or the current `topUpOperator`; anyone else reverts
+    ///      `NotTopUpOperator`. The deployer holds no privilege here after handover.
     function recordTopUp(bytes32 cChainTxHash, uint256 amount) external;
+    /// @notice Council only. Treated as loosening, so it goes through a 2-of-3 proposal.
+    ///         Emits `TopUpOperatorChanged`. `address(0)` disables the operator role.
+    function setTopUpOperator(address newOperator) external;
 }

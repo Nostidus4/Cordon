@@ -198,3 +198,24 @@ def test_sim_run_covers_most_events():
         "Cancelled",
         "TopUpRecorded",
     } <= emitted
+
+
+def test_top_up_operator_is_in_the_frozen_interface():
+    vault = {(i["type"], i["name"]) for i in ABIS["IPolicyVault"]}
+    assert {
+        ("function", "topUpOperator"),
+        ("function", "setTopUpOperator"),
+        ("function", "recordTopUp"),
+        ("event", "TopUpOperatorChanged"),
+    } <= vault
+
+
+def test_deployer_is_not_a_permanent_role_in_the_doc():
+    """No privilege may be tied to the deployer after handover (spec 6.1, T15)."""
+    for line in CONTRACTS_DOC.splitlines():
+        if "deployer" in line.lower() and "Contract Deployer AllowList" not in line:
+            ok = any(w in line.lower() for w in ("bàn giao", "handover"))
+            assert ok, f"deployer mentioned without handover qualifier: {line[:120]}"
+        assert "hoặc deployer" not in line.lower()
+    sec = CONTRACTS_DOC.split("### 3.1", 1)[1].split("\n## ", 1)[0]
+    assert "VerifyHandover" in sec and "topUpOperator() != deployer" in sec

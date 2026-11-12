@@ -70,6 +70,7 @@ interface IPolicyVault {
     function tokenAllowed(address token) external view returns (bool);
     function protocolAllowed(address target, bytes4 selector) external view returns (bool);
     function recipientAllowed(address to) external view returns (bool);
+    function topUpOperator() external view returns (address);
 
     // --- chi tiêu: msg.sender là khoá ---
     function pay(address token, address to, uint256 amount, bytes32 memoHash) external;
@@ -87,7 +88,8 @@ interface IPolicyVault {
     function setProtocolAllowed(address target, bytes4 selector, bool allowed) external;
     function setRecipientAllowed(address to, bool allowed) external;
     function bumpPolicyVersion() external;
-    function recordTopUp(bytes32 cChainTxHash, uint256 amount) external;       // ghi nhận nạp mô phỏng (không chuyển tiền)
+    function recordTopUp(bytes32 cChainTxHash, uint256 amount) external;       // ghi nhận nạp mô phỏng (không chuyển tiền); Council hoặc topUpOperator
+    function setTopUpOperator(address newOperator) external;                   // chỉ Council; nới (2/3)
 
     // --- events (indexer dựa vào đây) ---
     event Paid(address indexed key, bytes32 indexed principalId, address token, address to, uint256 amount,
@@ -103,6 +105,7 @@ interface IPolicyVault {
     event AllowChanged(uint8 kind, bytes32 subject, bytes4 selector, bool allowed);         // kind: 0 token, 1 protocol, 2 recipient
     event PolicyVersionBumped(uint256 version);
     event TopUpRecorded(bytes32 indexed cChainTxHash, uint256 amount);
+    event TopUpOperatorChanged(address oldOperator, address newOperator);
 
     // --- errors ---
     error VaultPaused();
@@ -137,7 +140,9 @@ interface IPolicyVault {
 
 ### 3.1 Quyết định: `recordTopUp`
 
-`recordTopUp` do **Council contract hoặc deployer** gọi (deployer cố định lúc khởi tạo vault, là "treasury operator" của kịch bản demo; lỗi cho người khác là `NotTopUpOperator`). Lý do: hàm chỉ ghi nhận nạp mô phỏng, **không chuyển tiền và không đổi hạn mức/allow-list**, nên không nằm trong luật siết/nới; backend demo cần một khoá đơn lẻ để mô phỏng "quỹ chính nạp vào kho" (sim: `engine.topup`, spec 6.8) mà không phải qua 2/3. Nếu sau này cần bỏ quyền deployer thì đó là thay đổi interface (PR riêng).
+`recordTopUp` do **Council contract hoặc `topUpOperator` hiện tại** gọi; người khác revert `NotTopUpOperator`. `topUpOperator` là địa chỉ lưu trong vault, gán trong constructor, chỉ Council đổi được qua `setTopUpOperator(address)` (phát `TopUpOperatorChanged(oldOperator, newOperator)`; `address(0)` = tắt vai trò). Trong luật Council, `setTopUpOperator` là hàm **nới**: chỉ qua proposal đủ 2/3, không có đường 1 member. Lý do: hàm chỉ ghi nhận nạp mô phỏng, **không chuyển tiền và không đổi hạn mức/allow-list**, nhưng backend demo cần một khoá vận hành đơn lẻ để mô phỏng "quỹ chính nạp vào kho" (sim: `engine.topup`, spec 6.8) mà không phải qua 2/3.
+
+**Deployer không giữ đặc quyền sau bàn giao** (spec 6.1, T15): constructor có thể đặt `topUpOperator` ban đầu, nhưng bàn giao (`L1-002`) phải đặt nó khác deployer (khoá ops riêng hoặc `address(0)`) và `VerifyHandover` phải kiểm `topUpOperator() != deployer`.
 
 ## 4. IGuardianCouncil
 
@@ -261,7 +266,7 @@ interface IMockDEX {
 }
 ```
 
-Tỉ giá cố định `1 tTKB = 1 tUSDC` (tính theo giá trị, có chuyển decimals). `EvilDEX` có cùng interface nhưng không bao giờ được whitelist. Cặp chưa có rate: `UnknownPair`. Trượt giá do **vault** kiểm (`SlippageTooHigh`), DEX chỉ trả `amountOut`. Token: `TestUSDC` (6), `TestTokenB` / `tTKB` (18), `TestScam` / `tSCAM` (18), ERC-20 OpenZeppelin, `mint` chỉ Deployer (hoặc Council sau bàn giao); token là ERC-20 chuẩn nên không có file interface riêng trong phạm vi đóng băng.
+Tỉ giá cố định `1 tTKB = 1 tUSDC` (tính theo giá trị, có chuyển decimals). `EvilDEX` có cùng interface nhưng không bao giờ được whitelist. Cặp chưa có rate: `UnknownPair`. Trượt giá do **vault** kiểm (`SlippageTooHigh`), DEX chỉ trả `amountOut`. Token: `TestUSDC` (6), `TestTokenB` / `tTKB` (18), `TestScam` / `tSCAM` (18), ERC-20 OpenZeppelin, `mint` chỉ Deployer trước bàn giao, sau bàn giao chỉ Council; token là ERC-20 chuẩn nên không có file interface riêng trong phạm vi đóng băng.
 
 ## 9. Địa chỉ, artifact và selector
 
@@ -321,6 +326,7 @@ Tỉ giá cố định `1 tTKB = 1 tUSDC` (tính theo giá trị, có chuyển d
 | `PrincipalUnlocked(bytes32)` | `0x71358498c9ecc7ebec24f3f32b30e5838f7e36aa16e9ea1837f1479659deafbe` | IPolicyVault |
 | `Proposed(uint256,address,bytes32,string,bytes32)` | `0x53044b00ae03a91775e6aa41a1385f051ca12d5cf216782dbb8092fde77ae630` | IGuardianCouncil |
 | `Swapped(address,bytes32,address,address,address,uint256,uint256,uint256,uint256,uint256,bytes32)` | `0xcb21102926f824ae487554f7bda88a63bbc32019fa9897c2155958bcc4f3d2ee` | IPolicyVault |
+| `TopUpOperatorChanged(address,address)` | `0xfa6bb50023b6d053abe4b6f4298d6111d11be2a1da6cbb6cf5c2c373facc8fa1` | IPolicyVault |
 | `TopUpRecorded(bytes32,uint256)` | `0xe6fdc65f95ab4849a1aa3c5dbd29341a3daa102740fdb23ffe246e1c82b7d6c6` | IPolicyVault |
 | `Unpaused()` | `0xa45f47fdea8a1efdd9029a5691c7f759c32b7c698632b563573e155625d16933` | IPolicyVault |
 
