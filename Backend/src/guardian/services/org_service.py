@@ -35,6 +35,12 @@ def org(rt: Runtime) -> dict[str, Any]:
     }
 
 
+def _indexer_lag(rt: Runtime) -> int:
+    if rt.indexer is None:
+        return 0
+    return rt.indexer.status().lag_blocks or 0
+
+
 def health(rt: Runtime) -> dict[str, Any]:
     snap = rt.snapshot()
     runs = rt.stores.agent_runs
@@ -42,10 +48,10 @@ def health(rt: Runtime) -> dict[str, Any]:
         "status": "ok",
         "chainMode": rt.settings.chain_mode,
         "demoMode": rt.settings.demo_enabled,
-        "simulated": True,
+        "simulated": rt.settings.chain_mode == "sim",
         "l1Block": snap.block,
         "cChainBlock": None,
-        "indexerLagBlocks": 0,
+        "indexerLagBlocks": _indexer_lag(rt),
         "policyVersion": snap.policy_version,
         "graphVersion": rt.graph_version,
         "agent": {

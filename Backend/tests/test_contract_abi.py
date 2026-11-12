@@ -179,6 +179,9 @@ def _sim_events() -> list[Any]:
 @pytest.mark.parametrize("ev", _sim_events(), ids=lambda e: f"{e.name}@{e.block}")
 def test_sim_event_payload_fields_match_abi_inputs(ev):
     """What the sim emits (and the API/indexer consume) uses exactly the ABI parameter names."""
+    if ev.name in OFF_CHAIN_EVENTS:  # precompile log, normalised (CONTRACTS.md section 7)
+        assert set(ev.payload) == {"key", "role", "by"}
+        return
     abi_by_name = {e["name"]: e for e in EVENTS.values()}
     assert ev.name in abi_by_name, ev.name
     assert set(ev.payload) == {i["name"] for i in abi_by_name[ev.name]["inputs"]}, ev.name
@@ -188,7 +191,7 @@ def test_sim_run_covers_most_events():
     emitted = {e.name for e in _sim_events()}
     expected = {e["name"] for e in EVENTS.values()}
     # Not emitted by this scenario but present in the ABI; fine, just keep the gap visible.
-    assert emitted <= expected
+    assert emitted <= expected | OFF_CHAIN_EVENTS
     assert {
         "Paid",
         "Swapped",

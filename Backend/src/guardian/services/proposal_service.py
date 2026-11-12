@@ -185,7 +185,7 @@ def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
             rt.stores.conflicts.append(ConflictRec(rt.now(), member, proposal_id))
             rt.notify_state_changed(graph=False)
         raise ChainRevert(res.error_raw or "reverted", res.reason_code)
-    cp = rt.chain.council.proposals[proposal_id]
+    cp = rt.chain.proposal_state(proposal_id)
     if cp.executed and rec.executed_at is None:
         rec.executed_at = rt.now()
         rec.executed_tx_hash = res.tx_hash
@@ -195,7 +195,7 @@ def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
 
 def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
     rec = rt.stores.proposals[proposal_id]
-    cp = rt.chain.council.proposals[proposal_id]
+    cp = rt.chain.proposal_state(proposal_id)
     snap = rt.snapshot()
     by_addr = {m.address: m.id for m in snap.council}
     approved = sorted(by_addr[a] for a in cp.approved_by)

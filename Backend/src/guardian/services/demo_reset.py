@@ -13,13 +13,25 @@ from guardian.services.runtime import Runtime
 REQUEST_PROPOSER = "trang"
 
 
-async def reset(rt: Runtime) -> dict[str, Any]:
+async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
+    """Back to scene 1. On `CHAIN_MODE=l1` the chain cannot be rewound (it is a real ledger): the
+    explicit endpoint answers 409 RESET_NOT_SUPPORTED_ON_L1; at startup only the in-memory stores
+    are cleared and no request #12 is seeded (redeploy / restart anvil for a clean chain)."""
+    if rt.is_l1 and not startup:
+        raise ApiError(
+            409,
+            "RESET_NOT_SUPPORTED_ON_L1",
+            "Không thể đặt lại chuỗi thật (CHAIN_MODE=l1): triển khai lại hợp đồng để bắt đầu lại.",
+        )
     for t in list(rt.scenario_tasks.values()):
         t.cancel()
     rt.scenario_tasks.clear()
-    rt.chain.reset()
+    if not rt.is_l1:
+        rt.chain.reset()
+        rt.event_log.clear()
     rt.stores.clear()
-    _seed_request_12(rt)
+    if not rt.is_l1:
+        _seed_request_12(rt)
     rt.graph_version += 1
     snap = rt.snapshot()
     rt.publish(
@@ -36,7 +48,7 @@ async def reset(rt: Runtime) -> dict[str, Any]:
         "status": "ok",
         "policyVersion": snap.policy_version,
         "graphVersion": rt.graph_version,
-        "seededProposalId": 12,
+        "seededProposalId": None if rt.is_l1 else 12,
     }
 
 
