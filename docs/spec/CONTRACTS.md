@@ -235,7 +235,7 @@ Mọi event trong bảng payload của `ChainEvent` có một event contract cù
 | `CapChanged.subject`, `AllowChanged.subject` | `bytes32` | kind key/token/protocol/recipient: địa chỉ (bỏ đệm trái 12 byte); kind principal: `principalId` |
 | `AllowChanged.selector` | `bytes4`, `0x00000000` khi không phải protocol | selector khi kind = protocol, `null` còn lại |
 | `KeyAdded.kind` | `uint8` (enum `KeyKind`) | tên enum chữ thường (`human` / `agent` / `service`) |
-| `principalId`, `id` (bytes32) | 32 byte | giữ nguyên hex; tầng API quy ra id ASCII bằng cách bỏ byte 0 ở cuối |
+| `principalId`, `id` (bytes32) | 32 byte | chuỗi ASCII (bỏ byte 0 đệm phải, ví dụ `"minh"`): adapter/indexer đổi sang ASCII trước khi đưa vào `ChainEvent.payload`, giống `chain/sim` (ghi chú 2026-11-12, API-001) |
 | `EmergencyAction.subject` | `bytes32` | `principalId`, hoặc địa chỉ nếu `action` thao tác trên một khoá/token/recipient |
 | Event `Paused(address by)` / `Unpaused()` của Vault | không kế thừa `Pausable` của OpenZeppelin (cùng tên nhưng tham số khác) | `{by}` / `{}` |
 

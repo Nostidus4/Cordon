@@ -161,7 +161,7 @@ def _sim_events() -> list[Any]:
     c.emergency_lock("trang", "minh")
     pid = c.propose(
         "trang", "unpause", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x00"
-    )
+    ).proposal_id
     c.approve("trang", pid)
     c.approve("huy", pid)
     pid2 = c.propose(
@@ -170,7 +170,7 @@ def _sim_events() -> list[Any]:
         None,
         [{"target": "vault", "fn": "unlockPrincipal", "args": {"principal_id": "minh"}}],
         "0x00",
-    )
+    ).proposal_id
     c.cancel("lan", pid2)
     c.topup(to_base(1_000))
     return list(c.events)

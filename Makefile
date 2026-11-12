@@ -1,4 +1,4 @@
-.PHONY: contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status
+.PHONY: openapi contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status
 
 API_URL ?= http://localhost:8000
 
@@ -20,6 +20,10 @@ test:
 lint:
 	cd Backend && uv run ruff check . && uv run ruff format --check .
 	cd Frontend && npm run lint && npm run typecheck
+
+# Export FastAPI's OpenAPI to Backend/openapi.json (CI fails when the committed file is stale)
+openapi:
+	cd Backend && uv run python -m guardian.tools.export_openapi
 
 build:
 	cd Frontend && npm run build

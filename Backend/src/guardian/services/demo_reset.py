@@ -18,6 +18,7 @@ async def reset(rt: Runtime) -> dict[str, Any]:
         t.cancel()
     rt.scenario_tasks.clear()
     rt.chain.reset()
+    rt.events.clear()
     rt.stores.clear()
     _seed_request_12(rt)
     rt.graph_version += 1
@@ -46,7 +47,7 @@ def _seed_request_12(rt: Runtime) -> None:
     reset time is still v1."""
     r12 = load_seed()["request_12"]
     cap = next(c["args"]["cap"] for c in r12["calls"] if c["fn"] == "setPrincipalDailyCap")
-    rt.chain.council.next_id = r12["id"]
+    rt.sim.council.next_id = r12["id"]
     ps.propose(
         rt,
         REQUEST_PROPOSER,

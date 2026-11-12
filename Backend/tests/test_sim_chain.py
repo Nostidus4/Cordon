@@ -2,10 +2,7 @@
 
 import random
 
-import pytest
-
 from guardian.agent_rebalance.rule_engine import decide
-from guardian.chain.errors import ChainRevert
 from guardian.chain.sim import SimChain
 from guardian.shared.money import to_base
 from guardian.shared.reason_codes import ReasonCode as R
@@ -169,8 +166,8 @@ def test_t9_tighten_one_loosen_two_thirds_outsider_nothing():
     assert (
         c.emergency_pause("key_minh").error_raw == "NotCouncilMember"
     )  # allow-listed key, not a member
-    with pytest.raises(ChainRevert):
-        c.propose("key_minh", "x", None, [], "0x00")
+    r = c.propose("key_minh", "x", None, [], "0x00")
+    assert r.status == "reverted" and r.proposal_id is None
     # loosening via proposal needs 2 approvals
     pid = c.propose(
         "trang",
@@ -184,7 +181,7 @@ def test_t9_tighten_one_loosen_two_thirds_outsider_nothing():
             }
         ],
         "0x00",
-    )
+    ).proposal_id
     r1 = c.approve("trang", pid)
     assert r1.status == "ok" and [e.name for e in r1.events] == ["Approved"]
     assert c.snapshot().keys[k].daily_cap == u(10_000)
@@ -198,9 +195,11 @@ def test_t9_tighten_one_loosen_two_thirds_outsider_nothing():
 def test_t10_conflict_of_interest_and_suggestion():
     c = mk()
     req = c._seed["request_12"]
-    pid = c.propose("trang", req["title"], "minh", req["calls"], "0x01")
+    pid = c.propose("trang", req["title"], "minh", req["calls"], "0x01").proposal_id
     assert c.approve("lan", pid).status == "ok"
-    pid2 = c.propose("trang", "move agent to huy", "huy", req["suggestion"]["calls"], "0x02")
+    pid2 = c.propose(
+        "trang", "move agent to huy", "huy", req["suggestion"]["calls"], "0x02"
+    ).proposal_id
     r = c.approve("huy", pid2)
     assert r.status == "reverted" and r.error_raw == "ConflictOfInterest" and r.events == []
     assert c.approve("lan", pid2).status == "ok" and c.approve("trang", pid2).status == "ok"
@@ -209,13 +208,12 @@ def test_t10_conflict_of_interest_and_suggestion():
 
 def test_t11_target_outside_list_rejected():
     c = mk()
-    with pytest.raises(ChainRevert) as e:
-        c.propose("trang", "evil", None, [{"target": "token", "fn": "mint", "args": {}}], "0x00")
-    assert e.value.name == "TargetNotAllowed"
-    with pytest.raises(ChainRevert):
-        c.propose(
-            "trang", "evil", None, [{"target": "vault", "fn": "selfdestruct", "args": {}}], "0x"
-        )
+    r = c.propose("trang", "evil", None, [{"target": "token", "fn": "mint", "args": {}}], "0x00")
+    assert r.status == "reverted" and r.error_raw == "TargetNotAllowed"
+    r = c.propose(
+        "trang", "evil", None, [{"target": "vault", "fn": "selfdestruct", "args": {}}], "0x"
+    )
+    assert r.status == "reverted" and r.proposal_id is None
     assert c.council.proposals == {}
 
 
@@ -230,7 +228,7 @@ def test_t12_pause_and_unpause_needs_two_thirds():
     )
     pid = c.propose(
         "trang", "unpause", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x"
-    )
+    ).proposal_id
     c.approve("trang", pid)
     assert c.snapshot().paused
     c.approve("lan", pid)

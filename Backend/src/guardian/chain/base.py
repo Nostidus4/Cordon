@@ -32,6 +32,7 @@ class TxResult:
     events: list[ChainEvent] = field(default_factory=list)
     error_raw: str | None = None
     simulated: bool = True
+    proposal_id: int | None = None  # set by `propose` when status == ok
 
     @property
     def ok(self) -> bool:
@@ -39,7 +40,13 @@ class TxResult:
 
 
 class ChainPort(Protocol):
-    """Signers/addresses may be hex addresses (sim also accepts seed ids)."""
+    """Chain boundary. Contract (API-001): signer/member/key/to are hex addresses only.
+
+    shortcut: app code (attempt/agent/attacker/council services) still passes seed ids
+    ("key_minh", "tUSDC", "lan") and the sim resolves them; an L1 adapter needs a seed->address
+    step at the call sites first (see docs/spec/API_CONTRACT.md section 1).
+    Sync on purpose: an L1 adapter runs web3 calls off the event loop behind one lock.
+    """
 
     # --- spend (called by keys) ---
     def pay(self, signer: str, token: str, to: str, amount: int, memo: str = "") -> TxResult: ...
@@ -89,7 +96,7 @@ class ChainPort(Protocol):
         subject_principal: str | None,
         calls: list[dict[str, Any]],
         risk_report_hash: str,
-    ) -> int: ...
+    ) -> TxResult: ...  # status ok -> proposal_id set; revert -> reason_code/error_raw, no raise
     def approve(self, member: str, proposal_id: int) -> TxResult: ...
     def cancel(self, member: str, proposal_id: int) -> TxResult: ...
 
@@ -97,3 +104,14 @@ class ChainPort(Protocol):
     def snapshot(self) -> PolicySnapshot: ...
     def events_since(self, block: int) -> list[ChainEvent]: ...
     def subscribe(self, callback: Callable[[ChainEvent], None]) -> Callable[[], None]: ...
+
+
+class DemoControls(Protocol):
+    """Sim-only extras that app code uses (never part of an L1 adapter)."""
+
+    def reset(self) -> None: ...
+    def balance(self, holder: str, token: str) -> int: ...
+
+
+class DemoChain(ChainPort, DemoControls, Protocol):
+    """What `Runtime.chain` is typed as: the port plus demo controls."""

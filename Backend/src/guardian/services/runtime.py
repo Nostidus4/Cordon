@@ -17,7 +17,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from guardian.chain.base import ChainEvent
+from guardian.chain.base import ChainEvent, DemoChain
 from guardian.chain.sim import SimChain
 from guardian.core.config import Settings
 from guardian.core.demo_guard import DemoGuard
@@ -25,6 +25,7 @@ from guardian.domain.snapshot import KeyState, PolicySnapshot
 from guardian.graph.findings import compute_findings
 from guardian.services import views
 from guardian.services.event_bus import EventBus
+from guardian.services.event_store import InMemoryEventStore
 
 
 @dataclass
@@ -139,7 +140,7 @@ class Runtime:
     def __init__(
         self,
         settings: Settings,
-        chain: SimChain | None = None,
+        chain: DemoChain | None = None,
         clock: Callable[[], float] = time.time,
     ) -> None:
         if settings.chain_mode != "sim":
@@ -149,7 +150,10 @@ class Runtime:
             )
         self.settings = settings
         self.clock = clock
-        self.chain: SimChain = chain or SimChain()
+        self.chain: DemoChain = chain or SimChain()
+        self.events = InMemoryEventStore()  # EventSink (writes) + EventStore (GET /api/events)
+        for ev in self.chain.events_since(0):
+            self.events.write(ev)
         self.bus = EventBus()
         self.guard = DemoGuard(settings)
         self.stores = Stores()
@@ -170,6 +174,13 @@ class Runtime:
     # ------------------------------------------------------------------ helpers
     def now(self) -> int:
         return int(self.clock())
+
+    @property
+    def sim(self) -> SimChain:
+        """Sim internals (council state, vault address). shortcut: sim-only; go through ChainPort
+        once an L1 adapter exists (city_state, org_service, proposal_service use this)."""
+        assert isinstance(self.chain, SimChain)
+        return self.chain
 
     def snapshot(self) -> PolicySnapshot:
         return self.chain.snapshot()
@@ -201,6 +212,7 @@ class Runtime:
 
     # ------------------------------------------------------------------ SSE bridge
     def _on_chain_event(self, ev: ChainEvent) -> None:
+        self.events.write(ev)
         self.bus.publish("event", views.api_event(ev, self.token_decimals()))
 
     def publish(self, event_type: str, data: dict[str, Any]) -> None:

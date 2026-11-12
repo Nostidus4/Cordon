@@ -22,7 +22,7 @@ def org(rt: Runtime) -> dict[str, Any]:
             "label": "Quỹ chính (Safe, C-Chain)",
         },
         "vault": {
-            "address": rt.chain.vault_addr,
+            "address": rt.sim.vault_addr,
             "balance": views.mny(snap.vault_balance),
             "paused": snap.paused,
             "label": "Kho chi tiêu (Guardian L1)",
