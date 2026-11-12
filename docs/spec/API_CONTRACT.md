@@ -46,7 +46,7 @@ Khoá duy nhất: `(tx_hash, log_index)` (indexer idempotent). Payload dùng **c
 | `TopUpOperatorChanged` | `oldOperator, newOperator` (sim chưa phát) |
 | `PrincipalCreated`, `KeyAdded`, `KeyMoved`, `KeyDeactivated` | theo [CONTRACTS.md](CONTRACTS.md) mục 2 |
 | `Proposed`, `Approved`, `Executed`, `Cancelled`, `EmergencyAction` | theo [CONTRACTS.md](CONTRACTS.md) mục 4 |
-| `AllowListRoleSet` (khi khoá bị `setNone`/`setEnabled` trên Tx AllowList) | `key, role` (0 none, 1 enabled, 2 admin), `by`. Trên L1 là log `RoleSet` của precompile; indexer chuẩn hoá về tên này. **Sim và mock hiện chưa phát** (xem mục 7) |
+| `AllowListRoleSet` (khi khoá bị `setNone`/`setEnabled` trên Tx AllowList) | `key, role` (0 none, 1 enabled, 2 admin), `by`. Trên L1 là log `RoleSet` của precompile; indexer chuẩn hoá về tên này. `chain/sim` phát một event cho mỗi khoá khi khoá/mở khoá khu (`by` = địa chỉ Council); mock frontend hiện chưa phát (xem mục 7) |
 
 ## 3. PolicySnapshot (chain → graph)
 
@@ -113,7 +113,7 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 
 - Id finding: mock `F-R1-minh`, backend `R1_MULTI_KEY_NO_SHARED_CAP:minh`.
 - Mock chỉ có finding R1; backend có R1–R4.
-- Cả mock và `chain/sim` chưa phát event `AllowListRoleSet` khi khoá khu bị khoá/mở khoá (trên L1 thật có log `RoleSet` của precompile).
+- Mock frontend chưa phát event `AllowListRoleSet` khi khoá khu bị khoá/mở khoá (`chain/sim` đã phát từ CHN-003, như log `RoleSet` của precompile trên L1).
 - Đề xuất #11 (gom khu) trên mock có proposer khác `lan`; backend dùng `lan`.
 - Hai endpoint `GET /agent/runs`, `GET /assistant/logs` chưa có ở backend.
 

@@ -7,6 +7,8 @@ uv run guardian-worker  # indexer + graph worker
 uv run guardian-agent   # agent Cân đối
 uv run guardian-attacker scene4 --step all
 uv run pytest
+uv run pytest tests/conformance tests/chain_l1   # sim vs L1 (anvil) conformance + L1 e2e; needs Foundry, skips without
+CHAIN_MODE=l1 DEMO_MODE=true uv run guardian-api  # API on a Guardian L1: see docs/modules/chain-adapter/README.md
 ```
 
 | Thư mục | Vai trò (mục spec) |

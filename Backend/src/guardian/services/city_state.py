@@ -65,7 +65,7 @@ def _b(state: str, reason: str, *evidence: dict[str, Any]) -> tuple[str, str, li
 
 
 def _lock_tx(rt: Runtime, pid: str) -> str | None:
-    for e in reversed(rt.chain.events):
+    for e in reversed(rt.event_log):
         if e.name == "PrincipalLocked" and e.payload.get("principalId") == pid:
             return e.tx_hash
     return None
@@ -84,7 +84,7 @@ def compute_city_states(rt: Runtime) -> dict[str, Any]:
         for p in st.proposals.values()
         if p.executed_at is not None and now - p.executed_at <= RECOVERY_WINDOW_S
     ]
-    open_ids = [i for i in sorted(st.proposals) if rt.chain.council.proposals[i].status == "open"]
+    open_ids = [i for i in sorted(st.proposals) if rt.chain.proposal_state(i).status == "open"]
     if recent_conf:
         c = recent_conf[-1]
         result["B01"] = _b(

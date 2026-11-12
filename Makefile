@@ -1,4 +1,4 @@
-.PHONY: contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status
+.PHONY: conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status
 
 API_URL ?= http://localhost:8000
 
@@ -39,6 +39,10 @@ demo-scene4:
 blender-rebuild:
 	@test -x Blender/scripts/rebuild.sh || { echo "Blender/scripts/rebuild.sh not found"; exit 1; }
 	bash Blender/scripts/rebuild.sh
+
+# ChainPort conformance (sim + L1 on anvil) and the CHAIN_MODE=l1 API e2e; the l1 half needs Foundry
+conformance: contracts-build
+	cd Backend && uv run pytest tests/conformance tests/chain_l1/test_api_l1_anvil.py -q -rs
 
 # Pinned OpenZeppelin + forge-std into contracts/lib (gitignored); CI runs the same script
 contracts-deps:

@@ -43,7 +43,8 @@ jobs:
       - run: npm run build
 
   chain-l1:
-    # L1 adapter against a real EVM: anvil + the Foundry artifacts (skipped locally when Foundry is absent)
+    # L1 adapter + the ChainPort conformance suite against a real EVM: anvil + the Foundry artifacts
+    # (the sim half of the conformance suite also runs in `backend`; the l1 half skips without Foundry)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,9 +59,9 @@ jobs:
         working-directory: contracts
       - run: uv sync
         working-directory: Backend
-      - name: L1 adapter tests
+      - name: L1 adapter tests, conformance (sim vs l1) and API e2e on anvil
         working-directory: Backend
-        run: uv run pytest tests/chain_l1 -q -rs
+        run: uv run pytest tests/chain_l1 tests/conformance -q -rs
 
   contracts:
     runs-on: ubuntu-latest

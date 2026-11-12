@@ -15,6 +15,24 @@ log = logging.getLogger("guardian.demo_guard")
 WINDOW_SECONDS = 60.0
 
 
+class DemoModeError(RuntimeError):
+    """DEMO_MODE was requested on a chain that is not a test chain (spec §8.6)."""
+
+
+def ensure_test_chain(settings: Settings, chain_id: int) -> None:
+    """Signing with test keys is allowed only on a test chain: refuse to start otherwise."""
+    if (
+        settings.chain_mode == "l1"
+        and settings.demo_enabled
+        and chain_id not in settings.demo_chain_ids
+    ):
+        raise DemoModeError(
+            f"DEMO_MODE refused: chain id {chain_id} is not a test chain "
+            f"(allowed: {sorted(settings.demo_chain_ids)}). Unset DEMO_MODE, or list the test "
+            "chain in DEMO_CHAIN_IDS."
+        )
+
+
 class DemoGuard:
     def __init__(self, settings: Settings, clock: Callable[[], float] = time.monotonic) -> None:
         self.settings = settings

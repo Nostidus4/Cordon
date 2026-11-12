@@ -21,7 +21,7 @@ from web3.exceptions import BadFunctionCallOutput, ContractLogicError
 
 from guardian.chain import contracts as cx
 from guardian.chain import precompiles
-from guardian.chain.base import ChainEvent
+from guardian.chain.base import ChainEvent, ProposalState
 from guardian.chain.client import ChainReadError, make_web3
 from guardian.chain.l1.deployments import Deployments, load_deployments
 from guardian.chain.l1.events import EventDecoder, bytes32_to_id
@@ -208,6 +208,53 @@ class L1Chain(L1Writes):
 
     def close(self) -> None:
         self._stop.set()
+
+    # ------------------------------------------------------- small reads
+    @property
+    def vault_addr(self) -> str:
+        return self.dep.vault
+
+    def balance(self, holder: str, token: str) -> int:
+        """ERC-20 balance of `holder` (hex address or seed id such as `vault`) in `token` (seed id/address)."""
+        return int(
+            cx.erc20(self.w3, self._addr(token)).functions.balanceOf(self._addr(holder)).call()
+        )
+
+    def proposal_state(self, proposal_id: int) -> ProposalState:
+        """Council proposal and who approved it. Raises KeyError for an id never proposed."""
+        council = self._need_council()
+        try:
+            p = council.functions.getProposal(int(proposal_id)).call()
+        except (ContractLogicError, BadFunctionCallOutput):
+            raise KeyError(proposal_id) from None
+        subject = bytes(p[2])
+        approved = [
+            addr
+            for addr in self._member_addresses()
+            if council.functions.approvedBy(int(proposal_id), addr).call()
+        ]
+        return ProposalState(
+            id=int(p[0]),
+            proposer=to_checksum_address(p[1]),
+            subject_principal=bytes32_to_id(subject) if any(subject) else None,
+            approvals=int(p[6]),
+            approved_by=sorted(approved),
+            executed=bool(p[7]),
+            cancelled=bool(p[8]),
+        )
+
+    def _member_addresses(self, at: dict[str, int] | None = None) -> list[str]:
+        out: list[str] = []
+        if self.council is None:
+            return out
+        for i in range(MAX_COUNCIL_MEMBERS):
+            try:
+                out.append(
+                    to_checksum_address(self.council.functions.members(i).call(**(at or {})))
+                )
+            except (ContractLogicError, BadFunctionCallOutput):
+                break
+        return out
 
     # -------------------------------------------------------------- snapshot
     def snapshot(self) -> PolicySnapshot:

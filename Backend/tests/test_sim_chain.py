@@ -130,7 +130,12 @@ def test_t7_lock_blocks_district_and_sets_none():
     c = mk()
     c.apply_policy_v2()
     r = c.emergency_lock("lan", "minh")
-    assert r.status == "ok" and [e.name for e in r.events] == ["PrincipalLocked", "EmergencyAction"]
+    # Like L1: the vault flag, one precompile RoleSet per key of the district (5 after v2), the tag
+    assert r.status == "ok" and [e.name for e in r.events] == [
+        "PrincipalLocked",
+        *["AllowListRoleSet"] * 5,
+        "EmergencyAction",
+    ]
     snap = c.snapshot()
     assert snap.principals["minh"].locked
     assert all(not snap.keys[k].allow_listed for k in snap.principals["minh"].keys)
@@ -191,7 +196,7 @@ def test_t9_tighten_one_loosen_two_thirds_outsider_nothing():
     assert c.snapshot().keys[k].daily_cap == u(10_000)
     assert c.approve("trang", pid).error_raw == "AlreadyApproved"
     r2 = c.approve("huy", pid)
-    assert [e.name for e in r2.events][-2:] == ["CapChanged", "Executed"]
+    assert [e.name for e in r2.events][-3:] == ["CapChanged", "PolicyVersionBumped", "Executed"]
     assert c.snapshot().keys[k].daily_cap == u(50_000)
     assert c.cancel("trang", pid).error_raw == "ProposalNotOpen"
 
@@ -431,9 +436,9 @@ def test_key_cap_zero_to_positive_is_loosening():
     assert r.status == "ok" and r.reason_code is None
     assert c.snapshot().keys[k].daily_cap == 0
 
-    # Now attempt to raise it from 0 via 1-member path (should fail with NeedsThreshold)
+    # Now attempt to raise it from 0 via the 1-member lowerCap (NotTightening, like the contract)
     r = c.lower_key_cap("huy", k, u(10_000))  # This internal API is for tightening only
-    assert r.status == "reverted" and r.error_raw == "NeedsThreshold"
+    assert r.status == "reverted" and r.error_raw == "NotTightening"
     # Try via direct_call with the symbolic API
     r = c.direct_call(
         "huy",

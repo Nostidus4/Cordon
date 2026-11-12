@@ -1,4 +1,5 @@
-"""Process-wide Runtime: SimChain + in-memory stores + SSE event bus + graph version.
+"""Process-wide Runtime: a ChainPort (SimChain, or L1Chain for CHAIN_MODE=l1) + in-memory stores +
+SSE event bus + graph version.
 
 TODO(persistence): attempts/scenario_runs/proposals/agent_runs/assistant_logs are in memory only
 (spec §8.2 wants Postgres). Keep the `Stores` surface small (add/get/list/clear) so a DB-backed
@@ -13,18 +14,22 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from guardian.chain.base import ChainEvent
+from guardian.chain.base import ChainEvent, ChainPort
 from guardian.chain.sim import SimChain
 from guardian.core.config import Settings
-from guardian.core.demo_guard import DemoGuard
+from guardian.core.demo_guard import DemoGuard, ensure_test_chain
 from guardian.domain.snapshot import KeyState, PolicySnapshot
 from guardian.graph.findings import compute_findings
 from guardian.services import views
 from guardian.services.event_bus import EventBus
+from guardian.workers.indexer import Indexer
+
+EVENT_LOG_SIZE = 5000
 
 
 @dataclass
@@ -139,24 +144,56 @@ class Runtime:
     def __init__(
         self,
         settings: Settings,
-        chain: SimChain | None = None,
+        chain: ChainPort | None = None,
         clock: Callable[[], float] = time.time,
     ) -> None:
-        if settings.chain_mode != "sim":
-            raise NotImplementedError(
-                "CHAIN_MODE=l1 is not implemented yet: only CHAIN_MODE=sim (in-memory SimChain). "
-                "A web3 adapter implementing ChainPort is a future task."
-            )
         self.settings = settings
         self.clock = clock
-        self.chain: SimChain = chain or SimChain()
+        self.is_l1 = settings.chain_mode == "l1"
+        if chain is None:
+            if self.is_l1:
+                from guardian.chain.l1.startup import build_l1_chain
+
+                chain = build_l1_chain(settings)  # L1StartupError: clear, no traceback to read
+            else:
+                chain = SimChain()
+        self.chain: Any = chain  # ChainPort + the extras both implementations have (balance...)
+        if self.is_l1:
+            ensure_test_chain(settings, int(self.chain.w3.eth.chain_id))
         self.bus = EventBus()
         self.guard = DemoGuard(settings)
         self.stores = Stores()
         self.graph_version = 1
         self.scenario_tasks: dict[str, asyncio.Task[None]] = {}
+        self.event_log: deque[ChainEvent] = deque(maxlen=EVENT_LOG_SIZE)
+        self.indexer: Indexer | None = None
+        self._live = not self.is_l1  # L1: the backfill at startup is recorded, not streamed
         self._last_city: list[tuple[str, str, str]] | None = None
-        self._unsubscribe = self.chain.subscribe(self._on_chain_event)
+        self._unsubscribe: Callable[[], None] = lambda: None
+        if self.is_l1:
+            self._start_indexer()
+        else:
+            self._unsubscribe = self.chain.subscribe(self._on_chain_event)
+
+    def _start_indexer(self) -> None:
+        """L1 event bridge: the idempotent indexer reads the chain and feeds the SSE bus.
+
+        The first cycle (backfill from the deployment block) runs synchronously so `event_log` is
+        complete before the first request; after it, only new events reach SSE."""
+        from guardian.workers.indexer import Indexer, InMemoryEventSink, L1ChainSource
+
+        s = self.settings
+        self.indexer = Indexer(
+            L1ChainSource(self.chain),
+            InMemoryEventSink(),
+            publish=self._on_chain_event,
+            poll_interval=s.l1_poll_interval_seconds,
+            reorg_window=s.indexer_reorg_window,
+            confirmations=s.indexer_confirmations,
+        )
+        self.indexer.sync_once()
+        self._live = True
+        self.indexer.start()
 
     # ------------------------------------------------------------------ lifecycle
     def bind_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
@@ -166,6 +203,11 @@ class Runtime:
         for t in list(self.scenario_tasks.values()):
             t.cancel()
         self._unsubscribe()
+        if self.indexer is not None:
+            self.indexer.stop()
+        close = getattr(self.chain, "close", None)
+        if close is not None:
+            close()
 
     # ------------------------------------------------------------------ helpers
     def now(self) -> int:
@@ -201,7 +243,9 @@ class Runtime:
 
     # ------------------------------------------------------------------ SSE bridge
     def _on_chain_event(self, ev: ChainEvent) -> None:
-        self.bus.publish("event", views.api_event(ev, self.token_decimals()))
+        self.event_log.append(ev)
+        if self._live:
+            self.bus.publish("event", views.api_event(ev, self.token_decimals()))
 
     def publish(self, event_type: str, data: dict[str, Any]) -> None:
         self.bus.publish(event_type, data)

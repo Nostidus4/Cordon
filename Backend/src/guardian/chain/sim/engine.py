@@ -16,7 +16,7 @@ from typing import Any
 
 from eth_utils import keccak, to_checksum_address
 
-from guardian.chain.base import ChainEvent, TxResult
+from guardian.chain.base import ChainEvent, ProposalState, TxResult
 from guardian.chain.errors import ChainRevert, is_blocked_at_protocol, revert_for_reason
 from guardian.chain.sim.allowlist import TxAllowList
 from guardian.chain.sim.council import (
@@ -95,6 +95,7 @@ class SimChain:
         self.dex = MockDEX(self.ledger.decimals)
         self.vault_addr = s["contracts"]["policy_vault"]
         self.bridge_addr = s["contracts"]["bridge_escrow"]
+        self.council_addr = s["contracts"]["guardian_council"]
         self._meta: dict[str, dict[str, Any]] = {}  # address -> labels for snapshot
         self.vault.policy_version = s["policy_version"]
         self.alias["vault"] = s["contracts"]["policy_vault"]
@@ -388,6 +389,14 @@ class SimChain:
         if tx.sender not in self.council.member_principal:
             raise ChainRevert("NotCouncilMember")
 
+    def _subject(self, call: dict[str, Any]) -> str:
+        """`EmergencyAction.subject`: the principal id, or the address of a key/token/recipient."""
+        a = call["args"]
+        if a.get("principal_id"):
+            return str(a["principal_id"])
+        ref = a.get("key") or a.get("subject")
+        return self._addr(ref) if ref else ""
+
     def _is_tightening(self, call: dict[str, Any]) -> bool:
         fn, a = call["fn"], call["args"]
         v = self.vault
@@ -412,17 +421,22 @@ class SimChain:
                 return old == 0 or new < old
         return False
 
-    def _direct(self, member: str, call: dict[str, Any]) -> TxResult:
-        """1-member path: only tightening calls; everything else needs 2/3."""
+    def _direct(
+        self, member: str, call: dict[str, Any], not_tightening: str = "NeedsThreshold"
+    ) -> TxResult:
+        """1-member path: only tightening calls; everything else needs 2/3.
+
+        `not_tightening` is the revert name for a loosening call: `NeedsThreshold` through a raw admin
+        call (`direct_call`), `NotTightening` through the dedicated `lowerCap` of the contract."""
 
         def body(tx: _Tx) -> None:
             self._need_member(tx)
             if not self._is_tightening(call):
-                raise ChainRevert("NeedsThreshold")
+                raise ChainRevert(not_tightening)
             self._apply_call(tx, call)
             tx.emit(
                 "EmergencyAction",
-                {"member": tx.sender, "action": call["fn"], "subject": _subject(call)},
+                {"member": tx.sender, "action": call["fn"], "subject": self._subject(call)},
             )
 
         return self._transact(self._member(member), call["fn"], body)
@@ -434,11 +448,15 @@ class SimChain:
         return self._direct(member, _c("vault", "pauseAll"))
 
     def lower_key_cap(self, member: str, key: str, new_cap: int) -> TxResult:
-        return self._direct(member, _c("vault", "setKeyDailyCap", key=key, cap=new_cap))
+        return self._direct(
+            member, _c("vault", "setKeyDailyCap", key=key, cap=new_cap), "NotTightening"
+        )
 
     def lower_district_cap(self, member: str, principal_id: str, new_cap: int) -> TxResult:
         return self._direct(
-            member, _c("vault", "setPrincipalDailyCap", principal_id=principal_id, cap=new_cap)
+            member,
+            _c("vault", "setPrincipalDailyCap", principal_id=principal_id, cap=new_cap),
+            "NotTightening",
         )
 
     def revoke_allow(
@@ -456,6 +474,18 @@ class SimChain:
 
     def deactivate_key(self, member: str, key: str) -> TxResult:
         return self._direct(member, _c("registry", "deactivateKey", key=key))
+
+    def proposal_state(self, proposal_id: int) -> ProposalState:
+        p = self.council.proposals[proposal_id]  # KeyError: never proposed
+        return ProposalState(
+            p.id,
+            p.proposer,
+            p.subject_principal,
+            p.approvals,
+            sorted(p.approved_by),
+            p.executed,
+            p.cancelled,
+        )
 
     def direct_call(self, member: str, call: dict[str, Any]) -> TxResult:
         """Member calls any admin fn directly (loosening => reverts NeedsThreshold)."""
@@ -532,7 +562,9 @@ class SimChain:
             tx.emit("Approved", {"id": p.id, "member": tx.sender})
             if p.approvals >= THRESHOLD:
                 for c in p.calls:
-                    self._apply_call(tx, c)
+                    if c.get("fn") != "bumpPolicyVersion":  # implicit: bumped once, below
+                        self._apply_call(tx, c)
+                self._apply_vault(tx, "bumpPolicyVersion", {})  # exactly once per executed proposal
                 p.executed = True
                 tx.emit("Executed", {"id": p.id})
 
@@ -554,6 +586,12 @@ class SimChain:
         return self._transact(self._member(member), "cancel", body)
 
     # ---------------------------------------------------- symbolic call exec
+    def _set_role(self, tx: _Tx, key: str, role: int) -> None:
+        """Tx AllowList `setNone` (0) / `setEnabled` (1) called by the Council contract; like the
+        precompile it logs `RoleSet`, which the indexer normalises to `AllowListRoleSet`."""
+        (self.txallow.set_enabled if role else self.txallow.set_none)(key)
+        tx.emit("AllowListRoleSet", {"key": key, "role": role, "by": self.council_addr})
+
     def _apply_call(self, tx: _Tx, call: dict[str, Any]) -> None:
         target, fn, a = call.get("target"), call.get("fn"), call.get("args", {})
         if target not in ALLOWED_TARGETS:
@@ -583,7 +621,7 @@ class SimChain:
                     tx.emit("KeyDeactivated", {"key": key})
             elif target == "tx_allowlist":
                 addr = self._addr(a["address"])
-                (self.txallow.set_enabled if fn == "setEnabled" else self.txallow.set_none)(addr)
+                self._set_role(tx, addr, 1 if fn == "setEnabled" else 0)
             else:
                 self._apply_vault(tx, fn, a)
         except KeyError as e:
@@ -594,16 +632,16 @@ class SimChain:
         if fn == "lockPrincipal":
             pid = a["principal_id"]
             v.locked.add(pid)
-            for k in self.registry.keys_of(pid):
-                self.txallow.set_none(k)
             tx.emit("PrincipalLocked", {"principalId": pid, "by": tx.sender})
+            for k in self.registry.keys_of(pid):
+                self._set_role(tx, k, 0)
         elif fn == "unlockPrincipal":
             pid = a["principal_id"]
             v.locked.discard(pid)
+            tx.emit("PrincipalUnlocked", {"principalId": pid})
             for k in self.registry.keys_of(pid):
                 if self.registry.key_info[k].active:
-                    self.txallow.set_enabled(k)
-            tx.emit("PrincipalUnlocked", {"principalId": pid})
+                    self._set_role(tx, k, 1)
         elif fn == "pauseAll":
             v.paused = True
             tx.emit("Paused", {"by": tx.sender})
@@ -750,8 +788,3 @@ class SimChain:
 
 def _c(target: str, fn: str, **args: Any) -> dict[str, Any]:
     return {"target": target, "fn": fn, "args": args}
-
-
-def _subject(call: dict[str, Any]) -> str:
-    a = call["args"]
-    return str(a.get("principal_id") or a.get("key") or a.get("subject") or "")
