@@ -29,7 +29,11 @@ Event là nguồn sự thật cho UI: số "đã dùng chung" ở màn Incident 
 
 ## Trạng thái hiện tại
 
-`workers/indexer.py` rỗng; `tests/test_indexer.py` hiện kiểm luồng event của sim. Mô hình bảng `events` đã phác ở `Backend/src/guardian/models/event.py` (unique `(tx_hash, log_index)`).
+`workers/indexer.py` đã cài đặt (IDX-001): `Indexer` (poll theo `L1_POLL_INTERVAL_SECONDS`, đọc lại cửa sổ `INDEXER_REORG_WINDOW` block, mặc định 5; `INDEXER_CONFIRMATIONS`, mặc định 0), `EventSink` (Protocol: `write`, `last_block`, `set_last_block`, `events_in_range`, `remove`), `InMemoryEventSink`, `L1ChainSource` (bọc `L1Chain.events_since`), `IndexerStatus` (`last_block_l1`, `head_l1`, `lag_blocks`) cho `/api/health`. Sink rỗng thì backfill từ `deployBlock`. Lỗi RPC không làm cursor tiến, chu kỳ sau thử lại với back-off. Chỉ event mới của sink được đẩy ra SSE. `guardian-worker` chạy indexer khi `CHAIN_MODE=l1`.
+
+Chưa làm: index `TopUpRecorded` trên C-Chain (`last_block_c`, chưa có adapter đọc C-Chain); sink Postgres (DB-002); ws subscribe (adapter L1 poll qua HTTP).
+
+Test: `tests/test_indexer_worker.py` (nguồn giả) và `tests/chain_l1/test_indexer_anvil.py` (anvil).
 
 ## Issue
 

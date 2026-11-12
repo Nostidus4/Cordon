@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     l1_rpc_url: str = "http://127.0.0.1:9650/ext/bc/guardian/rpc"
     deployments_file: str = "deployments/fuji-l1.json"
     l1_poll_interval_seconds: float = 2.0
+    indexer_reorg_window: int = 5  # blocks re-read each cycle (shallow reorg repair)
+    indexer_confirmations: int = 0  # blocks behind head to wait before indexing
     # None = "decide from chain_mode": on in sim, off otherwise (spec §8.6: never on a real network).
     demo_mode: bool | None = None
     cors_origins: list[str] = Field(
