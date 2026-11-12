@@ -42,6 +42,26 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  chain-l1:
+    # L1 adapter against a real EVM: anvil + the Foundry artifacts (skipped locally when Foundry is absent)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - run: uv python install 3.12
+      - run: contracts/scripts/install-deps.sh
+      - run: forge build
+        working-directory: contracts
+      - run: uv sync
+        working-directory: Backend
+      - name: L1 adapter tests
+        working-directory: Backend
+        run: uv run pytest tests/chain_l1 -q -rs
+
   contracts:
     runs-on: ubuntu-latest
     steps:

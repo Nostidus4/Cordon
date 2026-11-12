@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
     chain_mode: Literal["sim", "l1"] = "sim"
+    # CHAIN_MODE=l1: JSON-RPC endpoint and the file with the deployed addresses (relative paths
+    # resolve against Backend/).
+    l1_rpc_url: str = "http://127.0.0.1:9650/ext/bc/guardian/rpc"
+    deployments_file: str = "deployments/fuji-l1.json"
+    l1_poll_interval_seconds: float = 2.0
     # None = "decide from chain_mode": on in sim, off otherwise (spec §8.6: never on a real network).
     demo_mode: bool | None = None
     cors_origins: list[str] = Field(

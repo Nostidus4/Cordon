@@ -11,7 +11,7 @@ Ranh giới `ChainPort` là điểm duy nhất ứng dụng chạm tới chain. 
 ## Giao diện
 
 - Cài đặt toàn bộ `ChainPort` (`chain/base.py`): chi tiêu, dry-run, siết, nới, `snapshot`, `events_since`, `subscribe`.
-- Cấu hình: `CHAIN_MODE=l1`, RPC URL, địa chỉ từ `deployments/fuji-l1.json`, khoá ký từ env (chỉ khoá test). `Runtime` hiện ném `NotImplementedError` khi `CHAIN_MODE=l1`.
+- Cấu hình: `CHAIN_MODE=l1`, RPC URL, địa chỉ từ `deployments/fuji-l1.json`, khoá ký từ env (chỉ khoá test). Biến môi trường: `L1_RPC_URL`, `DEPLOYMENTS_FILE` (mặc định `deployments/fuji-l1.json`, tương đối so với `Backend/`), `L1_POLL_INTERVAL_SECONDS`. `Runtime` vẫn ném `NotImplementedError` khi `CHAIN_MODE=l1` cho tới `CHN-003`.
 - ABI: `Backend/src/guardian/chain/abis/` (thư mục đang rỗng) sinh từ `forge build`.
 
 ## Quy tắc chính
@@ -29,7 +29,11 @@ Ranh giới `ChainPort` là điểm duy nhất ứng dụng chạm tới chain. 
 
 ## Trạng thái hiện tại
 
-`chain/client.py`, `chain/contracts.py`, `chain/precompiles.py`, `chain/tx.py`, `chain/demo_signer.py` là file rỗng một dòng. Phần tái sử dụng được: `chain/errors.py` (giải mã lỗi), `chain/base.py` (interface), `chain/sim/*` (hành vi tham chiếu), `tests/test_chain_errors.py`, `tests/test_sim_chain.py`.
+`CHN-001` đã xong phần đọc: `chain/l1/` (`L1Chain`: `snapshot`, `events_since`, `subscribe` bằng polling; `events.py` giải mã log; `deployments.py` đọc file địa chỉ), cùng `chain/client.py`, `chain/contracts.py`, `chain/precompiles.py`. Các hàm ghi (`pay`, `swap`, Council...) ném `NotImplementedError` trỏ tới `CHN-002`; `chain/tx.py`, `chain/demo_signer.py` vẫn là file rỗng.
+
+- `snapshot()` đọc mọi giá trị tại một block cố định. Chain chỉ cho id, nhãn khoá, hạn mức, trạng thái; nhãn khu, `seed_id`, cạnh khai báo, nhãn Council/recipient/protocol lấy từ `Backend/seed/may_labs.json` khớp theo địa chỉ (không có thì dùng dữ liệu chain). Danh sách token/recipient/protocol là seed + ứng viên suy ra từ event `AllowChanged` (mapping không liệt kê được). `PrincipalState.kind` lấy từ seed, không có thì theo loại khoá đầu tiên. `main_treasury` (C-Chain) lấy từ seed.
+- `events_since(block)` trả event có `block` lớn hơn tham số, theo thứ tự `(block, log_index)`; chỉ giải mã log từ registry, vault, Council và Tx AllowList (`RoleSet` thành `AllowListRoleSet`).
+- Test: `Backend/tests/chain_l1/` (`test_decode_unit.py` không cần node; `test_snapshot_anvil.py` triển khai contract lên anvil và so snapshot với sim; tự bỏ qua khi thiếu Foundry). Council trong test là `contracts/test/helpers/CouncilStub.sol` vì `GuardianCouncil` làm ở CTR-006.
 
 ## Issue
 
