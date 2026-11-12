@@ -30,7 +30,7 @@ def create_app(settings: Settings | None = None, runtime: Runtime | None = None)
         finally:
             await rt.shutdown()
 
-    app = FastAPI(title="GuardianAI API", lifespan=lifespan)
+    app = FastAPI(title="Cordon API", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

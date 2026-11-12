@@ -1,6 +1,7 @@
-import { Play, RotateCcw, Search, ShieldCheck } from "lucide-react";
+import { Play, RotateCcw, Search } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BRAND } from "../../config/brand";
+import { CordonLogo } from "../brand/Logo";
 import { useHealth } from "../../hooks/useHealth";
 import { useDemoReset } from "../../hooks/useDemoReset";
 import { useUiStore } from "../../store/uiStore";
@@ -34,11 +35,8 @@ export function TopBar() {
   return (
     <div className="flex h-14 items-center gap-4 px-6">
       <div className="flex items-center gap-3">
-        <div className="grid size-9 place-items-center rounded-[10px] bg-[image:var(--brand-gradient)] shadow-[var(--shadow-glow-brand)]"><ShieldCheck className="size-5 text-white" aria-hidden /></div>
-        <div className="leading-tight">
-          <p className="text-[15px] font-bold tracking-tight text-text">{BRAND.name}</p>
-          <p className="text-[11px] text-faint">{BRAND.company}</p>
-        </div>
+        <CordonLogo tone="light" height={30} title={BRAND.name} />
+        <p className="border-l border-line pl-3 text-[11px] leading-tight text-faint">{BRAND.company}</p>
       </div>
 
       <div className="ml-auto flex items-center gap-3">

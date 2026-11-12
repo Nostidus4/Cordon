@@ -68,7 +68,7 @@ export function WithGuardianPane({ view, policyActive, replay, agentNote, onLock
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_80%_0%,rgb(52_224_180/0.10),transparent_70%)]" />
       <header className="relative mb-2.5 flex items-start justify-between gap-3">
         <div>
-          <h2 id="right-title" className="flex items-center gap-2 text-[17px] font-bold leading-tight text-text">Có GuardianAI <ShieldCheck className="size-[18px] text-ok" aria-hidden /></h2>
+          <h2 id="right-title" className="flex items-center gap-2 text-[17px] font-bold leading-tight text-text">Có Cordon <ShieldCheck className="size-[18px] text-ok" aria-hidden /></h2>
           <p className="mt-0.5 text-[12px] text-muted"><b className="text-text">Ví chung của anh Minh</b> · {replay ? "phát lại từ bản đã lưu" : "dữ liệu trực tiếp từ chain"}</p>
         </div>
         <div className="flex items-center gap-2">

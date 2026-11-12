@@ -2,6 +2,7 @@
 // As soon as the base island is on screen the poster cross-fades to the live canvas (so the city is seen assembling itself) and the
 // card shrinks to a corner; when the build-up is done it shows "Xong!" and dismisses.
 import { useEffect, useRef, useState } from "react";
+import { CordonLogo } from "../components/brand/Logo";
 import { engine } from "../audio/engine";
 import { useLoadStore, enterCity } from "./loadStore";
 
@@ -56,6 +57,7 @@ export function StageLoader({ night }: { night?: boolean }) {
     <div className="stage-loader absolute inset-0 z-[15]" data-fading={fading ? "1" : "0"} data-done={assembled ? "1" : "0"} role="status" aria-live="polite" aria-label="Đang dựng thành phố">
       <div className="stage-loader-poster absolute inset-0" style={{ backgroundImage: `url(${posterUrl(night)})` }} />
       <div className="stage-loader-card toy-card" data-fading={fading ? "1" : "0"} data-done={assembled ? "1" : "0"}>
+        {assembled ? null : <div className="mb-2.5 flex justify-center"><CordonLogo tone="dark" height={waiting ? 40 : 30} title="Cordon" /></div>}
         {waiting ? (
           <div className="flex flex-col items-center gap-3 py-1 text-center">
             <span className="font-toy text-[22px] font-bold leading-tight" style={{ color: "var(--ink)" }}>Thành phố đã sẵn sàng</span>

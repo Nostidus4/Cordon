@@ -1,4 +1,4 @@
-# GuardianAI Frontend (React + Vite + TypeScript)
+# Cordon Frontend (React + Vite + TypeScript)
 
 ```bash
 npm install

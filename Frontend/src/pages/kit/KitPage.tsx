@@ -52,7 +52,7 @@ export default function KitPage() {
             <p className="text-xs text-faint">Chữ mờ (faint), chỉ cho nhãn phụ.</p>
           </div>
           <div className="flex items-center gap-8">
-            <div><p className="mb-1 text-xs text-faint">Gradient chữ</p><p className="text-gradient text-4xl font-extrabold">GuardianAI</p></div>
+            <div><p className="mb-1 text-xs text-faint">Gradient chữ</p><p className="text-gradient text-4xl font-extrabold">Cordon</p></div>
             <div><p className="mb-1 text-xs text-faint">Radius</p><div className="flex gap-2">{["xs", "sm", "md", "lg", "xl"].map((r) => <div key={r} className="size-10 border border-line-strong bg-white/5" style={{ borderRadius: `var(--radius-${r})` }} />)}</div></div>
           </div>
         </div>

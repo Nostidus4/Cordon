@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="296 290 324 356" width="324" height="356" role="img" aria-label="Cordon"><defs>
+<linearGradient id="cmg" x1="330" y1="620" x2="580" y2="320" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1a3cff"/><stop offset=".55" stop-color="#1f86ff"/><stop offset="1" stop-color="#00e5ff"/></linearGradient>
+<linearGradient id="cmh" x1="400" y1="560" x2="600" y2="350" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1a3cff" stop-opacity=".0"/><stop offset="1" stop-color="#00e5ff" stop-opacity=".55"/></linearGradient>
+<linearGradient id="cml" x1="382" y1="0" x2="622" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#00e5ff"/><stop offset="1" stop-color="#00e5ff" stop-opacity="0"/></linearGradient>
+<radialGradient id="cmr"><stop offset="0" stop-color="#00e5ff" stop-opacity=".9"/><stop offset="1" stop-color="#00e5ff" stop-opacity="0"/></radialGradient>
+</defs>
+<path fill="url(#cmg)" d="M446 304Q468 292 490 304L605 370Q616 376 605 383L553 414Q548 416 543 413L490 380Q476 372 462 380L390 425Q382 430 382 440V495Q382 505 390 510L462 555Q476 563 490 555L543 520Q548 517 553 520L605 552Q616 558 605 565L490 632Q468 642 446 632L320 560Q302 550 302 530V400Q302 385 318 372Z"/>
+<path fill="#1a3cff" fill-opacity=".35" d="M302 400V530Q302 550 320 560L446 632Q468 642 490 632L605 565L520 585Q430 570 382 495V440Q380 520 302 400Z"/>
+<rect x="382" y="464.5" width="240" height="5" rx="2.5" fill="url(#cml)"/>
+<circle cx="481" cy="467" r="34" fill="url(#cmr)"/>
+<circle cx="481" cy="467" r="19" fill="#00e5ff"/><circle cx="481" cy="467" r="8" fill="#e8fdff"/></svg>

@@ -7,7 +7,8 @@ import { useUiStore } from "../store/uiStore";
 import type { SceneId } from "./contract";
 import { SCENE_META, STAGE_SCENES, type StageScene } from "./logic";
 import { useStageStore } from "./stageStore";
-import { CheckIcon, MoonIcon, ShieldIcon, SunIcon } from "./ui";
+import { CordonLogo } from "../components/brand/Logo";
+import { CheckIcon, MoonIcon, SunIcon } from "./ui";
 
 const DOT: Record<StageScene, string> = { look: "#7a47e6", try: "#1565e8", fix: "#e8782a", incident: "#d62839", request: "#0e968c" };
 
@@ -19,9 +20,10 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
   const setMode = useUiStore((s) => s.setMode);
   return (
     <header className="stage-topbar-in pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-4 pt-3.5">
-      <Link to="/" onClick={() => onGo("intro")} className="toy-card pointer-events-auto flex items-center gap-2.5 py-1.5 pl-2.5 pr-4 no-underline" style={{ borderRadius: 999 }} aria-label="Về đầu: Mây Labs (giả định)">
-        <ShieldIcon size={30} />
-        <span className="font-toy text-[17px] font-bold leading-none" style={{ color: "var(--ink)" }}>Mây Labs <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>(giả định)</span></span>
+      <Link to="/" onClick={() => onGo("intro")} className="toy-card pointer-events-auto flex items-center gap-2.5 py-1.5 pl-3 pr-4 no-underline" style={{ borderRadius: 999 }} aria-label="Cordon, về đầu. Mây Labs (giả định)">
+        <CordonLogo tone="dark" height={30} title="Cordon" />
+        <span aria-hidden className="hidden h-5 w-0.5 rounded-full 2xl:block" style={{ background: "#e9d5b0" }} />
+        <span className="hidden whitespace-nowrap font-toy text-[15px] font-bold leading-none 2xl:inline" style={{ color: "var(--ink)" }}>Mây Labs <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>(giả định)</span></span>
       </Link>
 
       <nav aria-label="Năm cảnh" data-sfx="off" className="toy-card pointer-events-auto flex items-center gap-1 p-1.5" style={{ borderRadius: 999 }}>

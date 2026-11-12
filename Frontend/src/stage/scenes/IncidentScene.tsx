@@ -1,5 +1,5 @@
 // Scene 4 · Sự cố (spec §10.5, E1/E2): the same break-in, two outcomes, played on the city.
-// Right-hand numbers come from attempt events only (principalSpentAfter); the left-hand "không có GuardianAI" is simulated.
+// Right-hand numbers come from attempt events only (principalSpentAfter); the left-hand "không có Cordon" is simulated.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -128,11 +128,11 @@ export function IncidentScene() {
 
   return (
     <>
-      {/* left: what would have happened without GuardianAI (simulated) */}
+      {/* left: what would have happened without Cordon (simulated) */}
       <div className="absolute bottom-24 left-6">
-        <ToyCard tone="red" className="w-[310px] px-5 pb-4 pt-4" label="Không có GuardianAI, mô phỏng">
+        <ToyCard tone="red" className="w-[310px] px-5 pb-4 pt-4" label="Không có Cordon, mô phỏng">
           <div className="flex items-center justify-between gap-2">
-            <div className="font-toy text-[17px] font-bold leading-tight" style={{ color: "var(--ink)" }}>Không có GuardianAI</div>
+            <div className="font-toy text-[17px] font-bold leading-tight" style={{ color: "var(--ink)" }}>Không có Cordon</div>
             <span className="rounded-full px-2.5 py-0.5 text-[12px] font-bold" style={{ background: "#ffd9d2", color: "var(--red-d)" }}>mô phỏng</span>
           </div>
           <div className="mt-1 flex items-baseline gap-1.5 whitespace-nowrap">
@@ -145,7 +145,7 @@ export function IncidentScene() {
         </ToyCard>
       </div>
 
-      {/* right: with GuardianAI (live) */}
+      {/* right: with Cordon (live) */}
       <div className="absolute right-6 top-24 flex w-[min(350px,calc(100vw-48px))] flex-col gap-3">
         {!policyV2 && !preparing ? (
           <ToyCard className="p-4" label="Cần policy v2">

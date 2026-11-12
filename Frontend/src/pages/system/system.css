@@ -222,3 +222,6 @@
 .sx-tabs { flex: 0 1 auto; flex-wrap: nowrap; }
 .sx-bar-top > div:last-child { flex-shrink: 0; }
 @media (max-width: 1279px) { .sx-bar-top, .sx-tabs { flex-wrap: wrap; } }
+.sx-brand-sep { width: 2px; height: 20px; border-radius: 2px; background: rgba(255, 255, 255, 0.55); }
+@media (max-width: 1699px) { .sx-brand-sep, .sx-brand-tag { display: none; } }
+.sx-brand img { filter: drop-shadow(0 2px 0 rgba(45, 34, 80, 0.32)); }

@@ -1,4 +1,4 @@
-// Left pane 'without GuardianAI': 5 card caps 20.000, no shared cap, no whitelist, total 100.000 (spec §4.3).
+// Left pane 'without Cordon': 5 card caps 20.000, no shared cap, no whitelist, total 100.000 (spec §4.3).
 // Computed client-side from shared/scenario4.ts and driven by the step the RIGHT side has received (spec §10.5).
 import { KEY_CAP, SCENE4_ATTACK_STEPS } from "../../shared/scenario4";
 import type { Attempt } from "../../types";

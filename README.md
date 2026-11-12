@@ -1,4 +1,6 @@
-# Cordon (GuardianAI)
+<p align="center"><img src="Frontend/public/cordon-logo-dark.svg" alt="Cordon" height="72" /></p>
+
+# Cordon
 
 ![Thành phố Cordon trong sự cố ban đêm](docs/images/city_hero_night_incident.jpg)
 

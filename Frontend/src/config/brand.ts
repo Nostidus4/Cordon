@@ -1,3 +1,3 @@
-// Product name in one place (GuardianAI vs Cordon, spec Q6).
-export const BRAND = { name: "GuardianAI", tagline: "Khoá trần cho mọi thẻ chi tiêu", company: "Mây Labs (giả định)" } as const;
-export const FOOTER_TEXT = "Mây Labs là giả định · chạy trên Avalanche Fuji testnet · token test, không có giá trị";
+// Product name in one place. Cordon is the product; "Mây Labs (giả định)" is the fictional demo company.
+export const BRAND = { name: "Cordon", tagline: "Khoanh vùng quyền chi tiền cho người, AI và phần mềm", company: "Mây Labs (giả định)" } as const;
+export const FOOTER_TEXT = "Cordon · Mây Labs là giả định · chạy trên Avalanche Fuji testnet · token test, không có giá trị";

@@ -5,6 +5,7 @@ import { useCityStore } from "../../city3d/cityStore";
 import { IncidentColumn, IntroTitle, Legend, Minimap, TopBar } from "../../city3d/panels";
 import type { ScenarioId } from "../../city3d/scenarios";
 import LiveSync from "../../city3d/LiveSync";
+import { useTitle } from "../../hooks/useTitle";
 import { api } from "../../lib/api";
 import StageHarness from "./StageHarness";
 import Sky from "../../city3d/Sky";
@@ -16,6 +17,7 @@ export default function CityPage() {
 }
 
 function CityPageInner() {
+  useTitle("Thành phố 3D");
   useEffect(() => {
     useCityStore.getState().goLive();
   }, []);

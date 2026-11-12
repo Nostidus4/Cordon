@@ -1,4 +1,4 @@
-// Incident (scene 4, spec §10.5): split screen "Không có GuardianAI" (simulated, left) vs "Có GuardianAI" (live, right).
+// Incident (scene 4, spec §10.5): split screen "Không có Cordon" (simulated, left) vs "Có Cordon" (live, right).
 // Left is computed from shared/scenario4.ts and driven by the step the right side receives.
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";

@@ -36,7 +36,7 @@ export const SCENES: Record<number, { label: string; name: string }> = {
 };
 
 export const TOUR_STEPS: TourStep[] = [
-  { id: "intro", scene: 0, title: "GuardianAI trong 3 phút", placement: "center", route: "/chi-tiet/map", dwell: 5000,
+  { id: "intro", scene: 0, title: "Cordon trong 3 phút", placement: "center", route: "/chi-tiet/map", dwell: 5000,
     caption: "Năm cảnh: nhìn, thử, sửa, sự cố, xin thêm quyền. Tour sẽ đặt lại kịch bản về policy v1 rồi đi theo đúng thứ tự năm cảnh." },
 
   { id: "map-canvas", scene: 1, title: "Nhìn: ai thật sự giữ thẻ nào", route: "/chi-tiet/map", target: ["map-canvas"], placement: "auto", dwell: 6500,

@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { useHealth } from "../../hooks/useHealth";
 import { useUiStore } from "../../store/uiStore";
 import { Footer } from "./Footer";
-import { NavBar } from "./NavBar";
+import { NAV_ITEMS, NavBar } from "./NavBar";
+import { useTitle } from "../../hooks/useTitle";
 import { TopBar } from "./TopBar";
 import { TourOverlay } from "../../tour/TourOverlay";
 
@@ -13,6 +14,8 @@ export function AppShell() {
   const outlet = useOutlet();
   const { pathname } = useLocation();
   const firstPath = useRef(pathname);
+  const page = NAV_ITEMS.find((i) => i.to === pathname)?.vi ?? (pathname.endsWith("/_kit") ? "Bộ giao diện" : undefined);
+  useTitle("Chi tiết", page);
   const { data: health } = useHealth();
   const setDemoMode = useUiStore((s) => s.setDemoMode);
   const mode = useUiStore((s) => s.mode);

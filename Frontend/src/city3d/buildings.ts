@@ -116,7 +116,7 @@ const RAW: Raw[] = [
     warning: "Thiếu hồ sơ chứng minh tác động hoặc chờ soát compliance; logo lá vàng.",
     incident: "Vi phạm policy hoặc dùng ngân sách sai mục đích; biển VI PHẠM POLICY đỏ.",
     recovery: "Rà soát, nộp lại hồ sơ, kiểm toán và khôi phục trạng thái." },
-  { code: "B08", name: "Quảng trường GuardianAI", role: "Trung tâm kết nối và trải nghiệm", size: "Ø20 x 6 m",
+  { code: "B08", name: "Quảng trường Cordon", role: "Trung tâm kết nối và trải nghiệm", size: "Ø20 x 6 m",
     normal: "Quảng trường là hub trung tâm; nước, hologram và dashboard công cộng hoạt động.",
     warning: "Phát thông báo rủi ro toàn thành phố; vòng sáng vàng, bảng tin ưu tiên cảnh báo.",
     incident: "Chế độ chỉ huy sự cố; hologram đỏ, bản đồ ảnh hưởng, cụm hỗ trợ khẩn cấp.",

@@ -82,7 +82,7 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
       "Đang mở lại hoạt động",
     ],
     endStatus: "Đã an toàn, hoạt động bình thường",
-    responseTitle: "Quy trình ứng phó của GuardianAI",
+    responseTitle: "Quy trình ứng phó của Cordon",
     steps: [
       { title: "Phát hiện sự cố", desc: "Cảm biến báo rò điện tại Tòa Tiêu Dùng" },
       { title: "Kích hoạt cảnh báo & thông báo", desc: "Còi báo động và thông báo toàn thành phố" },

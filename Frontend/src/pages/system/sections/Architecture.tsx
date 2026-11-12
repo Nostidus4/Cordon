@@ -16,7 +16,7 @@ const NODES: NodeDef[] = [
   { id: "chain", x: 610, y: 235, w: 170, h: 112, title: "Chain layer", sub: "ChainPort · 1 ranh giới", color: ACCENT.vault, edge: "api-chain", icon: I(Cpu) },
   { id: "attacker", x: 610, y: 62, w: 170, h: 52, title: "attacker CLI", sub: "cầm 5 khoá anh Minh", color: "#d62839", edge: "attacker-chain", icon: I(Swords) },
   { id: "agent", x: 610, y: 410, w: 170, h: 54, title: "agent-rebalance", sub: "rule engine · LLM chỉ viết lý do", color: ACCENT.resp, edge: "agent-chain", icon: I(Bot) },
-  { id: "assistant", x: 350, y: 410, w: 160, h: 54, title: "Trợ lý GuardianAI", sub: "tool chỉ đọc · 0 quyền", color: ACCENT.edu, edge: "assistant-api", icon: I(MessagesSquare) },
+  { id: "assistant", x: 350, y: 410, w: 160, h: 54, title: "Trợ lý Cordon", sub: "tool chỉ đọc · 0 quyền", color: ACCENT.edu, edge: "assistant-api", icon: I(MessagesSquare) },
   { id: "allow", x: 885, y: 40, w: 170, h: 50, title: "TxAllowList", sub: "precompile · chặn ở node", color: "#f0a000", edge: "chain-allow", icon: I(ListChecks) },
   { id: "registry", x: 885, y: 112, w: 170, h: 50, title: "PrincipalRegistry", sub: "khoá ↔ khu", color: ACCENT.safety, edge: "chain-registry", icon: I(Landmark) },
   { id: "vault", x: 885, y: 184, w: 170, h: 50, title: "PolicyVault", sub: "pay · swap · 8 kiểm tra", color: ACCENT.spend, edge: "chain-vault", icon: I(Vault) },

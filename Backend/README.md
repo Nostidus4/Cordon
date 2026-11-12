@@ -1,4 +1,4 @@
-# GuardianAI Backend (FastAPI + uv)
+# Cordon Backend (FastAPI + uv)
 
 ```bash
 uv sync                 # cài deps

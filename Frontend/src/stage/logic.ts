@@ -59,7 +59,7 @@ export interface IncidentNumbers {
   /** "Đã dùng chung" from the newest principalSpentAfter (null before the first event) */
   shared: bigint | null;
   attacker: bigint;
-  /** the left-hand simulation ("không có GuardianAI"), display units */
+  /** the left-hand simulation ("không có Cordon"), display units */
   leftTotal: number;
   leftStep: number;
   locked: boolean;

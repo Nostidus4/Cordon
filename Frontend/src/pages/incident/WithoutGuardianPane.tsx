@@ -31,7 +31,7 @@ export function WithoutGuardianPane({ state }: { state: LeftState }) {
       <div aria-hidden className="pointer-events-none absolute inset-0 transition-opacity duration-700" style={{ opacity: 0.15 + heat * 0.85, background: "radial-gradient(120% 70% at 50% 100%, rgb(229 56 75 / 0.22), transparent 70%)" }} />
       <header className="relative mb-3 flex items-start justify-between gap-2">
         <div>
-          <h2 id="left-title" className="text-[17px] font-bold leading-tight text-text">Không có GuardianAI</h2>
+          <h2 id="left-title" className="text-[17px] font-bold leading-tight text-text">Không có Cordon</h2>
           <p className="mt-0.5 text-[12px] text-muted">5 trần riêng · không trần chung · không whitelist</p>
         </div>
         <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-dashed border-sim/55 bg-sim/10 px-2.5 py-1 text-[11px] font-semibold text-sim"><span aria-hidden>◇</span> mô phỏng</span>

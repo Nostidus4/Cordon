@@ -133,7 +133,7 @@ export default function CityCanvas({ children }: { children?: React.ReactNode } 
       shadows="percentage"
       dpr={effectiveDpr(level)}
       gl={{ antialias: false, powerPreference: "high-performance", toneMapping: NoToneMapping }}
-      aria-label="Thành phố 3D GuardianAI"
+      aria-label="Thành phố 3D Cordon"
     >
       <OrthographicCamera makeDefault position={ISO_DIR.clone().multiplyScalar(300).toArray()} zoom={5} near={-200} far={900} />
       <FrameGovernor />

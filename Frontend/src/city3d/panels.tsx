@@ -1,3 +1,4 @@
+import { CordonLogo, CordonMark } from "../components/brand/Logo";
 import { animate, AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { BUILDINGS, STATES, STATE_CHIP, STATE_COLOR, STATE_ICON, STATE_LABEL } from "./buildings";
@@ -102,12 +103,9 @@ export function TopBar() {
       className={`${card} flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5`}
     >
       <div className="flex items-center gap-2.5">
-        <svg viewBox="0 0 24 24" className="h-8 w-8 text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.7)]" fill="currentColor" aria-hidden>
-          <path d="M12 2l8 3v6c0 5-3.5 8.8-8 11-4.5-2.2-8-6-8-11V5z" />
-          <path d="M12 7l1.3 2.7 3 .4-2.2 2.1.5 3L12 13.7 9.4 15.2l.5-3L7.7 10.1l3-.4z" fill="#141a5c" />
-        </svg>
+        <CordonMark size={36} />
         <div className="leading-tight">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200">GuardianAI</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200">Cordon</div>
           <h1 className="text-lg font-extrabold text-white">Thành phố Quyền Tiêu Tiền</h1>
         </div>
       </div>
@@ -172,7 +170,7 @@ export function IntroTitle() {
           exit={{ opacity: 0, transition: { duration: 1.1 } }}
         >
           <motion.div initial={{ opacity: 0, y: 14, letterSpacing: "0.5em" }} animate={{ opacity: 1, y: 0, letterSpacing: "0.22em" }} transition={{ duration: 1 }} className="text-sm font-semibold uppercase text-cyan-300">
-            GuardianAI
+            <CordonLogo tone="light" height={64} />
           </motion.div>
           <motion.h2 initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, duration: 0.9 }} className="mt-3 text-5xl font-extrabold text-white drop-shadow-[0_0_30px_rgba(120,140,255,0.6)] md:text-7xl">
             Thành phố <span className="text-cyan-300">Quyền Tiêu Tiền</span>

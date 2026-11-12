@@ -9,7 +9,9 @@ import { useAudioUnlock } from "../../audio/director";
 import { SoundToggle } from "../../audio/SoundToggle";
 import "./system.css";
 import { SCENE_META, STAGE_SCENES } from "../../stage/logic";
-import { ShieldIcon, useReduced } from "../../stage/ui";
+import { useReduced } from "../../stage/ui";
+import { CordonLogo } from "../../components/brand/Logo";
+import { useTitle } from "../../hooks/useTitle";
 import { useSysInvalidation } from "./data";
 import { useSystemDevHooks } from "./devHooks";
 import { useFeed, useSystemFeed } from "./feed";
@@ -80,20 +82,15 @@ export default function SystemPage() {
   useSystemFeed(); // page level: tab switches never remount the stream tap
   useSysInvalidation(qc);
   useSystemDevHooks();
-  useEffect(() => {
-    const prev = document.title;
-    document.title = "Bảng kỹ thuật · GuardianAI";
-    return () => { document.title = prev; };
-  }, []);
-
   const cur = TABS.find((t) => t.id === tab);
+  useTitle("Kỹ thuật", cur?.label);
   if (!cur) return <Navigate to="/he-thong/tong-quan" replace />;
 
   return (
     <div className="stage sys fixed inset-0 z-[1] overflow-y-auto overflow-x-hidden" data-testid="system-page">
       <div className="mx-auto px-5 pb-12 pt-4" style={{ maxWidth: 1480 }}>
         <header className="sx-bar-top">
-          <div className="sx-brand"><ShieldIcon size={32} />Kỹ thuật</div>
+          <div className="sx-brand"><CordonLogo tone="light" height={30} title="Cordon" /><span aria-hidden className="sx-brand-sep" /><span className="sx-brand-tag">Kỹ thuật</span></div>
           <nav className="sx-tabs" aria-label="Các mục">
             {TABS.map((t) => {
               const Icon = t.icon, on = t.id === cur.id;

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { leftStateAtStep, leftStepFromAttempts, KEY_ORDER } from "./leftSimulation";
 import { KEY_CAP } from "../../shared/scenario4";
 
-describe("left pane 'without GuardianAI' (spec §4.3)", () => {
+describe("left pane 'without Cordon' (spec §4.3)", () => {
   it("left pane totals 100.000 after steps 1-5", () => {
     const s = leftStateAtStep(5);
     expect(s.total).toBe(100_000);

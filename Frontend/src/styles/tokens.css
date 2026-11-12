@@ -1,4 +1,4 @@
-/* GuardianAI design tokens. Night palette shared with the 3D city (deep navy / violet, glass surfaces).
+/* Cordon design tokens. Night palette shared with the 3D city (deep navy / violet, glass surfaces).
    Semantic colors are fixed by spec §10.1 and never used for decoration:
    teal = ok / approved · amber = attention / near cap · red = affected / blocked · grey = locked.
    Meaning is never carried by color alone: always pair with ✓ ▲ ✕ ◐ + text (spec §12). All text pairs >= 4.5:1 on --color-bg. */
