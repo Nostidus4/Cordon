@@ -169,6 +169,13 @@ def run_scenes(
     check("policy label after merge", label_of(g), 2)
     check("minh keys after merge", len(minh["keys"]), 5)
     check("minh daily cap after merge", disp(minh["dailyCap"]), "30.000")
+    t = call("POST", "/api/simulate", {"compromised": ["minh"]})["totals"]
+    check(
+        "simulate minh after v2 youThink/enforced/estimated",
+        [disp(t[k]) for k in ("youThink", "enforced", "estimated")],
+        ["30.000", "30.000", "30.000"],
+    )
+    check("simulate minh after v2 % of treasury", t["percentOfMainTreasury"], 1.5)
 
     # --- scene 4: agent, attacker 1-5, lock, step 7
     timed("S4")

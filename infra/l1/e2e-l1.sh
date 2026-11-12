@@ -7,7 +7,7 @@
 #   4 pass 2    make demo-reset again -> scene_all again (repeatability)
 # Prints the pass/fail table of every pass and the duration of each step; exits non-zero on any mismatch.
 #
-# Env: E2E_PORT (8100) · E2E_TEARDOWN=1 also stops the local network at the end. By default only the API is stopped
+# Env: E2E_PASSES (2; 1 = a single reset + scenes pass) · E2E_PORT (8100) · E2E_TEARDOWN=1 also stops the local network at the end. By default only the API is stopped
 # and the network is left running (run `make l1-local-down` when done).
 # Local network only, public test keys only. Never point it at Fuji.
 set -euo pipefail
@@ -69,7 +69,7 @@ lap "2 api start" "$t"
 
 HUY="$(cast wallet address --mnemonic "$MNEMONIC" --mnemonic-index 2)"
 STATUS=0
-for pass in 1 2; do
+for pass in $(seq 1 "${E2E_PASSES:-2}"); do
   t=$SECONDS
   log "pass $pass: demo-reset"
   NETWORK=local API_URL="$API" bash "$ROOT/infra/l1/demo-reset.sh" | tee "$LOG/reset-$pass.log" | sed -n '/RESET COMPLETE/p;/done in/p'
