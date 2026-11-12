@@ -37,3 +37,6 @@ Frontend/.screenshots/
 
 # Issue drafts (local planning only)
 .issues-draft/
+
+# local agent worktrees / tool state
+.claude/
