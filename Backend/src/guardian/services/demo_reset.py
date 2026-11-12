@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
+from guardian.chain.l1.startup import L1StartupError
 from guardian.chain.sim.engine import load_seed
 from guardian.core.errors import ApiError
 from guardian.graph.findings import R1
@@ -11,27 +13,36 @@ from guardian.services import proposal_service as ps
 from guardian.services.runtime import Runtime
 
 REQUEST_PROPOSER = "trang"
+log = logging.getLogger("guardian.demo_reset")
 
 
 async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
-    """Back to scene 1. On `CHAIN_MODE=l1` the chain cannot be rewound (it is a real ledger): the
-    explicit endpoint answers 409 RESET_NOT_SUPPORTED_ON_L1; at startup only the in-memory stores
-    are cleared and no request #12 is seeded (redeploy / restart anvil for a clean chain)."""
-    if rt.is_l1 and not startup:
-        raise ApiError(
-            409,
-            "RESET_NOT_SUPPORTED_ON_L1",
-            "Không thể đặt lại chuỗi thật (CHAIN_MODE=l1): triển khai lại hợp đồng để bắt đầu lại.",
-        )
+    """Back to scene 1.
+
+    sim: the in-memory chain is rewound and request #12 seeded.
+    l1 at startup: only the in-memory stores are cleared (no request #12, no chain work).
+    l1 on `POST /api/demo/reset`: the ledger cannot be rewound, so `make demo-reset` has already deployed a
+    FRESH contract set and written it to the deployments file (`infra/l1/demo-reset.sh`). This call reloads that
+    deployment without a restart, clears the stores, keeps the event log and seeds request #12 on the new Council
+    (its counter was left at 11 by the script, so the id is 12)."""
     for t in list(rt.scenario_tasks.values()):
         t.cancel()
     rt.scenario_tasks.clear()
+    if rt.is_l1 and not startup:
+        try:
+            rt.reload_deployment()
+        except L1StartupError as exc:
+            raise ApiError(502, "RELOAD_FAILED", f"Không nạp được bộ hợp đồng mới: {exc}") from exc
     if not rt.is_l1:
         rt.chain.reset()
         rt.event_log.clear()
     rt.stores.clear()
+    seeded: int | None = None
     if not rt.is_l1:
         _seed_request_12(rt)
+        seeded = 12
+    elif not startup:
+        seeded = _seed_request_12_l1(rt)
     rt.graph_version += 1
     snap = rt.snapshot()
     rt.publish(
@@ -39,6 +50,7 @@ async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
         {
             "at": rt.now(),
             "policyVersion": snap.policy_version,
+            "policyLabel": snap.policy_label,
             "graphVersion": rt.graph_version,
             "block": snap.block,
         },
@@ -47,8 +59,9 @@ async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
     return {
         "status": "ok",
         "policyVersion": snap.policy_version,
+        "policyLabel": snap.policy_label,
         "graphVersion": rt.graph_version,
-        "seededProposalId": None if rt.is_l1 else 12,
+        "seededProposalId": seeded,
     }
 
 
@@ -68,6 +81,29 @@ def _seed_request_12(rt: Runtime) -> None:
         snap=ps.reference_v2_snapshot(),
         report_basis="policy_v2_reference",
     )
+
+
+def _seed_request_12_l1(rt: Runtime) -> int | None:
+    """Request #12 as a real proposal of the new Council. Its id is whatever the counter gives (12 when the reset
+    script ran); a failure is logged and the reset still succeeds."""
+    r12 = load_seed()["request_12"]
+    cap = next(c["args"]["cap"] for c in r12["calls"] if c["fn"] == "setPrincipalDailyCap")
+    try:
+        out = ps.propose(
+            rt,
+            REQUEST_PROPOSER,
+            None,
+            {"kind": "set_district_cap", "principalId": r12["subject_principal"], "cap": cap},
+            r12["title"],
+            snap=ps.reference_v2_snapshot(),
+            report_basis="policy_v2_reference",
+        )
+    except Exception:  # reset must not fail on the seeded request
+        log.exception("could not seed request #12 on the new Council")
+        return None
+    if out["id"] != r12["id"]:
+        log.warning("request #12 got proposal id %s (Council counter was not 11)", out["id"])
+    return int(out["id"])
 
 
 def apply_policy_v2(rt: Runtime) -> dict[str, Any]:

@@ -197,7 +197,7 @@ interface IGuardianCouncil {
 
 Quy tắc:
 
-- `calls[].target` chỉ được là `PrincipalRegistry`, `PolicyVault` hoặc hai precompile AllowList; ngoài ra revert `TargetNotAllowed`. Council **kết thúc** proposal bằng `vault.bumpPolicyVersion()`.
+- `calls[].target` chỉ được là `PrincipalRegistry`, `PolicyVault` hoặc hai precompile AllowList; ngoài ra revert `TargetNotAllowed`. Trên precompile chỉ có `setEnabled`/`setNone`, cộng `setAdmin(successor)` **chỉ khi `successor` là contract khác chính Council** (Council kế nhiệm của demo-reset, OPS-003); `setAdmin` tới EOA hoặc tới chính nó là `UnknownCall`, calldata sai độ dài là `BadCallArgs`, `setManager` vẫn bị cấm. Council **kết thúc** proposal bằng `vault.bumpPolicyVersion()`.
 - Xung đột lợi ích: member có `memberPrincipal == subjectPrincipal` không được `approve`. Nếu proposal chuyển khoá sang khu của member (ví dụ giao agent cho `huy`), proposal phải khai `subjectPrincipal = huy`.
 - Cài đặt Council suy ra tập khu bị ảnh hưởng từ calldata lúc `propose` (moveKey: cả khu gửi và khu nhận; addKey/createPrincipal/cap/lock/unlock theo `id`; khoá theo khu hiện tại của nó), yêu cầu `subjectPrincipal` thuộc tập (nếu tập khác rỗng; lỗi của contract `SubjectMismatch`, không nằm trong interface đóng băng) và cấm mọi member có khu thuộc tập `approve` (`ConflictOfInterest`). Chi tiết: README module contracts.
 - `emergencyLock(id)`: Council là admin của Tx AllowList (sau bàn giao) nên gọi được `setNone` cho từng `keysOf(id)`; `unlockPrincipal` qua proposal phải kèm `setEnabled` lại các khoá.
@@ -271,7 +271,7 @@ Tỉ giá cố định `1 tTKB = 1 tUSDC` (tính theo giá trị, có chuyển d
 
 ## 9. Địa chỉ, artifact và selector
 
-- `deployments/fuji-l1.json`, `deployments/fuji-c.json` (hiện rỗng): `{ chainId, rpcUrl, deployedAt, contracts: { registry, vault, council, mockDex, evilDex, tUSDC, tTKB, tSCAM }, precompiles: {...}, members: {...} }`; khoá test không bao giờ nằm trong file này.
+- `deployments/fuji-l1.json`, `deployments/fuji-c.json` (hiện rỗng): `{ chainId, rpcUrl, deployedAt, deployBlock, policyBaseline, contracts: { registry, vault, council, mockDex, evilDex, tUSDC, tTKB, tSCAM }, precompiles: {...}, members: {...} }`; khoá test không bao giờ nằm trong file này. `policyBaseline` (số nguyên, tuỳ chọn, mặc định 1): `policyVersion()` của vault sau khi seed + bàn giao, API dùng nó tính `policyLabel` (`API_CONTRACT.md` 4.1). `make demo-reset` ghi file mới bằng đổi tên nguyên tử.
 - ABI JSON cho backend: `make abis` (chạy `contracts/scripts/export-abis.sh`: `forge build` rồi `forge inspect <Interface> abi`), một file mỗi interface ở `Backend/src/guardian/chain/abis/`. Sau khi sửa `.sol`, chạy `make abis` và commit cả ABI lẫn bảng selector/topic dưới đây; test `test_contract_abi.py` fail nếu bảng, ABI và `reason_codes.py` lệch nhau.
 - Selector và topic dưới đây **do máy sinh** từ ABI (keccak-256 của chữ ký chuẩn); không sửa tay.
 

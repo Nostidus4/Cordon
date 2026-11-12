@@ -1,5 +1,6 @@
 // Pure helpers of the policy-state section: flash snapshot, token decimals, protocol label parsing.
 import type { GraphSnapshot } from "../../types";
+import { policyLabel } from "../../lib/policy";
 
 /** Token decimals as deployed (spec §5): tUSDC 6, tTKB 18, tSCAM 18. */
 export const TOKEN_DECIMALS: Record<string, number> = { tUSDC: 6, tTKB: 18, tSCAM: 18 };
@@ -17,7 +18,7 @@ export function policySnapshot(graph: GraphSnapshot | undefined, vault?: { usdc:
   if (graph) {
     const v = graph.nodes.find((n) => n.id === "vault");
     s["vault:paused"] = String(v?.data.paused === true);
-    s["policy"] = String(graph.policyVersion);
+    s["policy"] = String(policyLabel(graph));
     const key = (id: string) => graph.nodes.find((n) => n.id === `k:${id}`)?.data;
     for (const d of graph.districts) {
       s[`d:${d.principalId}:cap`] = d.dailyCap?.raw ?? "none";

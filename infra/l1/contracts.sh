@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run one L1-002 script (contracts/script/*.s.sol) against the Guardian L1.
 #   NETWORK=local (default) | fuji      step: deploy | seed | policy-v2 | handover | verify-seed | verify-handover
+#                                        | reset-open | reset-switch (demo-reset, see infra/l1/demo-reset.sh) | baseline
 #
 # local: public ewoq deployer key and the public "test ... junk" mnemonic keys, nothing else; reads the RPC URL
 #        saved by `make l1-local-up`, generates Backend/.env.l1-local + the localised seed when missing.
@@ -12,7 +13,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export PATH="$HOME/.foundry/bin:$HOME/bin:$PATH"
-STEP="${1:?usage: contracts.sh deploy|seed|policy-v2|handover|verify-seed|verify-handover}"
+STEP="${1:?usage: contracts.sh deploy|seed|policy-v2|handover|verify-seed|verify-handover|reset-open|reset-switch|baseline}"
 export NETWORK="${NETWORK:-local}"
 
 case "$NETWORK" in
@@ -47,7 +48,7 @@ esac
 # so a big multiplier there would exceed the 15M block gas limit. --start-fresh: every run is a fresh deployment.
 MULT=130
 SKIP=()
-[[ "$STEP" == "handover" ]] && { MULT=400; SKIP=(--skip-simulation); }
+case "$STEP" in handover | reset-open | reset-switch) MULT=400; SKIP=(--skip-simulation) ;; esac
 SEND=(--rpc-url "$RPC_URL" --broadcast --slow --start-fresh --gas-estimate-multiplier "$MULT" ${SKIP[@]+"${SKIP[@]}"})
 READ=(--rpc-url "$RPC_URL")
 cd "$ROOT/contracts"
@@ -56,6 +57,10 @@ case "$STEP" in
   seed) forge script script/Seed.s.sol:Seed "${SEND[@]}" ;;
   policy-v2) forge script script/PolicyV2.s.sol:PolicyV2 "${SEND[@]}" ;;
   handover) forge script script/Handover.s.sol:Handover "${SEND[@]}" ;;
+  reset-open) forge script script/Reset.s.sol:ResetOpen "${SEND[@]}" ;;
+  reset-switch) forge script script/Reset.s.sol:ResetSwitch "${SEND[@]}" ;;
+  # policyBaseline: the vault's policyVersion once the set is complete = "policy v1" (docs/spec/CONTRACTS.md section 9)
+  baseline) python3 "$ROOT/infra/l1/set_baseline.py" "${DEPLOYMENTS_OUT:-$ROOT/Backend/deployments/$NETWORK-l1.json}" "$RPC_URL" ;;
   verify-seed) forge script script/VerifySeed.s.sol:VerifySeed "${READ[@]}" ;;
   verify-handover)
     DEPLOYER_ADDRESS="$(cast wallet address "$DEPLOYER_PK")" forge script script/VerifyHandover.s.sol:VerifyHandover "${READ[@]}"

@@ -7,6 +7,7 @@ import { useDemoReset } from "../../hooks/useDemoReset";
 import { useUiStore } from "../../store/uiStore";
 import { Button, Kbd, StatusDot, Tooltip, cn } from "../ui";
 import { fmtDisplay, toBase } from "../../lib/format";
+import { policyLabel } from "../../lib/policy";
 
 function LiveReplayToggle() {
   const mode = useUiStore((s) => s.mode);
@@ -50,7 +51,7 @@ export function TopBar() {
         </Tooltip>
         <Tooltip content="Phiên bản chính sách hiện hành">
           <span tabIndex={0} className="rounded-full border border-brand/40 bg-brand-soft px-3 py-1.5 text-xs font-bold text-[#cfc9ff]">
-            <AnimatePresence mode="popLayout"><motion.span key={h?.policyVersion} className="inline-block tnum" initial={{ scale: 1.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>policy v{h?.policyVersion ?? "…"}</motion.span></AnimatePresence>
+            <AnimatePresence mode="popLayout"><motion.span key={policyLabel(h)} className="inline-block tnum" initial={{ scale: 1.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>policy v{policyLabel(h) ?? "…"}</motion.span></AnimatePresence>
           </span>
         </Tooltip>
         <LiveReplayToggle />

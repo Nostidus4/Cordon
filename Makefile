@@ -1,4 +1,4 @@
-.PHONY: conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-local-env l1-local-bootstrap l1-local-checks
+.PHONY: conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
 
 API_URL ?= http://localhost:8000
 
@@ -30,8 +30,10 @@ docker-up:
 docker-down:
 	docker compose down
 
+# Start of scene 1. sim API: POST /api/demo/reset. l1 API (running local Guardian L1): redeploy the contract set,
+# re-seed policy v1, then the API reloads (infra/l1/demo-reset.sh, OPS-003). NETWORK=fuji needs I_UNDERSTAND=fuji.
 demo-reset:
-	curl -fsS -X POST $(API_URL)/api/demo/reset
+	NETWORK=$(NETWORK) API_URL=$(API_URL) bash infra/l1/demo-reset.sh
 
 demo-scene4:
 	cd Backend && uv run guardian-attacker scene4 --step all --simulate-lock
@@ -96,7 +98,11 @@ l1-policy-v2:
 
 # Deploy, seed policy v1, hand the precompile admin to the Council: run on a FRESH chain only.
 deploy-contracts: l1-deploy
-	$(MAKE) l1-seed l1-handover
+	$(MAKE) l1-seed l1-handover l1-baseline
+
+# Records `policyBaseline` (the vault's policyVersion after seed + handover) in the deployments file: label v1.
+l1-baseline:
+	NETWORK=$(NETWORK) bash infra/l1/contracts.sh baseline
 
 # Fails if the deployer still has a role or power (T15), reads the real precompiles.
 verify-handover:

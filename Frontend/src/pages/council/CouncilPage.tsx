@@ -10,6 +10,7 @@ import { MemberList } from "./MemberList";
 import { PauseAllButton } from "./PauseAllButton";
 import { Principle } from "./Principle";
 import { useDevAutoplay } from "../incident/devAutoplay";
+import { policyLabel } from "../../lib/policy";
 
 function VaultStatus() {
   const { data: org } = useOrg();
@@ -28,7 +29,7 @@ function VaultStatus() {
           {paused ? <StatusChip status="bad">Đã dừng · mọi thẻ ngừng chi</StatusChip> : <StatusChip status="ok">Đang hoạt động</StatusChip>}
           <span className="text-[12.5px] text-muted">tUSDC trong kho <Money value={org?.vault.usdc} size="sm" className="ml-1" /></span>
           <span className="text-[12.5px] text-muted">tTKB <Money value={org?.vault.tkb} size="sm" className="ml-1" /></span>
-          <span className="text-[12.5px] text-muted">chính sách <b className="text-text">v{health?.policyVersion ?? "…"}</b></span>
+          <span className="text-[12.5px] text-muted">chính sách <b className="text-text">v{policyLabel(health) ?? "…"}</b></span>
         </div>
         <p className="mt-1 text-[11.5px] text-faint">{paused ? "Mở lại kho là hành động nới: cần 2/3 thành viên." : "Dừng kho chỉ cần một thành viên; mở lại cần 2/3."}</p>
       </div>

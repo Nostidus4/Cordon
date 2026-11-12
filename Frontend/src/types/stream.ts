@@ -8,7 +8,7 @@ import type { ChainEvent } from "./event";
 export type StreamMessage =
   | { type: "event"; data: ChainEvent }
   | { type: "attempt"; data: Attempt }
-  | { type: "graph_updated"; data: { version: number; policyVersion: number; block: number } }
+  | { type: "graph_updated"; data: { version: number; policyVersion: number; policyLabel?: number; block: number } }
   | { type: "proposal_updated"; data: { proposalId: number; status: ProposalStatus; approvals: number } }
   | { type: "agent_run"; data: AgentRun }
   | { type: "city_updated"; data: CityStates }

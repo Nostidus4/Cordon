@@ -35,6 +35,7 @@ class GraphDistrict(CamelModel):
 class GraphSnapshot(CamelModel):
     version: int
     policy_version: int
+    policy_label: int
     block: int
     nodes: list[GraphNode]
     edges: list[GraphEdge]

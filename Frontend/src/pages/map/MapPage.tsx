@@ -16,6 +16,7 @@ import type { Finding } from "../../types";
 import { FindingsMini } from "./FindingsMini";
 import { NodeDetailPanel, PANEL_W } from "./NodeDetailPanel";
 import { YouThinkBox } from "./YouThinkBox";
+import { policyLabel } from "../../lib/policy";
 
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
 
@@ -49,13 +50,13 @@ export default function MapPage() {
   const [change, setChange] = useState<{ from: number; to: number } | null>(null);
   useEffect(() => {
     if (!graph) return;
-    if (prevPolicy.current !== null && graph.policyVersion !== prevPolicy.current) {
-      setChange({ from: prevPolicy.current, to: graph.policyVersion });
+    if (prevPolicy.current !== null && policyLabel(graph) !== prevPolicy.current) {
+      setChange({ from: prevPolicy.current, to: policyLabel(graph) ?? prevPolicy.current });
       const t = setTimeout(() => setChange(null), 6000);
-      prevPolicy.current = graph.policyVersion;
+      prevPolicy.current = policyLabel(graph) ?? null;
       return () => clearTimeout(t);
     }
-    prevPolicy.current = graph.policyVersion;
+    prevPolicy.current = policyLabel(graph) ?? null;
   }, [graph]);
 
   const draft = useCallback(async (f: Finding) => {

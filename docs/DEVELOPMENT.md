@@ -25,9 +25,19 @@ Default is `CHAIN_MODE=sim` (in-memory chain, no setup). To run the API on a Gua
 
 Other targets: `make l1-policy-v2` (policy v2 through the Council), `make l1-local-checks` (T15 and T8 against the real precompiles; run `l1-policy-v2` first), `make l1-deploy|l1-seed|l1-handover` (single steps), `make verify-handover`. `NETWORK=fuji I_UNDERSTAND=fuji make deploy-contracts` targets Fuji and needs `RPC_URL`, `DEPLOYER_PK`, `SEED_FILE`, `TOP_UP_OPERATOR`, `L1_KEY_COUNCIL_TRANG|LAN|HUY` in the environment (see `infra/l1/contracts.sh`); it writes `Backend/deployments/fuji-l1.json` and has not been run (no funded Fuji key, no Fuji L1 yet).
 
-Seeding goes through real Council proposals, so the vault's `policyVersion` is not 1 on a real deployment: it is 4 after the bootstrap (1 + two seed proposals + the top-up operator proposal) and one more after policy v2. The sim and the anvil tests still start at 1.
+Seeding goes through real Council proposals, so the vault's `policyVersion` is not 1 on a real deployment: it is 4 after the bootstrap (1 + two seed proposals + the top-up operator proposal) and one more after policy v2. The sim and the anvil tests still start at 1. The deployments file records that number as `policyBaseline` (`make l1-baseline`, part of `deploy-contracts`) and the API sends `policyLabel = policyVersion - policyBaseline + 1`, which is what the UI shows (v1 at the start, v2 after the merge).
 
-The anvil suites (`uv run pytest tests/chain_l1 tests/conformance`, need Foundry; they skip without it) keep running in CI. Startup errors name the missing variable or file; `DEMO_MODE` is refused on a chain id outside `DEMO_CHAIN_IDS` (default anvil 31337 and local L1 424242). `POST /api/demo/reset` answers 409 on L1. Details: `docs/modules/chain-adapter/README.md`.
+### Demo reset on the L1 (`make demo-reset`)
+With the API running on a bootstrapped L1 (`API_URL=http://127.0.0.1:8100 make demo-reset`; `NETWORK=local` is the default), `infra/l1/demo-reset.sh` redeploys the contract set (the vault keeps its counters per UTC day, so the old one cannot be reset) and then calls `POST /api/demo/reset`, which reloads the new deployment without a restart:
+
+1. `ResetOpen`: after the handover the deployer has no role, so the OLD Council enables it (`setEnabled` on both AllowLists, 2-of-3 proposal).
+2. `Deploy` and `Seed`: fresh tokens, DEXes, Registry, Vault, Council; policy v1 through Council proposals; 200.000 tUSDC. Written to `Backend/deployments/<network>-l1.json.next`.
+3. `ResetSwitch`: the OLD Council enables every key the previous run locked (one proposal per district, approved by members with no stake in it), then hands both precompiles to the NEW Council and drops its own role (`setAdmin(new)` x2 and `setNone(old)` x2 in one proposal); the deployer moves the token minters to the new Council; the NEW Council moves the top-up operator to the ops key and removes the deployer from both lists; filler proposals (proposed and cancelled) bring the new Council's counter to 11, so request #12 gets id 12.
+4. `VerifySeed`, `VerifyHandover`, a check that the old Council has no role left, `policyBaseline`, atomic rename of the file, `POST /api/demo/reset`.
+
+Each phase is timed in the output; a failed run leaves the live file untouched, and a run that died after the switch resumes from the `.next` file. `NETWORK=fuji I_UNDERSTAND=fuji make demo-reset` uses the same steps with the variables listed in `infra/l1/contracts.sh`; it has not been run. The old Council can hand over the precompiles only because `GuardianCouncil` accepts `setAdmin(successor)` to a contract other than itself (never to an externally owned account).
+
+The anvil suites (`uv run pytest tests/chain_l1 tests/conformance`, need Foundry; they skip without it) keep running in CI. Startup errors name the missing variable or file; `DEMO_MODE` is refused on a chain id outside `DEMO_CHAIN_IDS` (default anvil 31337 and local L1 424242). `POST /api/demo/reset` on L1 reloads the deployment that `make demo-reset` just wrote (below). Details: `docs/modules/chain-adapter/README.md`.
 
 ## Test / lint / build
     make test

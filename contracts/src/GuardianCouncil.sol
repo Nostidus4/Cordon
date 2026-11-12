@@ -302,10 +302,21 @@ contract GuardianCouncil is IGuardianCouncil {
                 || sel == IPolicyVault.setTokenAllowed.selector || sel == IPolicyVault.setProtocolAllowed.selector
                 || sel == IPolicyVault.setRecipientAllowed.selector || sel == IPolicyVault.setTopUpOperator.selector;
         } else {
-            // never `setAdmin`/`setManager`: the Council keeps the precompile admin role for itself
-            known = sel == IAllowList.setEnabled.selector || sel == IAllowList.setNone.selector;
+            // never `setManager`, and `setAdmin` only to another contract (a successor Council, OPS-003 demo-reset):
+            // an externally owned account can never become precompile admin through a proposal
+            known = sel == IAllowList.setEnabled.selector || sel == IAllowList.setNone.selector
+                || _isAdminHandover(sel, c.data);
         }
         if (!known) revert UnknownCall();
+    }
+
+    /// @dev `setAdmin(successor)` is allowed only when `successor` is a contract other than this Council. Calldata of
+    ///      the wrong length is `BadCallArgs`; an externally owned account or this Council is `UnknownCall`.
+    function _isAdminHandover(bytes4 sel, bytes calldata data) private view returns (bool) {
+        if (sel != IAllowList.setAdmin.selector) return false;
+        if (data.length != 36) revert BadCallArgs();
+        address next = abi.decode(data[4:], (address));
+        return next != address(this) && next.code.length != 0;
     }
 
     // ------------------------------------------------ affected-principal derivation

@@ -9,6 +9,7 @@ import { useChanged } from "../data";
 import { decimalsOf, parseProtocol, policySnapshot } from "../policyState";
 import { Info } from "lucide-react";
 import { CapBar, Chip, Empty, big } from "../ui";
+import { policyLabel } from "../../../lib/policy";
 
 const KIND: Record<string, { label: string; t: "ok" | "info" | "violet"; Icon: typeof User }> = {
   HUMAN: { label: "Người", t: "info", Icon: User }, AGENT: { label: "Trợ lý AI", t: "violet", Icon: Bot }, SERVICE: { label: "Phần mềm", t: "ok", Icon: Cog },
@@ -45,7 +46,7 @@ export function PolicyState() {
           <h2 id="chinh-sach-t" className="sx-title">Chính sách trong vault</h2>
           <p className="sx-sub">Trạng thái vault đang giữ ngay lúc này; ô vừa đổi sẽ sáng vàng vài giây.</p>
         </div>
-        <span className="tnum" style={{ fontFamily: "var(--font-toy)", fontWeight: 800, fontSize: 28, lineHeight: 1 }}>v{graph?.policyVersion ?? health?.policyVersion ?? "…"}<span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-2)", marginLeft: 6 }}>phiên bản chính sách</span></span>
+        <span className="tnum" style={{ fontFamily: "var(--font-toy)", fontWeight: 800, fontSize: 28, lineHeight: 1 }}>v{policyLabel(graph) ?? policyLabel(health) ?? "…"}<span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-2)", marginLeft: 6 }}>phiên bản chính sách</span></span>
       </header>
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
         <Stat cls={f("vault:paused")} k="Vault" v={paused ? "Đã dừng" : "Đang chạy"} tone={paused ? "bad" : "ok"} s={paused ? "mọi pay/swap bị revert" : undefined} />

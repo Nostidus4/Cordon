@@ -18,5 +18,6 @@ class HealthOut(CamelModel):
     c_chain_block: int | None = None
     indexer_lag_blocks: int
     policy_version: int
+    policy_label: int
     graph_version: int
     agent: AgentStatus

@@ -98,7 +98,7 @@ def compute_city_states(rt: Runtime) -> dict[str, Any]:
         p = max(executed, key=lambda x: x.executed_at or 0)
         result["B01"] = _b(
             "recovery",
-            f"Đề xuất #{p.id} vừa được thực hiện, chính sách v{snap.policy_version}.",
+            f"Đề xuất #{p.id} vừa được thực hiện, chính sách v{snap.policy_label}.",
             _ev("txHash", p.executed_tx_hash),
             _ev("proposalId", p.id),
         )
@@ -249,5 +249,6 @@ def compute_city_states(rt: Runtime) -> dict[str, Any]:
         ],
         "updatedAt": now,
         "policyVersion": snap.policy_version,
+        "policyLabel": snap.policy_label,
         "graphVersion": rt.graph_version,
     }

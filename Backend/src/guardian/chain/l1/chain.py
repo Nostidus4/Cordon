@@ -329,6 +329,7 @@ class L1Chain(L1Writes):
             recipients=self._recipients(at),
             protocols=self._protocols(at),
             tokens=tokens,
+            policy_baseline=self.dep.policy_baseline,
         )
 
     def _council(self, at: dict[str, int]) -> list[CouncilMember]:

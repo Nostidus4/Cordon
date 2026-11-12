@@ -17,6 +17,7 @@ def org(rt: Runtime) -> dict[str, Any]:
         "name": seed["org"]["name"],
         "fictional": True,
         "policyVersion": snap.policy_version,
+        "policyLabel": snap.policy_label,
         "mainTreasury": {
             "balance": views.mny(snap.main_treasury),
             "label": "Quỹ chính (Safe, C-Chain)",
@@ -53,6 +54,7 @@ def health(rt: Runtime) -> dict[str, Any]:
         "cChainBlock": None,
         "indexerLagBlocks": _indexer_lag(rt),
         "policyVersion": snap.policy_version,
+        "policyLabel": snap.policy_label,
         "graphVersion": rt.graph_version,
         "agent": {
             "status": "idle" if runs else "never_run",

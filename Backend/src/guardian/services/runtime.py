@@ -195,6 +195,29 @@ class Runtime:
         self._live = True
         self.indexer.start()
 
+    def reload_deployment(self) -> None:
+        """L1 only (demo-reset, OPS-003): switch to the deployment the deployments file holds NOW, no restart.
+
+        Builds the new `L1Chain` first (a bad file raises before anything is touched), then stops the old
+        indexer, swaps the chain and starts a new indexer at the new deployment block. `event_log` is kept:
+        the events of the old deployments stay in the store (spec 14.2 "keep events"); the new deployment's
+        events are appended after the backfill, which is recorded, not streamed."""
+        from guardian.chain.l1.startup import build_l1_chain
+
+        new_chain = build_l1_chain(self.settings)
+        ensure_test_chain(self.settings, int(new_chain.w3.eth.chain_id))
+        if self.indexer is not None:
+            self.indexer.stop()
+            self.indexer = None
+        old = self.chain
+        self._live = False
+        self.chain = new_chain
+        self._last_city = None
+        close = getattr(old, "close", None)
+        if close is not None:
+            close()
+        self._start_indexer()
+
     # ------------------------------------------------------------------ lifecycle
     def bind_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
         self.bus.bind_loop(loop)
@@ -269,6 +292,7 @@ class Runtime:
                 {
                     "graphVersion": self.graph_version,
                     "policyVersion": snap.policy_version,
+                    "policyLabel": snap.policy_label,
                     "block": snap.block,
                 },
             )

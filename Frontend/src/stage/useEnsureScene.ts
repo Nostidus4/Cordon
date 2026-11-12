@@ -4,6 +4,7 @@ import { useGraph } from "../hooks/useGraph";
 import { useProposals } from "../hooks/useProposals";
 import type { SceneId } from "./contract";
 import { ensureV2, isReady, PREREQ } from "./ensure";
+import { policyLabel } from "../lib/policy";
 
 /** Makes the demo state match the scene on entry. `preparing` is true while that runs (show "Đang chuẩn bị cảnh…"). */
 export function useEnsureScene(scene: SceneId | null): { preparing: boolean } {
@@ -12,7 +13,7 @@ export function useEnsureScene(scene: SceneId | null): { preparing: boolean } {
   const { data: proposals } = useProposals();
   const [busy, setBusy] = useState(false);
   const loaded = !!graph && !!proposals;
-  const ready = !!scene && loaded && isReady(scene, graph?.policyVersion, !!proposals?.some((p) => p.id === 12) && !!proposals?.some((p) => p.id === 13));
+  const ready = !!scene && loaded && isReady(scene, policyLabel(graph), !!proposals?.some((p) => p.id === 12) && !!proposals?.some((p) => p.id === 13));
   const needs = !!scene && PREREQ[scene] === "v2" && loaded && !ready;
   useEffect(() => {
     if (!needs) return;
