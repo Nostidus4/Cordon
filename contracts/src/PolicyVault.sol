@@ -17,8 +17,10 @@ import {IPrincipalRegistry} from "./interfaces/IPrincipalRegistry.sol";
 ///      any external call; both spend functions are `nonReentrant`. `dayIndex = block.timestamp / 1 days` (UTC).
 ///      Spend value is in tUSDC base units: `amount` for tUSDC, otherwise `quoteDex.quote(token, tUSDC, amount)`.
 ///      Admin functions are Council-only; whether a change tightens or loosens is the Council's business.
-///      Only the setters needed to drive the spend path were exercised in CTR-004; CTR-005 owns the full admin
-///      semantics and tests (lock, pause, `recordTopUp`, ...).
+///      Tighten/loosen classification is exposed as views (`isTighteningCap`, `isTighteningAllow`) so the Council
+///      (CTR-006) can route a change to the 1-member or the 2/3 path; the vault never enforces it. These helpers are
+///      not part of the frozen `IPolicyVault` ABI. Always tightening: `lockPrincipal`, `pauseAll`. Always
+///      loosening: `unlockPrincipal`, `unpauseAll`, `setTopUpOperator`.
 contract PolicyVault is IPolicyVault, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -176,6 +178,30 @@ contract PolicyVault is IPolicyVault, ReentrancyGuard {
     function setTopUpOperator(address newOperator) external onlyCouncil {
         emit TopUpOperatorChanged(topUpOperator, newOperator);
         topUpOperator = newOperator;
+    }
+
+    // ------------------------------------------- tighten/loosen classification
+
+    /// @notice Would `setKeyDailyCap` / `setPrincipalDailyCap(subject, newCap)` tighten the current policy?
+    /// @dev `kind` 0 = key (`subject` is the address left-padded), 1 = principal; other kinds are not tightening.
+    ///      Lowering a cap is tightening. Raising it is loosening, and so is setting a principal cap to 0
+    ///      (0 = unset = unlimited). Setting a cap on a district with none (`old == 0`) is tightening, as in the sim.
+    ///      A key with cap 0 cannot spend at all, so any increase there is loosening.
+    function isTighteningCap(uint8 kind, bytes32 subject, uint256 newCap) external view returns (bool) {
+        if (kind == 1) {
+            if (newCap == 0) return false;
+            uint256 old = principalDailyCap[subject];
+            return old == 0 || newCap < old;
+        }
+        if (kind == 0) return newCap < keyDailyCap[address(uint160(uint256(subject)))];
+        return false;
+    }
+
+    /// @notice Would setting an allow entry to `allowed` tighten the policy? Removing an entry is tightening, adding
+    ///         is loosening. Mirrors the sim (`not allowed`), so removing an entry that is already absent counts as
+    ///         tightening (it cannot widen anything).
+    function isTighteningAllow(uint8, bytes32, bytes4, bool allowed) external pure returns (bool) {
+        return !allowed;
     }
 
     // ------------------------------------------------------------ internals
