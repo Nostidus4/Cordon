@@ -390,12 +390,18 @@ class SimChain:
         if fn in ("setKeyDailyCap", "setPrincipalDailyCap"):
             if fn == "setKeyDailyCap":
                 old = v.key_cap.get(self._addr(a["key"]), 0)
+                new = a["cap"]
+                # For keys: old cap of 0 means no spending power, so raising it is loosening.
+                # Tightening only when new < old (matches PolicyVault.isTighteningCap kind=0).
+                return new < old
             else:
                 old = v.principal_cap.get(a["principal_id"], 0)
-            new = a["cap"]
-            if new == 0:  # 0 = not set = unlimited: never a tightening
-                return False
-            return old == 0 or new < old
+                new = a["cap"]
+                # For districts: 0 means unset/unlimited. Tightening if new > 0 and (old == 0 or new < old).
+                # Matches PolicyVault.isTighteningCap kind=1.
+                if new == 0:  # 0 = not set = unlimited: never a tightening
+                    return False
+                return old == 0 or new < old
         return False
 
     def _direct(self, member: str, call: dict[str, Any]) -> TxResult:

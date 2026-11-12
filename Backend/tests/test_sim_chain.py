@@ -414,3 +414,87 @@ def test_scene4_end_to_end_on_policy_v2():
         "Paid",
         "Paid",
     ]
+
+
+def test_key_cap_zero_to_positive_is_loosening():
+    """Raising a key cap from 0 (no spending power) is loosening, requires 2/3 path.
+
+    Regression test for: https://github.com/Nostidus4/Cordon/issues/44
+    A key cap of 0 means the key cannot spend at all. Raising it grants spending power,
+    so it should be classified as loosening (not tightening). The 1-member path should reject it.
+    """
+    c = mk()
+    k = c._addr("key_minh")
+    # First, lower the cap to 0 via 1-member path (tightening)
+    r = c.lower_key_cap("huy", k, 0)
+    assert r.status == "ok" and r.reason_code is None
+    assert c.snapshot().keys[k].daily_cap == 0
+
+    # Now attempt to raise it from 0 via 1-member path (should fail with NeedsThreshold)
+    r = c.lower_key_cap("huy", k, u(10_000))  # This internal API is for tightening only
+    assert r.status == "reverted" and r.error_raw == "NeedsThreshold"
+    # Try via direct_call with the symbolic API
+    r = c.direct_call(
+        "huy",
+        {"target": "vault", "fn": "setKeyDailyCap", "args": {"key": "key_minh", "cap": u(10_000)}},
+    )
+    assert r.status == "reverted" and r.error_raw == "NeedsThreshold"
+    # Raising via proposal (2/3 path) should work
+    pid = c.propose(
+        "trang",
+        "raise key cap from zero",
+        None,
+        [
+            {
+                "target": "vault",
+                "fn": "setKeyDailyCap",
+                "args": {"key": "key_minh", "cap": u(10_000)},
+            }
+        ],
+        "0x00",
+    )
+    assert c.approve("trang", pid).status == "ok"
+    assert c.approve("lan", pid).status == "ok"
+    assert c.snapshot().keys[k].daily_cap == u(10_000)
+
+
+def test_key_cap_positive_to_lower_is_tightening():
+    """Lowering a key cap is tightening, works via 1-member path."""
+    c = mk()
+    k = c._addr("key_minh")
+    # Set initial cap via proposal
+    pid = c.propose(
+        "trang",
+        "set key cap",
+        None,
+        [
+            {
+                "target": "vault",
+                "fn": "setKeyDailyCap",
+                "args": {"key": "key_minh", "cap": u(10_000)},
+            }
+        ],
+        "0x00",
+    )
+    c.approve("trang", pid)
+    c.approve("lan", pid)
+    assert c.snapshot().keys[k].daily_cap == u(10_000)
+    # Now lower it via 1-member path (should work)
+    r = c.lower_key_cap("huy", k, u(5_000))
+    assert r.status == "ok" and r.reason_code is None
+    assert c.snapshot().keys[k].daily_cap == u(5_000)
+
+
+def test_district_cap_zero_to_positive_is_still_tightening():
+    """Setting a district cap from 0 (unset) to any positive value is tightening.
+
+    For districts, 0 means "no cap" (unlimited). Setting any cap is a restriction.
+    This rule should remain unchanged after the key-cap fix.
+    """
+    c = mk()
+    # All districts start with cap = 0
+    assert c.snapshot().principals["minh"].daily_cap == 0
+    # Setting a cap from 0 is tightening, works via 1-member path
+    r = c.lower_district_cap("trang", "minh", u(5_000))
+    assert r.status == "ok" and r.reason_code is None
+    assert c.snapshot().principals["minh"].daily_cap == u(5_000)
