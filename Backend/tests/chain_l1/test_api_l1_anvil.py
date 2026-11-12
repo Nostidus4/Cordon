@@ -125,8 +125,15 @@ async def test_reset_on_l1_reloads_the_new_deployment(
     assert (await c.get("/api/attempts")).json() == []
     assert len(rt.event_log) >= events_before  # events of the old deployment are kept
     proposals = (await c.get("/api/proposals")).json()
-    assert [x["id"] for x in proposals] == [r["seededProposalId"]]
-    assert proposals[0]["reportBasis"] == "policy_v2_reference"
+    r12 = r["seededProposalId"]
+    assert [x["id"] for x in proposals] == [
+        r12 + 1,
+        r12,
+    ]  # #12 and, right after it, #13 (move to huy)
+    assert proposals[1]["reportBasis"] == "policy_v2_reference"
+    assert proposals[0]["subjectPrincipal"] == "huy" and proposals[0]["conflictedMembers"] == [
+        "huy"
+    ]
     # a second reset right after the first also works
     again = await post(c, "/api/demo/reset")
     assert again["status"] == "ok"

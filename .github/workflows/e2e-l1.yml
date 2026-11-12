@@ -1,0 +1,35 @@
+name: E2E on the local Guardian L1
+
+# Manual only: the Avalanche CLI downloads avalanchego + Subnet-EVM and boots a local network (~10 min), too heavy for
+# every push. The same scene body runs on the sim in the regular `backend` job (Backend/tests/e2e/test_scene_all.py).
+# Local network, public test keys only: this workflow never touches Fuji or a funded key.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-l1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - run: uv python install 3.12
+      - run: contracts/scripts/install-deps.sh
+      - run: uv sync
+        working-directory: Backend
+      - name: Install the Avalanche CLI
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh | sh -s
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Scenes 1-5 on the real L1, twice with demo-reset between (make e2e-l1)
+        run: E2E_TEARDOWN=1 make e2e-l1
+      - name: Stop the local network
+        if: always()
+        run: make l1-local-down || true
