@@ -13,6 +13,7 @@ from guardian.services import proposal_service as ps
 from guardian.services.runtime import Runtime
 
 REQUEST_PROPOSER = "trang"
+REQUEST_13_TITLE = "Giao Trợ lý Cân đối cho khu anh Huy"
 log = logging.getLogger("guardian.demo_reset")
 
 
@@ -81,6 +82,7 @@ def _seed_request_12(rt: Runtime) -> None:
         snap=ps.reference_v2_snapshot(),
         report_basis="policy_v2_reference",
     )
+    seed_request_13(rt)
 
 
 def _seed_request_12_l1(rt: Runtime) -> int | None:
@@ -103,6 +105,33 @@ def _seed_request_12_l1(rt: Runtime) -> int | None:
         return None
     if out["id"] != r12["id"]:
         log.warning("request #12 got proposal id %s (Council counter was not 11)", out["id"])
+    seed_request_13(rt)
+    return int(out["id"])
+
+
+def seed_request_13(rt: Runtime) -> int | None:
+    """Request #13 (scene 5, sim and L1; seeded right after #12, so the merge of scene 3 is #14): hand the rebalance agent's key to `huy`. The proposal declares subject `huy`, so the
+    Council member bound to that district (Huy) is conflicted on the contract (ConflictOfInterest) and in the API.
+    Skipped when a proposal for the same change is already stored; a failure is logged, never raised."""
+    try:
+        key = rt.key_by_seed("key_agent_rebalance").address
+        if any(
+            p.change.get("kind") == "move_key"
+            and p.change.get("to") == "huy"
+            and p.change.get("key") == key
+            for p in rt.stores.proposals.values()
+        ):
+            return None
+        out = ps.propose(
+            rt,
+            REQUEST_PROPOSER,
+            None,
+            {"kind": "move_key", "key": key, "to": "huy"},
+            REQUEST_13_TITLE,
+        )
+    except Exception:
+        log.exception("could not seed request #13 on the new Council")
+        return None
     return int(out["id"])
 
 
@@ -116,4 +145,5 @@ def apply_policy_v2(rt: Runtime) -> dict[str, Any]:
     out = ps.propose(rt, "lan", fid, None)
     for m in ("lan", "trang"):
         out = ps.approve(rt, out["id"], m)
+    seed_request_13(rt)  # no-op when reset already created it
     return out

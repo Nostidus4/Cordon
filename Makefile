@@ -1,4 +1,4 @@
-.PHONY: conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
+.PHONY: e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
 
 API_URL ?= http://localhost:8000
 
@@ -41,6 +41,14 @@ demo-scene4:
 blender-rebuild:
 	@test -x Blender/scripts/rebuild.sh || { echo "Blender/scripts/rebuild.sh not found"; exit 1; }
 	bash Blender/scripts/rebuild.sh
+
+# Scenes 1-5 end to end through the API: `e2e` on the sim (also part of the normal pytest run), `e2e-l1` on the REAL
+# local Guardian L1 (reuses or bootstraps it, runs demo-reset + all scenes twice, ~8 min cold; docs/DEVELOPMENT.md).
+e2e:
+	cd Backend && uv run pytest tests/e2e -q
+
+e2e-l1:
+	bash infra/l1/e2e-l1.sh
 
 # ChainPort conformance (sim + L1 on anvil) and the CHAIN_MODE=l1 API e2e; the l1 half needs Foundry
 conformance: contracts-build
