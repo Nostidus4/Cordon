@@ -2,7 +2,7 @@
 
 `snapshot()` reads every value at one pinned block, so the snapshot is internally consistent.
 `events_since(block)` decodes registry, vault, Council and Tx AllowList logs. `subscribe()` polls.
-Write methods (spend, dry-run, Council) belong to CHN-002 and raise `NotImplementedError`.
+Write methods (spend, dry-run, Council, receipts, error mapping) live in `writes.py` (CHN-002).
 
 What the chain cannot give (labels, seed ids, declared edges, the C-Chain treasury) comes from the
 optional seed metadata, matched by address; anything missing falls back to on-chain data.
@@ -25,6 +25,8 @@ from guardian.chain.base import ChainEvent
 from guardian.chain.client import ChainReadError, make_web3
 from guardian.chain.l1.deployments import Deployments, load_deployments
 from guardian.chain.l1.events import EventDecoder, bytes32_to_id
+from guardian.chain.l1.signers import SignerRegistry, signer_env
+from guardian.chain.l1.writes import L1Writes
 from guardian.domain.snapshot import (
     CouncilMember,
     DeclaredEdge,
@@ -35,7 +37,6 @@ from guardian.domain.snapshot import (
     Recipient,
     Token,
 )
-from guardian.shared.reason_codes import ReasonCode
 
 log = logging.getLogger(__name__)
 
@@ -45,29 +46,23 @@ MAX_COUNCIL_MEMBERS = 16
 ZERO_SELECTOR = "0x00000000"
 # Seed protocol seed_id -> Deployments attribute holding its deployed address.
 DEX_SEED_IDS = {"mock_dex": "mock_dex", "evil_dex": "evil_dex"}
-WRITE_MSG = (
-    "L1Chain is read-only in CHN-001 (snapshot, events_since, subscribe). "
-    "Sending transactions is CHN-002 (#27)."
-)
 
 
-def _write_unavailable(*_: Any, **__: Any) -> Any:
-    raise NotImplementedError(WRITE_MSG)
-
-
-class L1Chain:
+class L1Chain(L1Writes):
     def __init__(
         self,
         w3: Web3,
         deployments: Deployments,
         seed: dict[str, Any] | None = None,
         *,
+        signers: SignerRegistry | None = None,
         poll_interval: float = 2.0,
         log_chunk: int = 2000,
     ):
         self.w3 = w3
         self.dep = deployments
         self._seed = seed or {}
+        self.signers = signers or SignerRegistry()
         self._poll_interval = poll_interval
         self._log_chunk = log_chunk
         c = cx.bind(w3, deployments.registry, deployments.vault, deployments.council)
@@ -98,6 +93,7 @@ class L1Chain:
         self._sub_lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._init_writes()
 
     @classmethod
     def from_settings(cls, settings: Any, seed: dict[str, Any] | None = None) -> L1Chain:
@@ -111,7 +107,13 @@ class L1Chain:
             raise ChainReadError(
                 f"RPC chain id {w3.eth.chain_id} != deployments chainId {dep.chain_id}"
             )
-        return cls(w3, dep, seed, poll_interval=settings.l1_poll_interval_seconds)
+        return cls(
+            w3,
+            dep,
+            seed,
+            signers=SignerRegistry.from_env(seed, signer_env()),
+            poll_interval=settings.l1_poll_interval_seconds,
+        )
 
     # ------------------------------------------------------------------ logs
     def _block_ts(self, cache: dict[int, int], number: int) -> int:
@@ -352,14 +354,3 @@ class L1Chain:
             allowed = bool(vault.tokenAllowed(addr).call(block_identifier=head))
             out.append(Token(addr, symbol, decimals, allowed))
         return out
-
-    # ------------------------------------------------- writes: CHN-002 (#27)
-    pay = swap = raw_call = _write_unavailable
-    emergency_lock = emergency_pause = lower_key_cap = lower_district_cap = _write_unavailable
-    revoke_allow = deactivate_key = propose = approve = cancel = _write_unavailable
-
-    def simulate_pay(self, *a: Any, **k: Any) -> ReasonCode | None:
-        raise NotImplementedError(WRITE_MSG)
-
-    def simulate_swap(self, *a: Any, **k: Any) -> ReasonCode | None:
-        raise NotImplementedError(WRITE_MSG)

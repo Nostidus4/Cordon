@@ -5,7 +5,6 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-import pytest
 from eth_utils import keccak
 
 from guardian.chain.l1 import L1Chain
@@ -120,17 +119,17 @@ def test_admin_events_are_normalised(env: Env) -> None:
     before = int(env.w3.eth.block_number)
     vault = env.vault
     key_minh = env.seed["keys"][0]["address"]
-    data = [
-        vault.encode_abi("setKeyDailyCap", args=[key_minh, 10_000_000_000]),
-        vault.encode_abi("setPrincipalDailyCap", args=[pid32("minh"), 30_000_000_000]),
-        vault.encode_abi("setProtocolAllowed", args=[env.evil_dex.address, SWAP_SELECTOR, True]),
-        vault.encode_abi("setRecipientAllowed", args=[env.seed["recipients"][3]["address"], True]),
-        vault.encode_abi("lockPrincipal", args=[pid32("minh")]),
-        vault.encode_abi("pauseAll", args=[]),
-        vault.encode_abi("bumpPolicyVersion", args=[]),
+    calls = [
+        ("setKeyDailyCap", [key_minh, 10_000_000_000]),
+        ("setPrincipalDailyCap", [pid32("minh"), 30_000_000_000]),
+        ("setProtocolAllowed", [env.evil_dex.address, SWAP_SELECTOR, True]),
+        ("setRecipientAllowed", [env.seed["recipients"][3]["address"], True]),
+        ("lockPrincipal", [pid32("minh")]),
+        ("pauseAll", []),
+        ("bumpPolicyVersion", []),
     ]
-    for d in data:
-        env.send(env.council_stub.functions.forward(vault.address, d), env.admin)
+    for fn, args in calls:
+        env.council_call(vault, fn, *args)
 
     evs = chain.events_since(before)
     assert [e.name for e in evs] == [
@@ -183,8 +182,3 @@ def test_poll_once_returns_only_new_blocks(env: Env) -> None:
     _swap(env, 1_000_000)
     new_last, evs = chain.poll_once(last)
     assert new_last > last and [e.name for e in evs] == ["Swapped"]
-
-
-def test_write_methods_are_not_part_of_chn_001(env: Env) -> None:
-    with pytest.raises(NotImplementedError, match="CHN-002"):
-        _l1(env).pay("key_minh", "tUSDC", "vendor_cloud", 1)

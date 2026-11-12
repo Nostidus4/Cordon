@@ -6,8 +6,19 @@ import subprocess
 from collections.abc import Iterator
 
 import pytest
+from web3 import Web3
 
-from tests.chain_l1.anvil_env import OUT, REPO, Anvil, Env, deploy_may_labs, find_binary
+from guardian.chain.l1 import L1Chain
+from guardian.chain.l1.signers import NodeSigner, SignerRegistry
+from tests.chain_l1.anvil_env import (
+    OUT,
+    REPO,
+    AllowListEnforcingProvider,
+    Anvil,
+    Env,
+    deploy_may_labs,
+    find_binary,
+)
 
 SKIP_MSG = (
     "Foundry is not installed (needs `anvil` and `forge`, see https://getfoundry.sh); "
@@ -39,3 +50,18 @@ def env(anvil_binary: str, built_contracts: None) -> Iterator[Env]:
         yield deploy_may_labs(node)
     finally:
         node.stop()
+
+
+@pytest.fixture
+def l1(env: Env) -> Iterator[L1Chain]:
+    """`L1Chain` on the seeded anvil with write access: every seed key and Council member is a
+    node-held (impersonated) signer, and sends from a role-0 address get the node's rejection."""
+    env.fund_and_impersonate_all()
+    w3 = Web3(AllowListEnforcingProvider(env.anvil.url))
+    seed = env.seed
+    signers = SignerRegistry([NodeSigner(e["address"]) for e in (*seed["keys"], *seed["council"])])
+    chain = L1Chain(w3, env.dep, seed, signers=signers)
+    try:
+        yield chain
+    finally:
+        chain.close()

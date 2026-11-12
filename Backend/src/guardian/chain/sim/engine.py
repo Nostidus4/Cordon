@@ -25,6 +25,7 @@ from guardian.chain.sim.council import (
     THRESHOLD,
     CouncilState,
     Proposal,
+    affected_principals,
 )
 from guardian.chain.sim.dex import MockDEX
 from guardian.chain.sim.registry import Registry
@@ -155,6 +156,13 @@ class SimChain:
         if x in self.alias:
             return self.alias[x]
         raise KeyError(f"unknown seed id {x!r}")
+
+    def _principal_of_ref(self, ref: str) -> str | None:
+        """Principal a key (address or seed id) belongs to now; None for an unknown/unregistered key."""
+        try:
+            return self.registry.principal_of(self._addr(ref))
+        except KeyError:
+            return None
 
     def _member(self, x: str) -> str:
         if x in self.council.members:
@@ -466,11 +474,17 @@ class SimChain:
 
         def body(tx: _Tx) -> None:
             self._need_member(tx)
+            if not calls:
+                raise ChainRevert("BadCallArgs")
             for c in calls:
                 if c.get("target") not in ALLOWED_TARGETS:
                     raise ChainRevert("TargetNotAllowed")
                 if c.get("fn") not in KNOWN_FNS[c["target"]]:
                     raise ChainRevert("UnknownCall")
+            affected = affected_principals(calls, self._principal_of_ref)
+            # like the contract: a declared subject must be among the principals the calls touch
+            if affected and subject_principal not in affected:
+                raise ChainRevert("SubjectMismatch")
             pid = self.council.next_id
             self.council.next_id += 1
             self.council.proposals[pid] = Proposal(
@@ -480,6 +494,7 @@ class SimChain:
                 copy.deepcopy(calls),
                 risk_report_hash,
                 title,
+                affected=affected,
                 created_at=tx.ts,
             )
             box.append(pid)
@@ -507,10 +522,8 @@ class SimChain:
                 raise ChainRevert("UnknownProposal")
             if p.executed or p.cancelled:
                 raise ChainRevert("ProposalNotOpen")
-            if (
-                p.subject_principal
-                and self.council.member_principal[tx.sender] == p.subject_principal
-            ):
+            own = self.council.member_principal[tx.sender]
+            if own and (own == p.subject_principal or own in p.affected):
                 raise ChainRevert("ConflictOfInterest")
             if tx.sender in p.approved_by:
                 raise ChainRevert("AlreadyApproved")
