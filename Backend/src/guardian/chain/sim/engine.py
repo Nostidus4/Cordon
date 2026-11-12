@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -49,7 +50,12 @@ BLOCKED_MSG = "transaction sender is not allow listed (Tx AllowList role is None
 
 
 def load_seed(path: Path | None = None) -> dict[str, Any]:
-    return json.loads((path or SEED_PATH).read_text(encoding="utf-8"))
+    """The May Labs seed. `GUARDIAN_SEED_FILE` points at a copy whose key/Council addresses are the
+    ones of a real deployment (`make l1-local-env` writes one for the local Guardian L1)."""
+    override = os.environ.get("GUARDIAN_SEED_FILE")
+    return json.loads(
+        (path or (Path(override) if override else SEED_PATH)).read_text(encoding="utf-8")
+    )
 
 
 def _h(text: str) -> str:

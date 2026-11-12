@@ -32,6 +32,7 @@ Frontend/.screenshots/
 
 # Local L1 state
 infra/l1/.env.l1-local
+infra/l1/*.l1-local.json
 
 # IDEs
 .idea/
@@ -49,3 +50,4 @@ contracts/out/
 contracts/cache/
 contracts/broadcast/
 contracts/lib/
+Backend/deployments/local-l1.json
