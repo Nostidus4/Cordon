@@ -69,7 +69,7 @@ contract InvariantsTest is MayLabsBase {
 
         targetContract(address(handler));
         // weights: spends dominate, admin actions are interleaved
-        bytes4[] memory sel = new bytes4[](16);
+        bytes4[] memory sel = new bytes4[](19);
         for (uint256 i; i < 5; ++i) {
             sel[i] = VaultHandler.pay.selector;
         }
@@ -79,6 +79,9 @@ contract InvariantsTest is MayLabsBase {
         sel[8] = VaultHandler.warp.selector;
         sel[9] = VaultHandler.warp.selector;
         sel[10] = VaultHandler.lock.selector;
+        sel[16] = VaultHandler.lock.selector;
+        sel[17] = VaultHandler.lockAndSpend.selector;
+        sel[18] = VaultHandler.lockAndSpend.selector;
         sel[11] = VaultHandler.unlock.selector;
         sel[12] = VaultHandler.lowerCap.selector;
         sel[13] = VaultHandler.setCap.selector;
@@ -186,5 +189,27 @@ contract InvariantsTest is MayLabsBase {
     /// @notice Pause beats everything: no spend succeeds while the vault is paused.
     function invariant_pausedVaultNeverSpends() public view {
         assertFalse(handler.pausedSpend(), "a spend succeeded while paused");
+    }
+
+    /// @notice Coverage guard for I2: every `lockAndSpend` action locked a district and then had a key of it try to
+    ///         spend, so in any run that used it the locked-spend attempts must be at least as many.
+    function afterInvariant() public view {
+        assertGe(handler.nLockedSpendAttempts(), handler.nLockAndSpend(), "locked-spend attempts missing");
+    }
+
+    /// @notice Fixed scenario: lock, then spend attempts by every key of the district are rejected and the counters
+    ///         stay put; the ghost counters prove the handler really reaches that state.
+    function test_handlerReachesLockedSpendAttempts() public {
+        handler.lockAndSpend(0, 0, 0, 5_000e6); // member trang locks minh, a minh key tries to pay
+        handler.pay(1, 0, 0, 1_000e6); // second minh key
+        handler.swap(2, 0, 1_000e6); // third minh key
+        assertTrue(vault.principalLocked(MINH));
+        assertEq(handler.nLocks(), 1);
+        assertEq(handler.nLockAndSpend(), 1);
+        assertEq(handler.nLockedSpendAttempts(), 3);
+        assertEq(vault.principalSpent(MINH, block.timestamp / 1 days), 0);
+        assertTrue(handler.i2Holds(MINH));
+        assertFalse(handler.i2LockedSpend());
+        assertEq(handler.nPay() + handler.nSwap(), 0);
     }
 }

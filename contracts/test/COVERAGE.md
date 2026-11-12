@@ -40,6 +40,14 @@ state instead.
 - **I2 mechanics.** When a district is first seen locked, `principalSpent` is snapshotted for every known day; the
   invariant compares against the snapshot until it is unlocked. A successful spend by a key of a locked district is
   also flagged directly.
+- **Lock coverage (guaranteed, not left to chance).** `lock` has no gate and extra weight, and a dedicated
+  `lockAndSpend` action has a member lock a district and then a key of it try to spend straight away. Ghost
+  counters (`nLocks`, `nLockedSpendAttempts`, `nUnlockTransitions`, `nLockAndSpend`) are asserted in
+  `afterInvariant` (locked-spend attempts >= `lockAndSpend` calls, checked after every run) and in the fixed
+  scenario `test_handlerReachesLockedSpendAttempts`. Counters summed over a measured run (temporary logging, not
+  committed): default profile (256 runs) 971 locks, 5888 spend attempts against a locked district, 292 unlocks,
+  1342 successful spends, 1787 `lockAndSpend`, 0 runs without a locked-spend attempt; `ci` profile (512 runs) 2681
+  locks, 24868 attempts, 1350 unlocks, 3367 successful spends, 6760 `lockAndSpend`, 0 runs without an attempt.
 - **Run size.** `foundry.toml` `[invariant]`: `runs = 256`, `depth = 64` (default profile, so plain `forge test`
   meets it, about 4 s). The `ci` profile (`FOUNDRY_PROFILE=ci`, used by the CI job) runs `runs = 512`, `depth = 128`
   and 1024 fuzz runs (about 22 s for the whole suite).
@@ -53,7 +61,7 @@ Each mutation was applied to `src/PolicyVault.sol`, the suite run, then the file
 | Counters written after the external call (`pay` and `swap`), guard kept | `test_T14_tokenSeesCountersAlreadyUpdatedInsideTransfer` and `test_T14_dexSeesCountersAlreadyUpdatedInsideSwap` fail (`0 != 4000000000`, `0 != 3000000000`). The two re-entry tests still pass because `nonReentrant` alone stops the attack (defence in depth); that is why the "counters already updated" tests exist |
 | Counters written after the call and `nonReentrant` removed from `pay` and `swap` | 4 of 5 `RE` tests fail, including "re-entering pay must fail" |
 | District cap check removed from `_charge` | `invariant_I1_principalSpentNeverExceedsCap` fails |
-| Locked-district check removed from `_requireActiveKey` | `invariant_I2_lockedDistrictSpendNeverIncreases` fails |
+| Locked-district check removed from `_requireActiveKey` | `invariant_I2_lockedDistrictSpendNeverIncreases` fails on run 1, call 1 (also `test_handlerReachesLockedSpendAttempts`); re-checked after the lock-coverage change |
 
 ## Line coverage
 

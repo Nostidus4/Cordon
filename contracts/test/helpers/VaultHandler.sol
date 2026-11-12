@@ -59,8 +59,11 @@ contract VaultHandler is Test {
     uint256 public nSwap;
     uint256 public nPayCapReverts;
     uint256 public nPayLockedReverts;
-    uint256 public nLocks;
-    uint256 public nUnlocks;
+    uint256 public nLocks; // a district went from unlocked to locked through the Council
+    uint256 public nUnlocks; // unlock proposals executed
+    uint256 public nUnlockTransitions; // observed locked -> unlocked
+    uint256 public nLockAndSpend;
+    uint256 public nLockedSpendAttempts; // pay/swap attempted by a key whose district was locked
     uint256 public nLowerCaps;
     uint256 public nRaiseCaps;
     uint256 public nWarps;
@@ -99,6 +102,10 @@ contract VaultHandler is Test {
     // ------------------------------------------------------------ spend actions
 
     function pay(uint256 keySeed, uint256 tokenSeed, uint256 recipSeed, uint256 amountSeed) external {
+        _pay(keySeed, tokenSeed, recipSeed, amountSeed);
+    }
+
+    function _pay(uint256 keySeed, uint256 tokenSeed, uint256 recipSeed, uint256 amountSeed) internal {
         (address key, bytes32 pid) = _key(keySeed);
         bool tkbToken = tokenSeed % 2 == 1;
         uint256 value = bound(amountSeed, 1, 14_000e6);
@@ -107,6 +114,7 @@ contract VaultHandler is Test {
         address to = recipients[recipSeed % 2];
 
         bool lockedBefore = vault.principalLocked(pid);
+        if (lockedBefore) ++nLockedSpendAttempts;
         bool pausedBefore = vault.paused();
         vm.prank(key);
         try vault.pay(token, to, amount, bytes32(0)) {
@@ -126,6 +134,7 @@ contract VaultHandler is Test {
             toTkb ? (address(usdc), address(tkb), value) : (address(tkb), address(usdc), value * 1e12);
 
         bool lockedBefore = vault.principalLocked(pid);
+        if (lockedBefore) ++nLockedSpendAttempts;
         bool pausedBefore = vault.paused();
         vm.prank(key);
         try vault.swap(address(dex), SWAP_SEL, tIn, tOut, amountIn, 0, bytes32(0)) {
@@ -150,13 +159,34 @@ contract VaultHandler is Test {
     // ------------------------------------------------------------ council: tighten (one member)
 
     function lock(uint256 memberSeed, uint256 pidSeed) external {
-        if (pidSeed % 4 != 0) return; // locks are rarer than spends
         address who = _memberOrOutsider(memberSeed);
+        bytes32 pid = pids[pidSeed % 3];
+        bool wasAlready = vault.principalLocked(pid);
         vm.prank(who);
-        try gc.emergencyLock(pids[pidSeed % 3]) {
-            ++nLocks;
+        try gc.emergencyLock(pid) {
+            if (!wasAlready) ++nLocks;
         } catch {}
         _sync();
+    }
+
+    /// @dev Guarantees I2 is exercised: a member (never the outsider) locks a district, then a key of that district
+    ///      immediately tries to spend. Counted in `nLockAndSpend`; `afterInvariant` asserts every one was attempted.
+    function lockAndSpend(uint256 memberSeed, uint256 pidSeed, uint256 tokenSeed, uint256 amountSeed) external {
+        bytes32 pid = pids[pidSeed % 3];
+        bool wasAlready = vault.principalLocked(pid);
+        vm.prank(members[memberSeed % 3]);
+        gc.emergencyLock(pid); // a member can always lock, so a revert here is a real failure
+        if (!wasAlready) ++nLocks;
+        ++nLockAndSpend;
+        _sync();
+        uint256 keyIdx;
+        for (uint256 i; i < 5; ++i) {
+            if (keyPrincipal[i] == pid) {
+                keyIdx = i;
+                break;
+            }
+        }
+        _pay(keyIdx, tokenSeed, 0, amountSeed);
     }
 
     function pause(uint256 memberSeed) external {
@@ -313,6 +343,7 @@ contract VaultHandler is Test {
                     }
                 }
             } else if (wasLocked[pid]) {
+                ++nUnlockTransitions;
                 // unlocked: forget the snapshots, the next lock takes fresh ones
                 for (uint256 i; i < n; ++i) {
                     lockSnapSet[pid][days_[i]] = false;
