@@ -169,10 +169,44 @@ class Env:
             self.as_key(entry["address"])
 
 
-def _deploy(w3: Web3, art: dict[str, Any], sender: str, *args: Any) -> Any:
-    c = w3.eth.contract(abi=art["abi"], bytecode=art["bytecode"]["object"])
-    rc = w3.eth.wait_for_transaction_receipt(c.constructor(*args).transact({"from": sender}))
-    return w3.eth.contract(address=rc["contractAddress"], abi=art["abi"])
+class NonceCursor:
+    """Deployer nonce read once from `pending`, then advanced locally.
+
+    Every deployer tx is sent with an explicit nonce and mined (receipt awaited) before the next, so
+    the CREATE address of each deployment is known in advance and never depends on node timing.
+    """
+
+    def __init__(self, w3: Web3, sender: str):
+        self.w3 = w3
+        self.sender = sender
+        self.next = w3.eth.get_transaction_count(sender, "pending")
+
+    def address_at(self, offset: int) -> str:
+        """CREATE address of the deployment that will use nonce `self.next + offset`."""
+        return to_checksum_address(
+            keccak(rlp.encode([bytes.fromhex(self.sender[2:]), self.next + offset]))[12:]
+        )
+
+    def _params(self) -> dict[str, Any]:
+        params = {"from": self.sender, "nonce": self.next}
+        self.next += 1
+        return params
+
+    def send(self, fn: Any) -> Any:
+        """Send a contract call from the deployer with the next nonce and wait for its receipt."""
+        rc = self.w3.eth.wait_for_transaction_receipt(fn.transact(self._params()))
+        assert rc["status"] == 1, "setup tx reverted"
+        return rc
+
+    def deploy(self, art: dict[str, Any], *args: Any) -> Any:
+        c = self.w3.eth.contract(abi=art["abi"], bytecode=art["bytecode"]["object"])
+        expected = self.address_at(0)
+        rc = self.w3.eth.wait_for_transaction_receipt(c.constructor(*args).transact(self._params()))
+        assert rc["status"] == 1, "deployment reverted"
+        assert rc["contractAddress"] == expected, (
+            "deployed address differs from the nonce-derived one"
+        )
+        return self.w3.eth.contract(address=rc["contractAddress"], abi=art["abi"])
 
 
 def deploy_may_labs(anvil: Anvil) -> Env:
@@ -186,45 +220,41 @@ def deploy_may_labs(anvil: Anvil) -> Env:
     code = al_art["deployedBytecode"]["object"]
     w3.provider.make_request("anvil_setCode", [TX_ALLOWLIST, code])
     allowlist = w3.eth.contract(address=TX_ALLOWLIST, abi=al_art["abi"])
-    allowlist.functions.__seedRole(admin, 2).transact({"from": admin})
+    nonces = NonceCursor(w3, admin)
+    nonces.send(allowlist.functions.__seedRole(admin, 2))
     for k in seed["keys"]:
         if k["allow_listed"]:
-            allowlist.functions.__seedRole(k["address"], 1).transact({"from": admin})
+            nonces.send(allowlist.functions.__seedRole(k["address"], 1))
 
     members = [to_checksum_address(m["address"]) for m in seed["council"]]
     principals = [
         pid32(m["principal_id"]) if m["principal_id"] else b"\x00" * 32 for m in seed["council"]
     ]
     for m in members:
-        allowlist.functions.__seedRole(m, 1).transact({"from": admin})
+        nonces.send(allowlist.functions.__seedRole(m, 1))
 
     # Registry and vault take the Council address and the Council takes theirs: predict it from the
-    # deployer nonce (registry, 3 tokens, 2 DEXes, vault, then the Council = 7 deployments later).
-    council_addr = to_checksum_address(
-        keccak(rlp.encode([bytes.fromhex(admin[2:]), w3.eth.get_transaction_count(admin) + 7]))[12:]
-    )
-    registry = _deploy(w3, artifact("PrincipalRegistry", "PrincipalRegistry"), admin, council_addr)
+    # deployer's explicit nonce (registry, 3 tokens, 2 DEXes, vault, then the Council = the 8th
+    # deployment, offset 7). Each deployment below uses the next explicit nonce and is awaited.
+    council_addr = nonces.address_at(7)
+    registry = nonces.deploy(artifact("PrincipalRegistry", "PrincipalRegistry"), council_addr)
     tokens = {
-        sym: _deploy(w3, artifact(f, f), admin)
+        sym: nonces.deploy(artifact(f, f))
         for sym, f in (("tUSDC", "TestUSDC"), ("tTKB", "TestTokenB"), ("tSCAM", "TestScam"))
     }
     approved = [tokens["tUSDC"].address, tokens["tTKB"].address]
-    dex = _deploy(w3, artifact("MockDEX", "MockDEX"), admin, council_addr, approved)
-    evil = _deploy(w3, artifact("EvilDEX", "EvilDEX"), admin, council_addr, approved)
-    vault = _deploy(
-        w3,
+    dex = nonces.deploy(artifact("MockDEX", "MockDEX"), council_addr, approved)
+    evil = nonces.deploy(artifact("EvilDEX", "EvilDEX"), council_addr, approved)
+    vault = nonces.deploy(
         artifact("PolicyVault", "PolicyVault"),
-        admin,
         registry.address,
         council_addr,
         tokens["tUSDC"].address,
         dex.address,
         "0x" + "00" * 20,
     )
-    council = _deploy(
-        w3,
+    council = nonces.deploy(
         artifact("GuardianCouncil", "GuardianCouncil"),
-        admin,
         members,
         principals,
         registry.address,
@@ -232,7 +262,7 @@ def deploy_may_labs(anvil: Anvil) -> Env:
     )
     assert council.address == council_addr, "council address prediction is off"
     # The Council administers the Tx AllowList (emergencyLock -> setNone), as after the L1 hand-over.
-    allowlist.functions.__seedRole(council.address, 2).transact({"from": admin})
+    nonces.send(allowlist.functions.__seedRole(council.address, 2))
     w3.provider.make_request("anvil_impersonateAccount", [council.address])
     w3.provider.make_request("anvil_setBalance", [council.address, hex(10**18)])
 
