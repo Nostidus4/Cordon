@@ -1,7 +1,9 @@
 [profile.default]
 src = "src"
+test = "test"
+script = "script"
 out = "out"
-libs = []
+libs = ["lib"]
 cache_path = "cache"
 solc = "0.8.28"
 evm_version = "cancun"
@@ -9,3 +11,6 @@ optimizer = true
 optimizer_runs = 200
 bytecode_hash = "none"
 deny = "warnings"
+
+[fuzz]
+runs = 512

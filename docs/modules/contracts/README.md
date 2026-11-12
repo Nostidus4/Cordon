@@ -28,7 +28,15 @@ Xem [CONTRACTS.md](../../spec/CONTRACTS.md): `IPrincipalRegistry`, `IPolicyVault
 
 ## Trạng thái hiện tại
 
-`contracts/` đã có khung Foundry (`foundry.toml`, solc 0.8.28) và 4 interface đóng băng ở `contracts/src/interfaces/` (CTR-001, 2026-11-12); chưa có cài đặt. `forge build` chạy trong CI (job `contracts`); `make abis` xuất ABI sang `Backend/src/guardian/chain/abis/`. Hành vi tham chiếu đã chạy được ở chain giả lập: `Backend/src/guardian/chain/sim/{registry,vault,council,dex,allowlist,engine}.py` và test `Backend/tests/test_sim_chain.py`. Bảng reason code: `Backend/src/guardian/shared/reason_codes.py`.
+`contracts/` là project Foundry (solc 0.8.28, cancun) với 4 interface đóng băng ở `contracts/src/interfaces/` (CTR-001) và, từ CTR-002, token test, DEX mock và hạ tầng test. Chưa có Registry/Vault/Council (CTR-003 trở đi).
+
+- **Phụ thuộc:** OpenZeppelin `v5.4.0` và forge-std `v1.10.0`, ghim trong `contracts/scripts/install-deps.sh` (tải vào `contracts/lib/`, đã gitignore; không commit mã vendor). Chạy `make contracts-deps` (job CI chạy cùng script). Remapping ở `contracts/remappings.txt`.
+- **Token** (`src/tokens/`): `TestUSDC` (6), `TestTokenB`/tTKB (18), `TestScam`/tSCAM (18), ERC-20 OpenZeppelin. `mint` chỉ `minter`: deployer lúc đầu, bàn giao cho Council bằng `setMinter(council)`; người khác revert `NotMinter()`.
+- **DEX** (`src/dex/`): `MockDEX` và `EvilDEX` (cùng hành vi, EvilDEX không bao giờ được whitelist). Rate `num/den` là giá trị của 1 đơn vị `tokenIn` tính theo `tokenOut`, quy đổi decimals: `out = amountIn * num * 10^decOut / (den * 10^decIn)` (làm tròn xuống, chỉ số nguyên, `Math.mulDiv`). Constructor đặt rate mặc định 1/1 cho mọi cặp có thứ tự trong danh sách token (`tUSDC`, `tTKB`); cặp chưa có rate revert `UnknownPair`. Rate theo chiều: `setRate(a, b, ...)` không đổi `(b, a)`. `num == 0` hoặc `den == 0` revert `UnknownPair` (interface đóng băng không có lỗi riêng). DEX trả từ số dư của chính nó và cũng revert `SlippageTooHigh()` (cùng selector với lỗi của Vault) khi `amountOut < minOut`; Vault vẫn kiểm lại.
+- **Test helper** (`test/helpers/`): `MockAllowList` (đặt bằng `vm.etch` ở `0x02..00` và `0x02..02`, mỗi địa chỉ một storage; `setAdmin/setEnabled/setNone/readAllowList`, chỉ admin được ghi, phát `RoleSet`; `__seedRole` là cửa hậu chỉ để test) và `MayLabsBase` (seed Mây Labs: 7 khu, 8 khoá, Council 3 người, token, hai DEX, hai precompile giả; `council` là địa chỉ tạm cho đến CTR-006).
+- **Chạy:** `make contracts-test` (hoặc `cd contracts && forge fmt --check && forge build && forge test -vv`).
+
+Hành vi tham chiếu đã chạy được ở chain giả lập: `Backend/src/guardian/chain/sim/{registry,vault,council,dex,allowlist,engine}.py` và test `Backend/tests/test_sim_chain.py`. Bảng reason code: `Backend/src/guardian/shared/reason_codes.py`.
 
 ## Issue
 
