@@ -1,4 +1,4 @@
-.PHONY: conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status
+.PHONY: conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-local-env l1-local-bootstrap l1-local-checks
 
 API_URL ?= http://localhost:8000
 
@@ -75,3 +75,45 @@ deploy-l1:
 # Needs L1_RPC_URL (and optionally L1_CHAIN_ID) in the environment.
 l1-status:
 	bash infra/l1/health.sh
+
+# Contracts on the Guardian L1 (L1-002, docs: contracts/README.md). NETWORK=local (default, public test keys only)
+# or NETWORK=fuji (needs I_UNDERSTAND=fuji and the variables listed in infra/l1/contracts.sh).
+NETWORK ?= local
+
+l1-deploy:
+	@test "$(NETWORK)" != "fuji" -o "$(I_UNDERSTAND)" = "fuji" || { echo "NETWORK=fuji needs I_UNDERSTAND=fuji"; exit 1; }
+	NETWORK=$(NETWORK) bash infra/l1/contracts.sh deploy
+
+l1-seed:
+	NETWORK=$(NETWORK) bash infra/l1/contracts.sh seed
+
+l1-handover:
+	NETWORK=$(NETWORK) bash infra/l1/contracts.sh handover
+
+# Policy v2 through the Council (not part of the bootstrap: scene 4 starts from policy v1).
+l1-policy-v2:
+	NETWORK=$(NETWORK) bash infra/l1/contracts.sh policy-v2
+
+# Deploy, seed policy v1, hand the precompile admin to the Council: run on a FRESH chain only.
+deploy-contracts: l1-deploy
+	$(MAKE) l1-seed l1-handover
+
+# Fails if the deployer still has a role or power (T15), reads the real precompiles.
+verify-handover:
+	NETWORK=$(NETWORK) bash infra/l1/contracts.sh verify-handover
+
+# Public test keys -> Backend/.env.l1-local (+ localised seed); local network only.
+l1-local-env:
+	python3 infra/l1/local_env.py
+
+# Fresh local L1 with everything deployed and verified (about 3 minutes).
+l1-local-bootstrap: l1-local-up
+	NETWORK=local $(MAKE) deploy-contracts
+	NETWORK=local bash infra/l1/contracts.sh verify-seed
+	NETWORK=local $(MAKE) verify-handover
+
+# T15 and T8 against the real precompiles (T8 needs `make l1-policy-v2` first).
+l1-local-checks:
+	bash infra/l1/real-checks.sh t15
+	bash infra/l1/real-checks.sh v2
+	bash infra/l1/real-checks.sh t8

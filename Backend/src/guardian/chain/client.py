@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from web3 import Web3
+from web3.middleware import ExtraDataToPOAMiddleware
 
 
 class ChainReadError(RuntimeError):
@@ -33,5 +34,9 @@ def quiet_transport_logs() -> None:
 
 
 def make_web3(rpc_url: str, timeout: float = 15.0) -> Web3:
-    """Plain HTTP client. No middleware: Guardian L1 (Subnet-EVM) and anvil need none for reads."""
-    return Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": timeout}))
+    """HTTP client. Subnet-EVM blocks carry an 86-byte `extraData` (the dynamic-fee window), which web3's
+    default validation rejects ("quite likely that you are connected to a POA chain"); anvil's 32 bytes pass
+    through the same middleware untouched. Found on the first run against a real Subnet-EVM node (L1-002)."""
+    w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": timeout}))
+    w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+    return w3
