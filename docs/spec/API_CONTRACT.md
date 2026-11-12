@@ -43,6 +43,7 @@ Khoá duy nhất: `(tx_hash, log_index)` (indexer idempotent). Payload dùng **c
 | `AllowChanged` | `kind (token\|protocol\|recipient), subject, selector, allowed` |
 | `PolicyVersionBumped` | `version` |
 | `TopUpRecorded` | `cChainTxHash, amount` |
+| `TopUpOperatorChanged` | `oldOperator, newOperator` (sim chưa phát) |
 | `PrincipalCreated`, `KeyAdded`, `KeyMoved`, `KeyDeactivated` | theo [CONTRACTS.md](CONTRACTS.md) mục 2 |
 | `Proposed`, `Approved`, `Executed`, `Cancelled`, `EmergencyAction` | theo [CONTRACTS.md](CONTRACTS.md) mục 4 |
 | `AllowListRoleSet` (khi khoá bị `setNone`/`setEnabled` trên Tx AllowList) | `key, role` (0 none, 1 enabled, 2 admin), `by`. Trên L1 là log `RoleSet` của precompile; indexer chuẩn hoá về tên này. **Sim và mock hiện chưa phát** (xem mục 7) |

@@ -41,3 +41,16 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: forge build (warnings are errors)
+        run: forge build
+        working-directory: contracts
+      - name: ABI copies are up to date
+        run: |
+          contracts/scripts/export-abis.sh
+          git diff --exit-code -- Backend/src/guardian/chain/abis

@@ -1,4 +1,4 @@
-.PHONY: setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild
+.PHONY: contracts-build abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild
 
 API_URL ?= http://localhost:8000
 
@@ -39,3 +39,10 @@ demo-scene4:
 blender-rebuild:
 	@test -x Blender/scripts/rebuild.sh || { echo "Blender/scripts/rebuild.sh not found"; exit 1; }
 	bash Blender/scripts/rebuild.sh
+
+contracts-build:
+	cd contracts && forge build
+
+# Regenerate Backend/src/guardian/chain/abis/*.json from contracts/src/interfaces/*.sol
+abis:
+	contracts/scripts/export-abis.sh

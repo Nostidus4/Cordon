@@ -28,7 +28,7 @@ Xem [CONTRACTS.md](../../spec/CONTRACTS.md): `IPrincipalRegistry`, `IPolicyVault
 
 ## Trạng thái hiện tại
 
-Chưa có thư mục `contracts/`. Hành vi tham chiếu đã chạy được ở chain giả lập: `Backend/src/guardian/chain/sim/{registry,vault,council,dex,allowlist,engine}.py` và test `Backend/tests/test_sim_chain.py`. Bảng reason code: `Backend/src/guardian/shared/reason_codes.py`.
+`contracts/` đã có khung Foundry (`foundry.toml`, solc 0.8.28) và 4 interface đóng băng ở `contracts/src/interfaces/` (CTR-001, 2026-11-12); chưa có cài đặt. `forge build` chạy trong CI (job `contracts`); `make abis` xuất ABI sang `Backend/src/guardian/chain/abis/`. Hành vi tham chiếu đã chạy được ở chain giả lập: `Backend/src/guardian/chain/sim/{registry,vault,council,dex,allowlist,engine}.py` và test `Backend/tests/test_sim_chain.py`. Bảng reason code: `Backend/src/guardian/shared/reason_codes.py`.
 
 ## Issue
 
