@@ -2,8 +2,9 @@
 useDefault = true
 
 [allowlist]
-description = "Public testnet addresses in seed data; minified third-party Draco decoder"
+description = "Public testnet addresses in seed data (and its Solidity test twin); minified third-party Draco decoder"
 paths = [
   '''Backend/seed/.*\.json''',
+  '''contracts/test/helpers/MayLabsBase\.sol''',
   '''Frontend/public/draco/.*''',
 ]

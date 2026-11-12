@@ -1,4 +1,4 @@
-.PHONY: contracts-build abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild
+.PHONY: contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild
 
 API_URL ?= http://localhost:8000
 
@@ -40,9 +40,16 @@ blender-rebuild:
 	@test -x Blender/scripts/rebuild.sh || { echo "Blender/scripts/rebuild.sh not found"; exit 1; }
 	bash Blender/scripts/rebuild.sh
 
-contracts-build:
+# Pinned OpenZeppelin + forge-std into contracts/lib (gitignored); CI runs the same script
+contracts-deps:
+	contracts/scripts/install-deps.sh
+
+contracts-build: contracts-deps
 	cd contracts && forge build
 
+contracts-test: contracts-deps
+	cd contracts && forge fmt --check && forge build && forge test -vv
+
 # Regenerate Backend/src/guardian/chain/abis/*.json from contracts/src/interfaces/*.sol
-abis:
+abis: contracts-deps
 	contracts/scripts/export-abis.sh
