@@ -167,7 +167,7 @@ def _sim_events() -> list[Any]:
     pid2 = c.propose(
         "lan",
         "x",
-        None,
+        "minh",  # the declared subject must be among the principals the calls touch
         [{"target": "vault", "fn": "unlockPrincipal", "args": {"principal_id": "minh"}}],
         "0x00",
     )

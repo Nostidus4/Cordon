@@ -41,6 +41,16 @@ ALLOWLIST_ABI: list[dict[str, Any]] = [
         "inputs": [{"name": "addr", "type": "address"}],
         "outputs": [{"name": "role", "type": "uint256"}],
     },
+    *(
+        {
+            "type": "function",
+            "name": name,
+            "stateMutability": "nonpayable",
+            "inputs": [{"name": "addr", "type": "address"}],
+            "outputs": [],
+        }
+        for name in ("setEnabled", "setNone")
+    ),
     ROLE_SET_EVENT,
 ]
 

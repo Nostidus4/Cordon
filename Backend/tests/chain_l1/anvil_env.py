@@ -1,7 +1,11 @@
 """Deploy the Foundry artifacts to a local anvil and seed May Labs policy v1 (test helper).
 
-Everything here is test-only: anvil's public dev accounts, a `CouncilStub` standing in for the Council
-(CTR-006 owns the real one) and `MockAllowList` etched at the Tx AllowList address.
+Everything here is test-only: anvil's public dev accounts, the real `GuardianCouncil` and `MockAllowList`
+etched at the Tx AllowList address. The seed state is written by impersonating the Council contract
+(the only writer of registry and vault), so no proposal round trip is needed to set up policy v1.
+
+`AllowListEnforcingProvider` emulates the node-level Tx AllowList check that anvil lacks: a send from
+a role-0 address is answered with the JSON-RPC error recorded from Subnet-EVM v0.8.0.
 """
 
 from __future__ import annotations
@@ -16,8 +20,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from eth_utils import to_checksum_address
-from web3 import Web3
+import rlp
+from eth_account import Account
+from eth_utils import keccak, to_checksum_address
+from web3 import HTTPProvider, Web3
 
 from guardian.chain.l1.deployments import Deployments
 from guardian.chain.precompiles import TX_ALLOWLIST
@@ -74,6 +80,53 @@ class Anvil:
             self.proc.kill()
 
 
+class AllowListEnforcingProvider(HTTPProvider):
+    """HTTP provider that refuses sends from addresses with Tx AllowList role 0 (as the node does).
+
+    The reply is the JSON-RPC error recorded from Subnet-EVM v0.8.0 (`contracts/genesis/README.md`).
+    Test-only: anvil does not know the precompile, so the mock at 0x02..02 is read through a second,
+    plain provider (no recursion).
+    """
+
+    def __init__(self, url: str, allowlist_address: str = TX_ALLOWLIST):
+        super().__init__(url)
+        inner = Web3(HTTPProvider(url))
+        self._read_role = inner.eth.contract(
+            address=to_checksum_address(allowlist_address),
+            abi=[
+                {
+                    "type": "function",
+                    "name": "readAllowList",
+                    "stateMutability": "view",
+                    "inputs": [{"name": "addr", "type": "address"}],
+                    "outputs": [{"name": "role", "type": "uint256"}],
+                }
+            ],
+        ).functions.readAllowList
+
+    @staticmethod
+    def _sender(method: str, params: Any) -> str | None:
+        if method == "eth_sendTransaction":
+            return str(params[0]["from"])
+        if method == "eth_sendRawTransaction":
+            return str(Account.recover_transaction(params[0]))
+        return None
+
+    def make_request(self, method: Any, params: Any) -> Any:
+        sender = self._sender(str(method), params)
+        if sender is not None and self._read_role(to_checksum_address(sender)).call() == 0:
+            return {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "error": {
+                    "code": -32000,
+                    "message": "cannot issue transaction from non-allow listed address: "
+                    + to_checksum_address(sender),
+                },
+            }
+        return super().make_request(method, params)
+
+
 @dataclass
 class Env:
     anvil: Anvil
@@ -81,7 +134,7 @@ class Env:
     dep: Deployments
     seed: dict[str, Any]  # seed with token/dex addresses replaced by the deployed ones
     admin: str  # anvil account 0: deployer, and admin of the mock Tx AllowList
-    council_stub: Any
+    council: Any  # the real GuardianCouncil
     vault: Any
     registry: Any
     tokens: dict[str, Any]
@@ -96,11 +149,24 @@ class Env:
         assert rc["status"] == 1, "tx reverted"
         return rc
 
+    def council_call(self, contract: Any, fn: str, *args: Any) -> None:
+        """Call `contract.fn(*args)` as the Council contract itself (anvil impersonation)."""
+        data = contract.encode_abi(fn, args=list(args))
+        h = self.w3.eth.send_transaction(
+            {"from": self.council.address, "to": contract.address, "data": data, "gas": 3_000_000}
+        )
+        assert self.w3.eth.wait_for_transaction_receipt(h)["status"] == 1, f"{fn} reverted"
+
     def as_key(self, key: str) -> str:
         """Impersonate a seed key (anvil dev feature) and fund it for gas."""
         self.w3.provider.make_request("anvil_impersonateAccount", [key])
         self.w3.provider.make_request("anvil_setBalance", [key, hex(10**18)])
         return key
+
+    def fund_and_impersonate_all(self) -> None:
+        """Every seed key and Council member can send (impersonated, funded for gas)."""
+        for entry in (*self.seed["keys"], *self.seed["council"]):
+            self.as_key(entry["address"])
 
 
 def _deploy(w3: Web3, art: dict[str, Any], sender: str, *args: Any) -> Any:
@@ -110,7 +176,7 @@ def _deploy(w3: Web3, art: dict[str, Any], sender: str, *args: Any) -> Any:
 
 
 def deploy_may_labs(anvil: Anvil) -> Env:
-    """Deploy registry, vault, stub council, tokens, DEXes; etch the AllowList; seed policy v1."""
+    """Deploy registry, vault, Council, tokens, DEXes; etch the AllowList; seed policy v1."""
     w3 = anvil.w3
     seed = copy.deepcopy(load_seed())
     admin = to_checksum_address(w3.eth.accounts[0])
@@ -129,26 +195,46 @@ def deploy_may_labs(anvil: Anvil) -> Env:
     principals = [
         pid32(m["principal_id"]) if m["principal_id"] else b"\x00" * 32 for m in seed["council"]
     ]
-    stub = _deploy(w3, artifact("CouncilStub", "CouncilStub"), admin, members, principals)
+    for m in members:
+        allowlist.functions.__seedRole(m, 1).transact({"from": admin})
 
-    registry = _deploy(w3, artifact("PrincipalRegistry", "PrincipalRegistry"), admin, stub.address)
+    # Registry and vault take the Council address and the Council takes theirs: predict it from the
+    # deployer nonce (registry, 3 tokens, 2 DEXes, vault, then the Council = 7 deployments later).
+    council_addr = to_checksum_address(
+        keccak(rlp.encode([bytes.fromhex(admin[2:]), w3.eth.get_transaction_count(admin) + 7]))[12:]
+    )
+    registry = _deploy(w3, artifact("PrincipalRegistry", "PrincipalRegistry"), admin, council_addr)
     tokens = {
         sym: _deploy(w3, artifact(f, f), admin)
         for sym, f in (("tUSDC", "TestUSDC"), ("tTKB", "TestTokenB"), ("tSCAM", "TestScam"))
     }
     approved = [tokens["tUSDC"].address, tokens["tTKB"].address]
-    dex = _deploy(w3, artifact("MockDEX", "MockDEX"), admin, stub.address, approved)
-    evil = _deploy(w3, artifact("EvilDEX", "EvilDEX"), admin, stub.address, approved)
+    dex = _deploy(w3, artifact("MockDEX", "MockDEX"), admin, council_addr, approved)
+    evil = _deploy(w3, artifact("EvilDEX", "EvilDEX"), admin, council_addr, approved)
     vault = _deploy(
         w3,
         artifact("PolicyVault", "PolicyVault"),
         admin,
         registry.address,
-        stub.address,
+        council_addr,
         tokens["tUSDC"].address,
         dex.address,
         "0x" + "00" * 20,
     )
+    council = _deploy(
+        w3,
+        artifact("GuardianCouncil", "GuardianCouncil"),
+        admin,
+        members,
+        principals,
+        registry.address,
+        vault.address,
+    )
+    assert council.address == council_addr, "council address prediction is off"
+    # The Council administers the Tx AllowList (emergencyLock -> setNone), as after the L1 hand-over.
+    allowlist.functions.__seedRole(council.address, 2).transact({"from": admin})
+    w3.provider.make_request("anvil_impersonateAccount", [council.address])
+    w3.provider.make_request("anvil_setBalance", [council.address, hex(10**18)])
 
     # Seed addresses that exist only on the deployed chain.
     for t in seed["tokens"]:
@@ -158,9 +244,10 @@ def deploy_may_labs(anvil: Anvil) -> Env:
 
     def council_call(contract: Any, fn: str, *args: Any) -> None:
         data = contract.encode_abi(fn, args=list(args))
-        env_tx = stub.functions.forward(contract.address, data).transact({"from": admin})
-        rc = w3.eth.wait_for_transaction_receipt(env_tx)
-        assert rc["status"] == 1, f"seed call {fn} reverted"
+        h = w3.eth.send_transaction(
+            {"from": council.address, "to": contract.address, "data": data, "gas": 3_000_000}
+        )
+        assert w3.eth.wait_for_transaction_receipt(h)["status"] == 1, f"seed call {fn} reverted"
 
     for p in seed["principals"]:
         council_call(registry, "createPrincipal", pid32(p["id"]), p["label"])
@@ -188,13 +275,13 @@ def deploy_may_labs(anvil: Anvil) -> Env:
     dep = Deployments(
         registry=registry.address,
         vault=vault.address,
-        council=stub.address,
+        council=council.address,
         mock_dex=dex.address,
         evil_dex=evil.address,
         tokens={s: c.address for s, c in tokens.items()},
         chain_id=w3.eth.chain_id,
     )
     return Env(
-        anvil, w3, dep, seed, admin, stub, vault, registry, tokens, dex, evil, allowlist,
+        anvil, w3, dep, seed, admin, council, vault, registry, tokens, dex, evil, allowlist,
         int(w3.eth.block_number),
     )  # fmt: skip
