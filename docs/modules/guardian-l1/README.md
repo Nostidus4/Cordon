@@ -35,7 +35,7 @@ Chủ trì: Nostidus4 · Issue: `L1-001`, `L1-002`, `L1-003` · Spec: [../../spe
 
 ## Trạng thái hiện tại
 
-Chưa có genesis, chưa có L1. `Backend/deployments/fuji-l1.json` và `fuji-c.json` đang là `{}`. Sim mô phỏng AllowList ở `Backend/src/guardian/chain/sim/allowlist.py`. Rủi ro lớn nhất (Q1: có chạy được không) nên được thử sớm; nếu không được, lùi về C-Chain: `lockPrincipal` chỉ là cờ của vault, bỏ T8 và T15.
+`L1-001` đã xong phần chạy được ở local: `contracts/genesis/genesis.json` (sinh từ `build_genesis.py`), `make l1-local-up|verify|down`, thử Tx/Deployer AllowList và chuỗi lỗi RPC (xem `contracts/genesis/README.md`; Avalanche CLI 1.9.7, Subnet-EVM v0.8.0). Còn lại: deploy lên Fuji bằng khoá có tiền và host chạy validator (`make deploy-l1`, `make l1-status`, systemd), rồi ghi `Backend/deployments/fuji-l1.json` (hiện `{}`). Sim mô phỏng AllowList ở `Backend/src/guardian/chain/sim/allowlist.py`. Nếu không chạy được trên Fuji (Q1), lùi về C-Chain: `lockPrincipal` chỉ là cờ của vault, bỏ T8 và T15.
 
 ## Issue
 
