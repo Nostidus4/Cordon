@@ -28,6 +28,7 @@ contract GuardianCouncilTest is MayLabsBase {
     bytes32 internal constant RISK = keccak256("risk-report");
 
     uint256 internal baseVersion;
+    uint256 internal baseCount;
     address[5] internal minhKeys = [KEY_MINH, KEY_AGENT_DATA, KEY_AGENT_INTL_PAY, KEY_AGENT_REBALANCE, KEY_SVC_PAYMENT];
 
     function setUp() public override {
@@ -53,40 +54,55 @@ contract GuardianCouncilTest is MayLabsBase {
     }
 
     /// @dev Genesis state (7 districts, 8 keys, caps, allow-lists, chain roles) installed the way production does it:
-    ///      one proposal approved by two members. Ends with one version bump, recorded in `baseVersion`.
+    ///      through proposals approved by two members. One proposal per district (its `subjectPrincipal`, approved
+    ///      by two members that do not own it) plus one general proposal for the allow-lists. Version bumps and
+    ///      proposal count after seeding are recorded in `baseVersion` / `baseCount`.
     function _seedThroughCouncil() internal {
-        Call[] memory calls = new Call[](7 + 8 * 3 + 5);
-        uint256 n;
         bytes32[7] memory ids = seedPrincipals();
+        SeedKey[8] memory ks = seedKeys();
         for (uint256 i; i < 7; ++i) {
+            Call[] memory calls = new Call[](1 + 8 * 3);
+            uint256 n;
             calls[n++] = _call(
                 address(registry),
                 abi.encodeCall(IPrincipalRegistry.createPrincipal, (ids[i], string(abi.encodePacked(ids[i]))))
             );
+            for (uint256 j; j < 8; ++j) {
+                if (ks[j].principalId != ids[i]) continue;
+                calls[n++] = _call(
+                    address(registry),
+                    abi.encodeCall(IPrincipalRegistry.addKey, (ids[i], ks[j].key, ks[j].kind, ks[j].label))
+                );
+                calls[n++] = _call(
+                    address(vault),
+                    abi.encodeCall(
+                        IPolicyVault.setKeyDailyCap, (ks[j].key, ks[j].key == KEY_LAN ? 10_000e6 : KEY_DAILY_CAP)
+                    )
+                );
+                calls[n++] = _call(TX_ALLOWLIST, abi.encodeCall(IAllowList.setEnabled, (ks[j].key)));
+            }
+            assembly {
+                mstore(calls, n)
+            }
+            uint256 id = _propose(MEMBER_TRANG, ids[i], calls);
+            // the two members whose own district is not the subject
+            for (uint256 m; m < 3; ++m) {
+                address member = gc.members(m);
+                if (gc.memberPrincipal(member) != ids[i] && !gc.getProposal(id).executed) _approve(member, id);
+            }
+            assertTrue(gc.getProposal(id).executed, "seed proposal executed");
         }
-        SeedKey[8] memory ks = seedKeys();
-        for (uint256 i; i < 8; ++i) {
-            calls[n++] = _call(
-                address(registry),
-                abi.encodeCall(IPrincipalRegistry.addKey, (ks[i].principalId, ks[i].key, ks[i].kind, ks[i].label))
-            );
-            calls[n++] = _call(
-                address(vault),
-                abi.encodeCall(
-                    IPolicyVault.setKeyDailyCap, (ks[i].key, ks[i].key == KEY_LAN ? 10_000e6 : KEY_DAILY_CAP)
-                )
-            );
-            calls[n++] = _call(TX_ALLOWLIST, abi.encodeCall(IAllowList.setEnabled, (ks[i].key)));
-        }
-        calls[n++] = _call(address(vault), abi.encodeCall(IPolicyVault.setTokenAllowed, (address(tUSDC), true)));
-        calls[n++] = _call(address(vault), abi.encodeCall(IPolicyVault.setTokenAllowed, (address(tTKB), true)));
-        calls[n++] =
-            _call(address(vault), abi.encodeCall(IPolicyVault.setProtocolAllowed, (address(dex), SWAP_SEL, true)));
-        calls[n++] = _call(address(vault), abi.encodeCall(IPolicyVault.setRecipientAllowed, (VENDOR_DATA_API, true)));
-        calls[n++] = _call(address(vault), abi.encodeCall(IPolicyVault.setRecipientAllowed, (VENDOR_CLOUD, true)));
-        uint256 id = _propose(MEMBER_TRANG, bytes32(0), calls);
-        _approve(MEMBER_LAN, id);
-        _approve(MEMBER_HUY, id);
+
+        Call[] memory g = new Call[](5);
+        g[0] = _call(address(vault), abi.encodeCall(IPolicyVault.setTokenAllowed, (address(tUSDC), true)));
+        g[1] = _call(address(vault), abi.encodeCall(IPolicyVault.setTokenAllowed, (address(tTKB), true)));
+        g[2] = _call(address(vault), abi.encodeCall(IPolicyVault.setProtocolAllowed, (address(dex), SWAP_SEL, true)));
+        g[3] = _call(address(vault), abi.encodeCall(IPolicyVault.setRecipientAllowed, (VENDOR_DATA_API, true)));
+        g[4] = _call(address(vault), abi.encodeCall(IPolicyVault.setRecipientAllowed, (VENDOR_CLOUD, true)));
+        uint256 gid = _propose(MEMBER_TRANG, bytes32(0), g);
+        _approve(MEMBER_LAN, gid);
+        _approve(MEMBER_HUY, gid);
+        baseCount = gc.proposalCount();
     }
 
     // ---------------------------------------------------------------- helpers
@@ -156,7 +172,7 @@ contract GuardianCouncilTest is MayLabsBase {
         assertEq(gc.memberPrincipal(MEMBER_HUY), HUY);
         assertEq(gc.registry(), address(registry));
         assertEq(gc.vault(), address(vault));
-        assertEq(gc.proposalCount(), 1);
+        assertEq(gc.proposalCount(), baseCount);
         assertEq(registry.council(), address(gc));
         assertEq(vault.council(), address(gc));
         assertEq(gc.TX_ALLOWLIST(), TX_ALLOWLIST);
@@ -569,7 +585,7 @@ contract GuardianCouncilTest is MayLabsBase {
                 RISK
             );
         }
-        assertEq(gc.proposalCount(), 1);
+        assertEq(gc.proposalCount(), baseCount);
     }
 
     function test_T11_oneBadCallPoisonsTheWholeProposal() public {
@@ -588,7 +604,7 @@ contract GuardianCouncilTest is MayLabsBase {
         calls[1] = _call(address(vault), abi.encodeCall(IPolicyVault.setRecipientAllowed, (VENDOR_INTL_DESIGN, true)));
         calls[2] = _call(TX_ALLOWLIST, abi.encodeCall(IAllowList.setEnabled, (address(0xCAFE))));
         calls[3] = _call(CONTRACT_DEPLOYER_ALLOWLIST, abi.encodeCall(IAllowList.setEnabled, (address(0xCAFE))));
-        uint256 id = _propose(MEMBER_TRANG, bytes32(0), calls);
+        uint256 id = _propose(MEMBER_TRANG, bytes32("new"), calls);
         _approve(MEMBER_LAN, id);
         _approve(MEMBER_HUY, id);
         assertTrue(registry.principalExists(bytes32("new")));
@@ -647,18 +663,22 @@ contract GuardianCouncilTest is MayLabsBase {
         vm.stopPrank();
     }
 
-    function test_malformedArgsRevertBadCallArgsAtExecution() public {
-        // selector of moveKey without arguments: the registry call fails with empty revert data
-        bytes memory data = abi.encodePacked(IPrincipalRegistry.moveKey.selector);
-        uint256 id = _propose(MEMBER_LAN, MINH, _one(_call(address(registry), data)));
-        _approve(MEMBER_LAN, id);
-        vm.prank(MEMBER_TRANG);
+    function test_malformedArgsRevertBadCallArgsAtPropose() public {
+        // arguments are decoded at propose to derive the affected districts, so short calldata cannot get in
+        bytes memory noArgs = abi.encodePacked(IPrincipalRegistry.moveKey.selector);
+        vm.startPrank(MEMBER_LAN);
         vm.expectRevert(IGuardianCouncil.BadCallArgs.selector);
-        gc.approve(id);
-        // atomic: the second approval did not stick and the proposal is still open
-        assertFalse(gc.approvedBy(id, MEMBER_TRANG));
-        assertEq(gc.getProposal(id).approvals, 1);
-        assertFalse(gc.getProposal(id).executed);
+        gc.propose("t", MINH, _one(_call(address(registry), noArgs)), RISK);
+        // moveKey needs two words
+        bytes memory oneWord =
+            abi.encodePacked(IPrincipalRegistry.moveKey.selector, bytes32(uint256(uint160(KEY_MINH))));
+        vm.expectRevert(IGuardianCouncil.BadCallArgs.selector);
+        gc.propose("t", MINH, _one(_call(address(registry), oneWord)), RISK);
+        // a key argument with dirty high bits is not an address
+        bytes memory dirty = abi.encodePacked(IAllowList.setNone.selector, bytes32(type(uint256).max));
+        vm.expectRevert(IGuardianCouncil.BadCallArgs.selector);
+        gc.propose("t", MINH, _one(_call(TX_ALLOWLIST, dirty)), RISK);
+        vm.stopPrank();
     }
 
     function test_failingCallBubblesItsErrorAndRollsBackEverything() public {
@@ -667,7 +687,7 @@ contract GuardianCouncilTest is MayLabsBase {
         // KEY_MINH is already registered
         calls[1] =
             _call(address(registry), abi.encodeCall(IPrincipalRegistry.addKey, (MINH, KEY_MINH, KeyKind.HUMAN, "dup")));
-        uint256 id = _propose(MEMBER_LAN, bytes32(0), calls);
+        uint256 id = _propose(MEMBER_LAN, MINH, calls);
         _approve(MEMBER_LAN, id);
         vm.prank(MEMBER_HUY);
         vm.expectRevert(IPrincipalRegistry.KeyAlreadyRegistered.selector);
@@ -682,15 +702,15 @@ contract GuardianCouncilTest is MayLabsBase {
     function test_proposeStoresAndEmits() public {
         Call[] memory calls = _scene3Calls();
         vm.expectEmit(true, true, false, true, address(gc));
-        emit IGuardianCouncil.Proposed(2, MEMBER_LAN, MINH, "Gom 5 khoa", RISK);
+        emit IGuardianCouncil.Proposed(baseCount + 1, MEMBER_LAN, MINH, "Gom 5 khoa", RISK);
         vm.warp(1_700_000_000);
         vm.prank(MEMBER_LAN);
         uint256 id = gc.propose("Gom 5 khoa", MINH, calls, RISK);
-        assertEq(id, 2);
-        assertEq(gc.proposalCount(), 2);
+        assertEq(id, baseCount + 1);
+        assertEq(gc.proposalCount(), baseCount + 1);
 
-        Proposal memory p = gc.getProposal(2);
-        assertEq(p.id, 2);
+        Proposal memory p = gc.getProposal(baseCount + 1);
+        assertEq(p.id, baseCount + 1);
         assertEq(p.proposer, MEMBER_LAN);
         assertEq(p.subjectPrincipal, MINH);
         assertEq(p.riskReportHash, RISK);
@@ -704,7 +724,7 @@ contract GuardianCouncilTest is MayLabsBase {
             assertEq(p.calls[i].target, calls[i].target);
             assertEq(p.calls[i].data, calls[i].data);
         }
-        assertEq(_propose(MEMBER_HUY, bytes32(0), _one(calls[4])), 3, "ids are sequential (seed proposal is #1)");
+        assertEq(_propose(MEMBER_HUY, MINH, _one(calls[4])), baseCount + 2, "ids are sequential (seed proposal is #1)");
     }
 
     function test_approveCountsAndAutoExecutesAtTwo() public {
@@ -756,14 +776,14 @@ contract GuardianCouncilTest is MayLabsBase {
         vm.expectRevert(IGuardianCouncil.UnknownProposal.selector);
         gc.approve(0);
         vm.expectRevert(IGuardianCouncil.UnknownProposal.selector);
-        gc.approve(2);
+        gc.approve(baseCount + 1);
         vm.expectRevert(IGuardianCouncil.UnknownProposal.selector);
-        gc.cancel(2);
+        gc.cancel(baseCount + 1);
         vm.stopPrank();
         vm.expectRevert(IGuardianCouncil.UnknownProposal.selector);
         gc.getProposal(0);
         vm.expectRevert(IGuardianCouncil.UnknownProposal.selector);
-        gc.getProposal(2);
+        gc.getProposal(baseCount + 1);
     }
 
     function test_cancelOnlyByProposerAndOnlyWhileOpen() public {
@@ -870,6 +890,110 @@ contract GuardianCouncilTest is MayLabsBase {
         _approve(MEMBER_TRANG, id);
         assertEq(vault.principalDailyCap(MINH), 130_000e6);
         assertEq(vault.policyVersion(), baseVersion + 2);
+    }
+
+    // ------------------------------------------- affected-principal derivation (conflict of interest)
+
+    function _moveRebalanceTo(bytes32 toId) internal view returns (Call[] memory) {
+        return _one(_call(address(registry), abi.encodeCall(IPrincipalRegistry.moveKey, (KEY_AGENT_REBALANCE, toId))));
+    }
+
+    function test_misDeclaredSubjectIsRejected() public {
+        // the attack: huy moves a key into his own district but declares another district as the subject
+        vm.startPrank(MEMBER_HUY);
+        vm.expectRevert(GuardianCouncil.SubjectMismatch.selector);
+        gc.propose("t", MINH, _moveRebalanceTo(HUY), RISK);
+        vm.expectRevert(GuardianCouncil.SubjectMismatch.selector);
+        gc.propose("t", bytes32(0), _moveRebalanceTo(HUY), RISK);
+        vm.stopPrank();
+        assertEq(gc.proposalCount(), baseCount);
+    }
+
+    function test_noWayAroundTheCheckBySelfApproving() public {
+        // honest subject (huy): huy cannot approve
+        uint256 a = _propose(MEMBER_HUY, HUY, _moveRebalanceTo(HUY));
+        vm.prank(MEMBER_HUY);
+        vm.expectRevert(IGuardianCouncil.ConflictOfInterest.selector);
+        gc.approve(a);
+        // subject = the key's current district (also in the derived set): huy still conflicts, he receives the key
+        uint256 b = _propose(MEMBER_HUY, AGENT_REBALANCE, _moveRebalanceTo(HUY));
+        vm.prank(MEMBER_HUY);
+        vm.expectRevert(IGuardianCouncil.ConflictOfInterest.selector);
+        gc.approve(b);
+        assertEq(registry.principalOf(KEY_AGENT_REBALANCE), AGENT_REBALANCE);
+    }
+
+    function test_moveKeyConflictsWithBothSendingAndReceivingDistrict() public {
+        // lan moves her own key out to minh: she owns the sending district, so she cannot approve either
+        Call[] memory out = _one(_call(address(registry), abi.encodeCall(IPrincipalRegistry.moveKey, (KEY_LAN, MINH))));
+        vm.prank(MEMBER_HUY);
+        vm.expectRevert(GuardianCouncil.SubjectMismatch.selector);
+        gc.propose("t", HUY, out, RISK);
+        uint256 id = _propose(MEMBER_HUY, MINH, out);
+        vm.prank(MEMBER_LAN);
+        vm.expectRevert(IGuardianCouncil.ConflictOfInterest.selector);
+        gc.approve(id);
+        _approve(MEMBER_HUY, id);
+        _approve(MEMBER_TRANG, id);
+        assertEq(registry.principalOf(KEY_LAN), MINH);
+    }
+
+    function test_affectedSetIsFixedAtProposeTime() public {
+        // proposal about agent_rebalance's current key; then the key moves to huy before anyone approves
+        Call[] memory calls = _one(_call(TX_ALLOWLIST, abi.encodeCall(IAllowList.setNone, (KEY_AGENT_REBALANCE))));
+        uint256 id = _propose(MEMBER_LAN, AGENT_REBALANCE, calls);
+        uint256 mv = _propose(MEMBER_LAN, HUY, _moveRebalanceTo(HUY));
+        _approve(MEMBER_LAN, mv);
+        _approve(MEMBER_TRANG, mv);
+        assertEq(registry.principalOf(KEY_AGENT_REBALANCE), HUY);
+        // huy is not conflicted on the older proposal: its stored set is {agent_rebalance}
+        _approve(MEMBER_HUY, id);
+        _approve(MEMBER_LAN, id);
+        assertEq(_role(KEY_AGENT_REBALANCE), 0);
+    }
+
+    function test_everyDerivationPathBindsSubjectAndConflicts() public {
+        Call[] memory c = new Call[](8);
+        c[0] = _call(address(registry), abi.encodeCall(IPrincipalRegistry.createPrincipal, (HUY, "again")));
+        c[1] = _call(
+            address(registry), abi.encodeCall(IPrincipalRegistry.addKey, (HUY, address(0xB0B), KeyKind.AGENT, "x"))
+        );
+        c[2] = _call(address(registry), abi.encodeCall(IPrincipalRegistry.deactivateKey, (KEY_HUY_1)));
+        c[3] = _call(address(vault), abi.encodeCall(IPolicyVault.setPrincipalDailyCap, (HUY, 1)));
+        c[4] = _call(address(vault), abi.encodeCall(IPolicyVault.setKeyDailyCap, (KEY_HUY_1, 1)));
+        c[5] = _call(address(vault), abi.encodeCall(IPolicyVault.lockPrincipal, (HUY)));
+        c[6] = _call(address(vault), abi.encodeCall(IPolicyVault.unlockPrincipal, (HUY)));
+        c[7] = _call(TX_ALLOWLIST, abi.encodeCall(IAllowList.setEnabled, (KEY_HUY_2)));
+        for (uint256 i; i < c.length; ++i) {
+            vm.prank(MEMBER_TRANG);
+            vm.expectRevert(GuardianCouncil.SubjectMismatch.selector);
+            gc.propose("t", MINH, _one(c[i]), RISK);
+            uint256 id = _propose(MEMBER_TRANG, HUY, _one(c[i]));
+            vm.prank(MEMBER_HUY);
+            vm.expectRevert(IGuardianCouncil.ConflictOfInterest.selector);
+            gc.approve(id);
+        }
+    }
+
+    function test_subjectMayBeZeroOnlyWhenNoDistrictIsAffected() public {
+        // unpause affects no district: any subject is accepted
+        Call[] memory calls = _one(_call(address(vault), abi.encodeCall(IPolicyVault.unpauseAll, ())));
+        _propose(MEMBER_HUY, bytes32(0), calls);
+        _propose(MEMBER_HUY, MINH, calls);
+        // a proposal touching a district cannot use 0
+        Call[] memory lock = _one(_call(address(vault), abi.encodeCall(IPolicyVault.lockPrincipal, (MINH))));
+        vm.prank(MEMBER_HUY);
+        vm.expectRevert(GuardianCouncil.SubjectMismatch.selector);
+        gc.propose("t", bytes32(0), lock, RISK);
+    }
+
+    function test_normalMergeStillPassesForMembersWhoOwnNoAffectedDistrict() public {
+        // scene 3 proposed by lan: none of the 5 districts is lan's or huy's, so huy and trang can approve
+        uint256 id = _propose(MEMBER_LAN, MINH, _scene3Calls());
+        _approve(MEMBER_HUY, id);
+        _approve(MEMBER_TRANG, id);
+        assertEq(vault.principalDailyCap(MINH), DISTRICT_CAP);
+        assertEq(registry.keysOf(MINH).length, 5);
     }
 
     // ----------------------------------------------------------------------- fuzz

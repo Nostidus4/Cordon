@@ -28,8 +28,10 @@ interface IVaultClassifier {
 ///      Lock/unlock keep the Tx AllowList in step with the vault flag, also when they come through a proposal:
 ///      `lockPrincipal` sets every key of the district to role 0, `unlockPrincipal` re-enables its active keys.
 ///      Keys added or moved by a proposal are NOT enabled implicitly; the proposal lists `setEnabled` (spec 4).
-///      Conflict of interest is only as strong as the declared `subjectPrincipal` (the contract cannot tell which
-///      district an arbitrary call affects); the proposer declares it, the other members check it before approving.
+///      Conflict of interest does not trust the declared `subjectPrincipal`: `propose` decodes the calls, derives the
+///      districts they affect (moveKey: sending and receiving district), requires the subject to be among them
+///      (`SubjectMismatch`, a contract-level error outside the frozen interface) and stores the set; `approve`
+///      rejects any member whose district is the subject or in that set. The set is read at `propose` time.
 contract GuardianCouncil is IGuardianCouncil {
     // Every external call goes to the four fixed, trusted targets (registry, vault, two precompiles), never to a
     // caller-chosen address, so the loop-call and event-after-call lints do not apply. Only members reach any of it.
@@ -37,6 +39,10 @@ contract GuardianCouncil is IGuardianCouncil {
 
     /// @notice Constructor guard: members must be non-zero and distinct, registry and vault non-zero.
     error InvalidSetup();
+
+    /// @notice The declared `subjectPrincipal` is not among the principals the calls actually affect.
+    /// @dev Not part of the frozen `IGuardianCouncil`; surfaced to the backend as an unclassified error name.
+    error SubjectMismatch();
 
     /// @dev Tx AllowList precompile, `docs/spec/CONTRACTS.md` section 1.
     address public constant TX_ALLOWLIST = 0x0200000000000000000000000000000000000002;
@@ -56,6 +62,8 @@ contract GuardianCouncil is IGuardianCouncil {
     struct Stored {
         address proposer;
         bytes32 subjectPrincipal;
+        /// @dev principals derived from the calls at `propose` time (conflict-of-interest set)
+        bytes32[] affected;
         Call[] calls;
         bytes32 riskReportHash;
         string title;
@@ -116,8 +124,11 @@ contract GuardianCouncil is IGuardianCouncil {
         for (uint256 i; i < calls.length; ++i) {
             _checkCall(calls[i]);
         }
+        bytes32[] memory aff = _affected(calls);
+        if (aff.length != 0 && !_contains(aff, subjectPrincipal)) revert SubjectMismatch();
         id = ++proposalCount;
         Stored storage s = _proposals[id];
+        s.affected = aff;
         s.proposer = msg.sender;
         s.subjectPrincipal = subjectPrincipal;
         s.riskReportHash = riskReportHash;
@@ -133,7 +144,9 @@ contract GuardianCouncil is IGuardianCouncil {
     function approve(uint256 id) external onlyMember {
         Stored storage s = _open(id);
         bytes32 own = memberPrincipal[msg.sender];
-        if (own != bytes32(0) && own == s.subjectPrincipal) revert ConflictOfInterest();
+        if (own != bytes32(0) && (own == s.subjectPrincipal || _storedContains(s.affected, own))) {
+            revert ConflictOfInterest();
+        }
         if (approvedBy[id][msg.sender]) revert AlreadyApproved();
         approvedBy[id][msg.sender] = true;
         uint8 n = ++s.approvals;
@@ -293,6 +306,91 @@ contract GuardianCouncil is IGuardianCouncil {
             known = sel == IAllowList.setEnabled.selector || sel == IAllowList.setNone.selector;
         }
         if (!known) revert UnknownCall();
+    }
+
+    // ------------------------------------------------ affected-principal derivation
+
+    /// @dev Principals touched by the calls, de-duplicated, read once at `propose` (later moves cannot change it).
+    ///      moveKey: both the key's current principal and the receiving one. addKey/createPrincipal/
+    ///      set(Principal)DailyCap/lock/unlock: the id argument. deactivateKey, setKeyDailyCap, AllowList
+    ///      setEnabled/setNone: the principal the key belongs to now (keys not yet registered give none).
+    function _affected(Call[] calldata calls) private view returns (bytes32[] memory out) {
+        out = new bytes32[](calls.length * 2);
+        uint256 n = 0;
+        for (uint256 i; i < calls.length; ++i) {
+            (bytes32 a, bytes32 b) = _principalsOf(calls[i]);
+            n = _push(out, n, a);
+            n = _push(out, n, b);
+        }
+        assembly ("memory-safe") {
+            mstore(out, n)
+        }
+    }
+
+    function _principalsOf(Call calldata c) private view returns (bytes32 a, bytes32 b) {
+        // length >= 4 was checked by `_checkCall`
+        // forge-lint: disable-next-line(unsafe-typecast)
+        bytes4 sel = bytes4(c.data[:4]);
+        address t = c.target;
+        if (t == registry) {
+            if (sel == IPrincipalRegistry.moveKey.selector) {
+                a = _principalOfKey(c.data, 0);
+                b = _word(c.data, 1);
+            } else if (sel == IPrincipalRegistry.deactivateKey.selector) {
+                a = _principalOfKey(c.data, 0);
+            } else {
+                a = _word(c.data, 0); // createPrincipal, addKey
+            }
+        } else if (t == vault) {
+            if (sel == IPolicyVault.setKeyDailyCap.selector) {
+                a = _principalOfKey(c.data, 0);
+            } else if (
+                sel == IPolicyVault.setPrincipalDailyCap.selector || sel == IPolicyVault.lockPrincipal.selector
+                    || sel == IPolicyVault.unlockPrincipal.selector
+            ) {
+                a = _word(c.data, 0);
+            }
+        } else {
+            a = _principalOfKey(c.data, 0); // AllowList setEnabled / setNone
+        }
+    }
+
+    /// @dev `index`-th 32-byte argument word; calldata shorter than that cannot be a valid call.
+    function _word(bytes calldata data, uint256 index) private pure returns (bytes32 w) {
+        uint256 start = 4 + 32 * index;
+        if (data.length < start + 32) revert BadCallArgs();
+        w = bytes32(data[start:start + 32]);
+    }
+
+    function _principalOfKey(bytes calldata data, uint256 index) private view returns (bytes32) {
+        bytes32 w = _word(data, index);
+        _requireAddress(w);
+        return IPrincipalRegistry(registry).principalOf(_toAddress(w));
+    }
+
+    function _push(bytes32[] memory arr, uint256 n, bytes32 id) private pure returns (uint256) {
+        if (id == bytes32(0) || _containsN(arr, n, id)) return n;
+        arr[n] = id;
+        return n + 1;
+    }
+
+    function _containsN(bytes32[] memory arr, uint256 n, bytes32 id) private pure returns (bool) {
+        for (uint256 i; i < n; ++i) {
+            if (arr[i] == id) return true;
+        }
+        return false;
+    }
+
+    function _contains(bytes32[] memory arr, bytes32 id) private pure returns (bool) {
+        return _containsN(arr, arr.length, id);
+    }
+
+    function _storedContains(bytes32[] storage arr, bytes32 id) private view returns (bool) {
+        uint256 n = arr.length;
+        for (uint256 i; i < n; ++i) {
+            if (arr[i] == id) return true;
+        }
+        return false;
     }
 
     function _requireAddress(bytes32 subject) private pure {
