@@ -40,3 +40,9 @@ Frontend/.screenshots/
 
 # local agent worktrees / tool state
 .claude/
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/

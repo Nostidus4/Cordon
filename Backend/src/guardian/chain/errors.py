@@ -33,6 +33,9 @@ OTHER_ERRORS: frozenset[str] = frozenset(
         "KeyAlreadyRegistered",
         "PrincipalNotFound",
         "PrincipalExists",
+        "NotCouncil",
+        "NotTopUpOperator",
+        "UnknownPair",
         "InsufficientBalance",
         "InsufficientTreasury",
     }
