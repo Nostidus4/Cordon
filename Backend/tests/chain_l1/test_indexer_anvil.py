@@ -45,8 +45,7 @@ def _pay(env: Env, amount: int) -> None:
 
 
 def _lock_and_allowlist(env: Env, principal: str, keys: list[str]) -> None:
-    data = env.vault.encode_abi("lockPrincipal", args=[pid32(principal)])
-    env.send(env.council_stub.functions.forward(env.vault.address, data), env.admin)
+    env.council_call(env.vault, "lockPrincipal", pid32(principal))
     for k in keys:
         env.send(env.allowlist.functions.setNone(k), env.admin)
 
