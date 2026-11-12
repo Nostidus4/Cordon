@@ -199,6 +199,7 @@ Quy tắc:
 
 - `calls[].target` chỉ được là `PrincipalRegistry`, `PolicyVault` hoặc hai precompile AllowList; ngoài ra revert `TargetNotAllowed`. Council **kết thúc** proposal bằng `vault.bumpPolicyVersion()`.
 - Xung đột lợi ích: member có `memberPrincipal == subjectPrincipal` không được `approve`. Nếu proposal chuyển khoá sang khu của member (ví dụ giao agent cho `huy`), proposal phải khai `subjectPrincipal = huy`.
+- Cài đặt Council suy ra tập khu bị ảnh hưởng từ calldata lúc `propose` (moveKey: cả khu gửi và khu nhận; addKey/createPrincipal/cap/lock/unlock theo `id`; khoá theo khu hiện tại của nó), yêu cầu `subjectPrincipal` thuộc tập (nếu tập khác rỗng; lỗi của contract `SubjectMismatch`, không nằm trong interface đóng băng) và cấm mọi member có khu thuộc tập `approve` (`ConflictOfInterest`). Chi tiết: README module contracts.
 - `emergencyLock(id)`: Council là admin của Tx AllowList (sau bàn giao) nên gọi được `setNone` cho từng `keysOf(id)`; `unlockPrincipal` qua proposal phải kèm `setEnabled` lại các khoá.
 - Khoá mới thêm vào (proposal `addKey`/`moveKey`) phải kèm `TxAllowList.setEnabled(key)` trong cùng proposal.
 - `riskReportHash` = `keccak256` của JSON chuẩn hoá do backend tạo; contract chỉ lưu.
