@@ -75,9 +75,11 @@ jobs:
       - name: forge build (warnings are errors)
         run: forge build
         working-directory: contracts
-      - name: forge test
+      - name: forge test (ci profile, deeper fuzz and invariant runs)
         run: forge test -vv
         working-directory: contracts
+        env:
+          FOUNDRY_PROFILE: ci
       - name: ABI copies are up to date
         run: |
           contracts/scripts/export-abis.sh
