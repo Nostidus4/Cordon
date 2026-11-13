@@ -13,7 +13,7 @@ export const REFERENCE: RefRow[] = [
 
 export type RefMatch = "match" | "mismatch" | "other";
 const sameSet = (a: string[], b: string[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
-export const changeCapOf = (c: ProposedChange | undefined): number | null => (c?.kind === "raise_cap" ? Number(BigInt(c.newCapRaw) / toBase(1)) : null);
+export const changeCapOf = (c: ProposedChange | undefined): number | null => (c?.kind === "set_district_cap" ? Number(BigInt(c.cap.raw) / toBase(1)) : null);
 
 /** `other` also when the state is no longer the seed (spent / locked). `match`: same scenario and every number equal; `mismatch`: same scenario but numbers differ; `other`: not the scenario being viewed. */
 export function matchReference(row: RefRow, ctx: { policyVersion: number; compromised: string[]; change?: ProposedChange; /** false when a picked district already spent money today or is locked: the seed table no longer applies */ pristine?: boolean }, result: SimResult | undefined): RefMatch {
@@ -27,6 +27,6 @@ export function matchReference(row: RefRow, ctx: { policyVersion: number; compro
 
 /** Preset "change" options of the runner: every open proposal's change, plus request #12 when the mock/backend has not listed it. */
 export interface Preset { id: string; label: string; change: ProposedChange }
-export function presetsFrom(proposals: { id: number; status: string; title: string; change: ProposedChange }[] | undefined): Preset[] {
-  return (proposals ?? []).filter((p) => p.status === "open").map((p) => ({ id: `p${p.id}`, label: `Đơn #${p.id}: ${p.title}`, change: p.change }));
+export function presetsFrom(proposals: { id: number; status: string; title: string; change: ProposedChange | null }[] | undefined): Preset[] {
+  return (proposals ?? []).flatMap((p) => (p.status === "open" && p.change ? [{ id: `p${p.id}`, label: `Đơn #${p.id}: ${p.title}`, change: p.change }] : []));
 }

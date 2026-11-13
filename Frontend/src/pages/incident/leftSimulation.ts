@@ -2,6 +2,7 @@
 // Computed client-side from shared/scenario4.ts and driven by the step the RIGHT side has received (spec §10.5).
 import { KEY_CAP, SCENE4_ATTACK_STEPS } from "../../shared/scenario4";
 import type { Attempt } from "../../types";
+import { stepOf } from "../../lib/dto";
 import type { KeyKind } from "../../types";
 
 export interface KeyMeta { id: string; label: string; kind: KeyKind }
@@ -44,5 +45,5 @@ export function leftStateAtStep(step: number): LeftState {
 
 /** Left step = the newest scenario step the right side has received (steps 6/7 add nothing on the left, so clamp to 5). */
 export function leftStepFromAttempts(attempts: Pick<Attempt, "step">[]): number {
-  return attempts.reduce((m, a) => Math.max(m, Math.min(a.step, 5)), 0);
+  return attempts.reduce((m, a) => Math.max(m, Math.min(stepOf(a), 5)), 0);
 }

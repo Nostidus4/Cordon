@@ -63,13 +63,13 @@ export default function RequestsPage() {
   const openDraft = (d: DraftProposalRequest) => { setDraft(d); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const send = async () => {
     if (!draft) return;
-    const p = await a.createProposal.mutateAsync({ ...draft, proposer: PROPOSER });
+    const p = await a.createProposal.mutateAsync({ ...draft, member: PROPOSER });
     setDraft(null);
     nav(`/requests?id=${p.id}`, { replace: true, state: null });
   };
   const approve = (member: MemberId) => { if (selected) a.approve.mutate({ id: selected.id, member }); };
 
-  const suggestions = (findings ?? []).filter((f) => f.suggestedChange && f.resolvedByProposal == null && !list.some((p) => p.status === "open" && JSON.stringify(p.change) === JSON.stringify(f.suggestedChange)));
+  const suggestions = (findings ?? []).filter((f) => f.proposal && !list.some((p) => p.status === "open" && JSON.stringify(p.change) === JSON.stringify(f.proposal)));
   const open = list.filter((p) => p.status === "open"), done = list.filter((p) => p.status !== "open");
   const pendingMember = a.approve.isPending ? a.approve.variables?.member ?? null : null;
 
@@ -110,7 +110,7 @@ export default function RequestsPage() {
               </motion.div>
             ) : selected ? (
               <motion.div key={`p-${selected.id}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-                <ProposalDetail proposal={selected} all={list} members={org?.council.members ?? []} demoMode={demoMode} pendingMember={pendingMember}
+                <ProposalDetail proposal={selected} all={list} members={org?.council ?? []} demoMode={demoMode} pendingMember={pendingMember}
                   onApprove={approve} onOpen={select} onDraft={(change) => openDraft({ change })} treasury={treasury} />
               </motion.div>
             ) : !isLoading ? (

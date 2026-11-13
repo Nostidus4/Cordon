@@ -56,7 +56,7 @@ export const incidentShot = (i: Pick<Incident, "building">): CameraShot => ({ bu
 /** buildingStates prop of the city from GET /city/states. */
 export function buildingStatesFrom(city: CityStates | undefined): Partial<Record<BuildingCode, "normal" | "warning" | "incident" | "recovery">> | undefined {
   if (!city) return undefined;
-  return Object.fromEntries(Object.entries(city).map(([k, v]) => [k, v.state])) as Partial<Record<BuildingCode, "normal" | "warning" | "incident" | "recovery">>;
+  return Object.fromEntries(city.buildings.map((b) => [b.id, b.state])) as Partial<Record<BuildingCode, "normal" | "warning" | "incident" | "recovery">>;
 }
 
 /** Latest agent run that carries a timeline (older backends omit `steps`). */

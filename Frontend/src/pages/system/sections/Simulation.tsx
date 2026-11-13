@@ -11,6 +11,7 @@ import type { ProposedChange, RuleId, SimResult } from "../../../types";
 import { REFERENCE, matchReference, presetsFrom } from "../sim.logic";
 import { ACCENT, Empty, JsonView, Section, Stat } from "../ui";
 import { policyLabel } from "../../../lib/policy";
+import { findingDetail } from "../../../lib/findingText";
 
 const RULES: { id: RuleId; short: string; name: string; cond: string; sev: "HIGH" | "MEDIUM"; fix: string }[] = [
   { id: "R1_MULTI_KEY_NO_SHARED_CAP", short: "R1", name: "Nhiều thẻ, không có trần chung", cond: "Một người điều khiển từ 2 thẻ ở các khu khác nhau, hoặc khu có từ 2 thẻ mà chưa có trần chung.", sev: "HIGH", fix: "Gom về một khu, trần chung = trần thẻ lớn nhất × 1,5." },
@@ -153,7 +154,7 @@ function Rules() {
                   <b className="font-toy" style={{ fontSize: 15 }}>{r.short} · {r.name}</b>
                   <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: state === "open" ? "var(--red-ink)" : state === "warn" ? "var(--amber-ink)" : state === "fixed" ? "var(--ok-ink)" : "var(--ink-2)" }}>{status}</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{sample ? sample.detail : r.cond}</div>
+                <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{sample ? findingDetail(sample) : r.cond}</div>
                 <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 2 }}>Đề xuất tự sinh: {r.fix}</div>
               </div>
             </div>

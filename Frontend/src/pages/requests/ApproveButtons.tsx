@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Ban, Check, Hourglass, Pen, ShieldX, UserRound } from "lucide-react";
 import { Button, Tooltip, cn } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
-import { fmtTime } from "../../lib/format";
 import type { CouncilMember, MemberId, Proposal } from "../../types";
 import { MEMBER_SHORT, approvalSlots, type ApprovalSlot } from "./logic";
 
@@ -28,7 +27,7 @@ function Slot({ s, proposer, idx }: { s: ApprovalSlot; proposer: boolean; idx: n
       <div className="relative">
         <p className="text-sm font-semibold text-text">{s.label}</p>
         <p className={cn("mt-0.5 text-xs font-semibold", approved ? "text-ok" : conflict ? "text-bad" : "text-faint")}>
-          {approved ? <>✓ Đã duyệt{s.at ? <span className="font-normal opacity-80"> · {fmtTime(s.at)}</span> : null}</>
+          {approved ? <>✓ Đã duyệt</>
             : conflict ? "✕ Xung đột lợi ích" : <><Hourglass className="mr-1 inline size-3" aria-hidden />Chưa duyệt</>}
         </p>
         {proposer ? <p className="mt-1 inline-flex items-center gap-1 rounded bg-white/8 px-1.5 py-0.5 text-[10.5px] text-muted"><Pen className="size-2.5" aria-hidden /> người đề xuất</p> : null}

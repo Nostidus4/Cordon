@@ -27,8 +27,8 @@ function VaultStatus() {
         <h2 id="vault-title" className="text-[12px] font-semibold uppercase tracking-wider text-faint">Trạng thái kho chi tiêu</h2>
         <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
           {paused ? <StatusChip status="bad">Đã dừng · mọi thẻ ngừng chi</StatusChip> : <StatusChip status="ok">Đang hoạt động</StatusChip>}
-          <span className="text-[12.5px] text-muted">tUSDC trong kho <Money value={org?.vault.usdc} size="sm" className="ml-1" /></span>
-          <span className="text-[12.5px] text-muted">tTKB <Money value={org?.vault.tkb} size="sm" className="ml-1" /></span>
+          <span className="text-[12.5px] text-muted">tUSDC trong kho <Money value={org?.vault.balance} size="sm" className="ml-1" /></span>
+          {org?.vault.tkb ? <span className="text-[12.5px] text-muted">tTKB <Money value={org.vault.tkb} size="sm" className="ml-1" /></span> : null}
           <span className="text-[12.5px] text-muted">chính sách <b className="text-text">v{policyLabel(health) ?? "…"}</b></span>
         </div>
         <p className="mt-1 text-[11.5px] text-faint">{paused ? "Mở lại kho là hành động nới: cần 2/3 thành viên." : "Dừng kho chỉ cần một thành viên; mở lại cần 2/3."}</p>

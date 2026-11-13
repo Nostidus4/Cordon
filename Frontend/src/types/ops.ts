@@ -17,15 +17,13 @@ export interface BuildingRecent {
   simulated: boolean;
   reasonCode: string | null;
   /** e.g. "attempt:12" */
-  ref: string | null;
+  ref: string;
 }
 
 export interface BuildingEvidence {
-  /** "reasonCode" | "attempt" | "proposal" | ... (open set) */
+  /** "reasonCode" | "proposalId" | "findingId" | "building" | ... (open set) */
   kind: string;
-  value: string;
-  txHash?: string | null;
-  simulated?: boolean;
+  value: string | number;
 }
 
 export interface BuildingDetailRule extends BuildingRule {
@@ -85,7 +83,7 @@ export interface FaultAction {
 export interface FaultResult {
   faultId: string;
   building: BuildingId;
-  at: number | string;
+  at: number;
   actions: FaultAction[];
   incidentId: number | null;
 }
@@ -113,7 +111,7 @@ export interface Incident {
   openedAt: number;
   resolvedAt: number | null;
   subject: { principalId?: string | null; key?: string | null };
-  trigger: { reasonCode?: string | null; attemptIds?: (number | string)[] };
+  trigger: { reasonCode?: string | null; attemptIds?: number[]; proposalId?: number | null; agentRunId?: number | null; assistantLogId?: number | null };
   steps: IncidentStep[];
   proposalId: number | null;
 }

@@ -1,4 +1,5 @@
 // Pure helpers of the event log: which contract emitted an event, its key payload fields, filtering and search.
+import { eventKey } from "../../lib/dto";
 import type { ChainEvent } from "../../types";
 import { shortHash } from "../../lib/format";
 
@@ -26,10 +27,10 @@ export const contractOf = (name: string): ContractId => OF[name] ?? "other";
 const FIELDS: Record<string, string[]> = {
   Paid: ["key", "principalId", "to", "amount", "keySpentAfter", "principalSpentAfter"],
   Swapped: ["key", "principalId", "dex", "amount", "keySpentAfter", "principalSpentAfter"],
-  PrincipalLocked: ["principalId", "by", "keysRemoved"], PrincipalUnlocked: ["principalId"], Paused: ["by"], Unpaused: [],
+  PrincipalLocked: ["principalId", "by"], PrincipalUnlocked: ["principalId"], Paused: ["by"], Unpaused: [],
   CapChanged: ["kind", "subject", "oldCap", "newCap"], AllowChanged: ["kind", "subject", "selector", "allowed"], PolicyVersionBumped: ["version"],
   PrincipalCreated: ["id", "label"], KeyAdded: ["id", "key", "kind"], KeyMoved: ["key", "fromId", "toId"], KeyDeactivated: ["key"],
-  Proposed: ["proposalId", "proposer", "subjectPrincipal"], Approved: ["proposalId", "member"], Executed: ["proposalId"], Cancelled: ["proposalId"],
+  Proposed: ["id", "proposer", "subjectPrincipal", "title"], Approved: ["id", "member"], Executed: ["id"], Cancelled: ["id"],
   EmergencyAction: ["member", "action", "subject"], AllowListRoleSet: ["key", "role", "by"],
 };
 
@@ -69,7 +70,7 @@ function matchesQuery(e: ChainEvent, q: string): boolean {
 export function filterEvents(events: readonly ChainEvent[], f: EventFilter): ChainEvent[] {
   return events
     .filter((e) => (f.contracts.size === 0 || f.contracts.has(contractOf(e.name))) && (f.names.size === 0 || f.names.has(e.name)) && matchesQuery(e, f.q))
-    .sort((a, b) => b.block - a.block || b.logIndex - a.logIndex || (a.id < b.id ? 1 : -1));
+    .sort((a, b) => b.block - a.block || b.logIndex - a.logIndex || (eventKey(a) < eventKey(b) ? 1 : -1));
 }
 
 export const lastBlock = (events: readonly ChainEvent[]): number | null => events.reduce<number | null>((m, e) => (m === null || e.block > m ? e.block : m), null);

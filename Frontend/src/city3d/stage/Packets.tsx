@@ -38,7 +38,7 @@ export default function Packets({ attempts }: { attempts: Attempt[] | undefined 
   const crosses = useRef<(Mesh | null)[]>([]);
   const active = useRef<Pk[]>([]);
   const burstState = useRef<{ t: number; pos: Vector3; color: string }[]>(Array.from({ length: 10 }, () => ({ t: -9, pos: new Vector3(), color: TEAL })));
-  const seen = useRef(new Set<string>());
+  const seen = useRef(new Set<number>());
   const [trails, setTrails] = useState<Trail[]>([]);
   const [puffs, setPuffs] = useState<Puff[]>([]);
   const o = useMemo(() => new Object3D(), []);
@@ -55,15 +55,15 @@ export default function Packets({ attempts }: { attempts: Attempt[] | undefined 
     fresh.slice(-MAX).forEach((a, i) => {
       seen.current.add(a.id);
       const pin = rt.pins.get(`k:${a.signer}`);
-      if (!pin || a.action.kind === "lock") return;
+      if (!pin || a.action === "lock") return;
       const start = pin.pos.clone();
       let end = new Vector3(0, 3, 0);
       let kind = "pay";
-      if (a.action.dex) {
+      if (a.action === "swap" && a.to) {
         kind = "swap";
-        end = /evil/i.test(a.action.dex) ? new Vector3(BARGE[0], 4, BARGE[1]) : new Vector3(MOCKDEX[0], 5, MOCKDEX[1]);
-      } else if (a.action.to) {
-        const [x, z] = houseSpot(a.action.to, 0);
+        end = /evil/i.test(a.to) ? new Vector3(BARGE[0], 4, BARGE[1]) : new Vector3(MOCKDEX[0], 5, MOCKDEX[1]);
+      } else if (a.to) {
+        const [x, z] = houseSpot(a.to, 0);
         end = new Vector3(x, 4, z);
       } else end = start.clone().add(new Vector3(8, 0, 6));
       // exit point of the straight path from the pin through its district fence
@@ -81,7 +81,7 @@ export default function Packets({ attempts }: { attempts: Attempt[] | undefined 
         hit.set(start.x + dx * tmin, 3.2, start.z + dz * tmin);
         if (tmin >= 0.999) hit.copy(start).lerp(end, 0.35);
       } else hit.copy(start).lerp(end, 0.4);
-      const pk: Pk = { id: a.id, outcome: a.outcome, t0: 0, start, end, hit, kind, fenced: !!f?.cap, done: false, burstAt: -1, billboardSlot: -1 };
+      const pk: Pk = { id: String(a.id), outcome: a.outcome, t0: 0, start, end, hit, kind, fenced: !!f?.cap, done: false, burstAt: -1, billboardSlot: -1 };
       queue.current.push({ at: nowT + i * 0.45, pk });
       const pts: [number, number, number][] = [];
       const target = a.outcome === "reverted" ? hit : a.outcome === "blocked_at_protocol" ? start.clone().lerp(end, 0.12) : end;
@@ -89,7 +89,7 @@ export default function Packets({ attempts }: { attempts: Attempt[] | undefined 
         arcPoint(start, target, s / 24, tmp);
         pts.push([tmp.x, tmp.y, tmp.z]);
       }
-      newTrails.push({ id: a.id, pts, color: COLOR[a.outcome] });
+      newTrails.push({ id: String(a.id), pts, color: COLOR[a.outcome] });
     });
     if (newTrails.length) setTrails((t) => [...t, ...newTrails].slice(-8));
   }, [attempts, rt, tmp]);
