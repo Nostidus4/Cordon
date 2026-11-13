@@ -418,6 +418,14 @@ contract GovernorTest is PayrollBase {
         assertTrue(policy.killed());
     }
 
+    function test_killSwitchWhenAlreadyOnIsNotTightening() public {
+        vm.prank(M1);
+        gov.killSwitch();
+        vm.prank(M2);
+        vm.expectRevert(IPayrollGovernor.NotTightening.selector);
+        gov.killSwitch();
+    }
+
     // -------------------------------------------------- council read live
 
     function test_membersAreReadLiveFromTheCouncil() public {

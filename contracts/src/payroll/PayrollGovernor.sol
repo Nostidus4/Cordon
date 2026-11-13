@@ -138,6 +138,7 @@ contract PayrollGovernor is IPayrollGovernor {
     // ------------------------------------ tightening: one member, no proposal
 
     function killSwitch() external override onlyMember {
+        if (IFloatPolicy(policy).killed()) revert NotTightening(); // already on: nothing gets tighter
         ILadderScheduler(scheduler).killSwitch();
         emit EmergencyAction(msg.sender, "killSwitch", bytes32(0));
     }
