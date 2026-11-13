@@ -183,8 +183,15 @@
 /* ---------- screen regions (one owner per region; see stage/overlap.ts) ----------
    top bar | status strip (top centre, <= 56px) | scene-left (bottom left) | scene-right (right column) | scene-bottom | drawer (right column, replaces scene-right while open) */
 .stage { --drawer-w: clamp(360px, 20vw, 420px); }
-.stage-strip { position: absolute; z-index: 30; top: 88px; height: 48px; left: 50%; transform: translateX(-50%); width: min(560px, max(300px, calc(100vw - 780px))); pointer-events: none; }
-.stage-strip[data-drawer-open="true"] { left: calc((100vw - var(--drawer-w) - 24px) / 2); width: min(560px, max(300px, calc(100vw - var(--drawer-w) - 96px))); }
+/* the strip sits in the free gap between the left column (scene cards are at most 520px + 24px gutter, can reach the top on short screens)
+   and the right column (drawer or scene-right), so a tall scene-left card never runs under it */
+.stage { --left-col: 568px; }
+.stage-strip { position: absolute; z-index: 30; top: 88px; height: 48px; pointer-events: none; transform: translateX(-50%);
+  --gap: calc(100vw - var(--left-col) - var(--drawer-w) - 24px);
+  left: calc(var(--left-col) + var(--gap) / 2); width: clamp(300px, calc(var(--gap) - 24px), 560px); }
+/* a narrow strip drops the status chip so title + dots + "Xem" always fit inside it */
+.stage-strip { container-type: inline-size; }
+@container (max-width: 459px) { .stage-strip [data-status] { display: none !important; } }
 .stage-drawer { position: absolute; z-index: 30; right: 24px; top: 88px; bottom: 108px; width: var(--drawer-w); display: flex; pointer-events: none; }
 .stage[data-drawer="open"] [data-slot="scene-right"] { display: none; }
 .stage .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

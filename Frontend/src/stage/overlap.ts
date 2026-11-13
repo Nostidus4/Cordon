@@ -25,9 +25,11 @@ export function checkSlotOverlaps(root: ParentNode = document): { slots: SlotRec
   root.querySelectorAll<HTMLElement>("[data-slot]").forEach((el) => {
     const cs = getComputedStyle(el);
     if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) return;
-    const r = el.getBoundingClientRect();
-    if (r.width < 1 || r.height < 1) return;
-    slots.push({ slot: el.dataset.slot!, left: Math.round(r.left), top: Math.round(r.top), right: Math.round(r.right), bottom: Math.round(r.bottom) });
+    // a slot's box is the union of its root and its children: content that overflows the root (a card wider than its slot) still counts
+    const boxes = [el, ...Array.from(el.children)].map((c) => c.getBoundingClientRect()).filter((b) => b.width >= 1 && b.height >= 1);
+    if (boxes.length === 0) return;
+    slots.push({ slot: el.dataset.slot!, left: Math.round(Math.min(...boxes.map((b) => b.left))), top: Math.round(Math.min(...boxes.map((b) => b.top))),
+      right: Math.round(Math.max(...boxes.map((b) => b.right))), bottom: Math.round(Math.max(...boxes.map((b) => b.bottom))) });
   });
   return { slots, overlaps: intersectingPairs(slots) };
 }
