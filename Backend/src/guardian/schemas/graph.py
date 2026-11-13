@@ -26,6 +26,8 @@ class GraphEdge(CamelModel):
 
 class GraphDistrict(CamelModel):
     principal_id: str
+    label: str
+    kind: str
     daily_cap: Money | None = None
     spent_today: Money
     locked: bool

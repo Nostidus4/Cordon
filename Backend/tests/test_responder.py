@@ -278,12 +278,12 @@ async def test_lifecycle_every_transition(started: Callable[..., Any]) -> None:
 
     # recovering -> resolved only after the quiet window
     t = rt.now()
-    rt.clock = lambda: t + rsp.RECOVERY_WINDOW_S - 1
+    rt.clock = lambda: t + rsp.QUIET_WINDOW_S - 1
     rt.responder_tick()
     assert inc.status == "recovering"
-    rt.clock = lambda: t + rsp.RECOVERY_WINDOW_S + 1
+    rt.clock = lambda: t + rsp.QUIET_WINDOW_S + 1
     rt.responder_tick()
-    assert inc.status == "resolved" and inc.resolved_at == t + rsp.RECOVERY_WINDOW_S + 1
+    assert inc.status == "resolved" and inc.resolved_at == t + rsp.QUIET_WINDOW_S + 1
     assert set(step_status(inc).values()) == {"done"}
 
 

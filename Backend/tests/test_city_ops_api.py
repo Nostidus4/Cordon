@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from guardian.chain.sim import SimChain
 from guardian.main import create_app
+from guardian.services import responder as rsp
 from guardian.services.runtime import Runtime
 from guardian.shared.buildings import BUILDINGS
 from guardian.shared.reason_codes import ReasonCode
@@ -418,13 +419,15 @@ async def test_recovery_waits_for_quiet_period(client: httpx.AsyncClient, rt: Ru
     pid = (await get(client, f"/api/incidents/{iid}"))["proposalId"]
     for m in ("trang", "lan"):
         await post(client, f"/api/proposals/{pid}/approve", {"member": m})
+    q = rsp.QUIET_WINDOW_S
     now = rt.now()
-    rt.clock = lambda: now + 100
+    rt.clock = lambda: now + q // 3
     assert (await get(client, f"/api/incidents/{iid}"))["status"] == "recovering"
     # a NEW blocked attempt in the district during recovery pushes the quiet period back
-    rt.clock = lambda: now + 200
+    rt.clock = lambda: now + 2 * q // 3
     await post(client, "/api/faults/F03_VAULT_DRAIN/inject")
-    rt.clock = lambda: now + 301  # 301s after recovery began, but only 101s after the new attempt
+    # past the quiet window since recovery began, not since the new attempt
+    rt.clock = lambda: now + q + 1
     assert (await get(client, f"/api/incidents/{iid}"))["status"] == "recovering"
-    rt.clock = lambda: now + 501
+    rt.clock = lambda: now + 2 * q + 1
     assert (await get(client, f"/api/incidents/{iid}"))["status"] == "resolved"

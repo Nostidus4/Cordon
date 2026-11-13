@@ -29,7 +29,7 @@ from guardian.chain.base import TxResult
 from guardian.core.errors import ApiError
 from guardian.domain.snapshot import PolicySnapshot
 from guardian.services import proposal_service as ps
-from guardian.services.city_state import ATTEMPT_WINDOW_S, RECOVERY_WINDOW_S
+from guardian.services.city_state import ATTEMPT_WINDOW_S
 from guardian.services.runtime import IncidentRec
 from guardian.shared.reason_codes import ReasonCode
 
@@ -49,6 +49,7 @@ TRIGGER_REASONS = frozenset(
     }
 )
 CAP_REASONS = frozenset({ReasonCode.DISTRICT_DAILY_CAP.value, ReasonCode.CARD_DAILY_CAP.value})
+QUIET_WINDOW_S = 30  # recovering -> resolved after this long with no new blocked attempt (short so a live demo sees the loop close)
 MAX_RETRIES = 3
 
 OPEN_STATUSES = ("detected", "contained", "awaiting_council")
@@ -755,12 +756,12 @@ def _verify(rt: Runtime, inc: IncidentRec) -> None:
     if not _recovered(rt, inc):
         _set_step(inc, "verify", "active", "Trạng thái chưa trở lại như trước sự cố.")
         return
-    if now - start < RECOVERY_WINDOW_S:
+    if now - start < QUIET_WINDOW_S:
         _set_step(
             inc,
             "verify",
             "active",
-            f"Đang kiểm tra lại: cần {RECOVERY_WINDOW_S // 60} phút yên ổn, không có lần thử bị chặn mới.",
+            f"Đang kiểm tra lại: cần {QUIET_WINDOW_S} giây yên ổn, không có lần thử bị chặn mới.",
         )
         return
     _set_step(

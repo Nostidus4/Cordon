@@ -53,6 +53,14 @@ Item = tuple[
     int, dict[str, Any]
 ]  # (ts, RecentItem); insertion order breaks ts ties (later = newer)
 
+INCIDENT_STATUS_VI = {
+    "detected": "vừa phát hiện",
+    "contained": "đã khoanh vùng",
+    "awaiting_council": "chờ Hội đồng duyệt",
+    "recovering": "đang hồi phục",
+    "resolved": "đã xử lý xong",
+}
+
 
 def info_out(b: BuildingDef) -> dict[str, Any]:
     return {
@@ -124,7 +132,7 @@ def _incident_item(inc: Any) -> dict[str, Any]:
     return _item(
         step.get("ts") or inc.opened_at,
         "incident",
-        f"Sự cố #{inc.id}: {inc.title_vi} ({inc.status})",
+        f"Sự cố #{inc.id}: {inc.title_vi} ({INCIDENT_STATUS_VI.get(inc.status, inc.status)})",
         f"incident:{inc.id}",
         tx=step.get("txHash"),
     )

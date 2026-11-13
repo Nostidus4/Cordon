@@ -70,6 +70,9 @@ async def test_full_flow(client: httpx.AsyncClient) -> None:
     assert g["policyVersion"] == 2
     dist = next(x for x in g["districts"] if x["principalId"] == "minh")
     assert len(dist["keys"]) == 5 and disp(dist["dailyCap"]) == "30.000"
+    assert (
+        dist["label"] == "Anh Minh" and dist["kind"] == "HUMAN"
+    )  # Frontend District needs both (fence label)
 
     # --- scene 4: agent, attacker 1-5, lock, step 7
     a = await post(c, "/api/agent/run-once")
