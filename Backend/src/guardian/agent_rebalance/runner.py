@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from guardian.agent_rebalance.config import DEFAULT_CONFIG
-from guardian.agent_rebalance.reason_writer import reason_hash, write_reason
+from guardian.agent_rebalance.reason_writer import reason_hash, write_reason_detail
 from guardian.agent_rebalance.rule_engine import Decision, decide
 from guardian.graph.simulate import key_remaining
 from guardian.services import attempt_service as att
@@ -32,7 +32,25 @@ def decision_out(d: Decision | None) -> dict[str, Any] | None:
     }
 
 
-def agent_run_out(r: AgentRunRec) -> dict[str, Any]:
+def chain_reason_hashes(rt: Runtime) -> dict[str, str]:
+    """tx hash -> `reasonHash` of the `Swapped` event the chain emitted (what the vault recorded)."""
+    return {
+        e.tx_hash: e.payload["reasonHash"]
+        for e in rt.chain.events_since(0)
+        if e.name == "Swapped" and e.payload.get("reasonHash")
+    }
+
+
+def verify_reason_hash(r: AgentRunRec, on_chain: dict[str, str]) -> tuple[str | None, bool | None]:
+    """(hash on chain, keccak(stored reasonText) == hash on chain). (None, None) when there is no event to compare."""
+    h = on_chain.get(r.tx_hash) if r.tx_hash else None
+    if h is None or r.reason_text is None:
+        return None, None
+    return h, reason_hash(r.reason_text).lower() == h.lower()
+
+
+def agent_run_out(r: AgentRunRec, on_chain: dict[str, str] | None = None) -> dict[str, Any]:
+    chain_hash, verified = verify_reason_hash(r, on_chain or {})
     return {
         "id": r.id,
         "ts": r.ts,
@@ -48,6 +66,9 @@ def agent_run_out(r: AgentRunRec) -> dict[str, Any]:
         "steps": r.steps or None,
         "untrustedInput": r.untrusted_input,
         "injectionIgnored": r.injection_ignored,
+        "reasonHashOnChain": chain_hash,
+        "reasonHashVerified": verified,
+        "rejectedReasonText": r.rejected_reason_text,
     }
 
 
@@ -89,7 +110,7 @@ def run_once(
         # refusal is recorded with the real reason code (spec Epic D1).
         decision = decide(usdc, ttkb_value, DEFAULT_CONFIG.max_amount_in, None)
     run_id = rt.stores.next_id()
-    extra = {
+    extra: dict[str, Any] = {
         "untrusted_input": untrusted_input,
         "injection_ignored": True if untrusted_input else None,
     }
@@ -127,7 +148,9 @@ def run_once(
         )
     )
     # llm_reason=False (bulk runs such as F07) keeps the template so a loop never holds the event loop per round
-    text, source = write_reason(decision, rt if llm_reason else None, untrusted_input)
+    reason = write_reason_detail(decision, rt if llm_reason else None, untrusted_input)
+    text, source = reason.text, reason.source
+    extra["rejected_reason_text"] = reason.rejected_text
     rh = reason_hash(text)
     explain = _step(
         "explain", "Giải thích", "ok", reasonText=text, reasonSource=source, reasonHash=rh
@@ -234,7 +257,7 @@ def run_once(
 
 def _finish(rt: Runtime, rec: AgentRunRec) -> dict[str, Any]:
     rt.stores.agent_runs.add(rec)
-    out = agent_run_out(rec)
+    out = agent_run_out(rec, chain_reason_hashes(rt))
     rt.publish("agent_run", out)
     rt.notify_state_changed()
     return out

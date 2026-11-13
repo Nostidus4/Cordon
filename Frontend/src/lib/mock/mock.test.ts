@@ -140,11 +140,11 @@ describe("findings parity with the backend", () => {
     await mockApi.lockDistrict({ principalId: "minh", member: "lan" });
     expect(await ids()).toEqual(seedIds);
   });
-  it("policy v2: proposal #11 by lan executed, no findings; lock then emits 5 role-0 events in the lock tx", async () => {
+  it("policy v2: proposal #14 by lan executed, no findings; lock then emits 5 role-0 events in the lock tx", async () => {
     await mockApi.applyPolicyV2();
-    const p11 = (await mockApi.getProposals()).find((p) => p.id === 11)!;
-    expect(p11.proposer).toBe("lan");
-    expect(p11.status).toBe("executed");
+    const p14 = (await mockApi.getProposals()).find((p) => p.id === 14)!;
+    expect(p14.proposer).toBe("lan");
+    expect(p14.status).toBe("executed");
     expect(await ids()).toEqual([]);
     await mockApi.lockDistrict({ principalId: "minh", member: "lan" });
     expect(await ids()).toEqual([]);

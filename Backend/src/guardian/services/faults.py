@@ -271,7 +271,14 @@ def _f05(rt: Runtime) -> list[dict[str, Any]]:
         )
     for s in ATTACK_STEPS:
         a = att.run_spend(
-            rt, s.signer, s.action, s.params, run_id=None, step=s.step, display_time=s.display_time
+            rt,
+            s.signer,
+            s.action,
+            s.params,
+            run_id=None,
+            step=s.step,
+            display_time=s.display_time,
+            guard_source="attacker",
         )
         actions.append(_attempt_action(f"Bước {s.step}: {_step_label(s)}", a))
     return actions

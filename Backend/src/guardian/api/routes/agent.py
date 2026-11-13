@@ -12,7 +12,8 @@ router = APIRouter(prefix="/api/agent", tags=["agent"])
 @router.get("/runs", response_model=list[AgentRunOut])
 async def list_runs(rt: RuntimeDep, limit: int = Query(200, ge=1)):  # type: ignore[no-untyped-def]
     """Agent runs, oldest first (the last `limit`). Read-only."""
-    return [agent_service.agent_run_out(r) for r in rt.stores.agent_runs.all()[-limit:]]
+    on_chain = agent_service.chain_reason_hashes(rt)
+    return [agent_service.agent_run_out(r, on_chain) for r in rt.stores.agent_runs.all()[-limit:]]
 
 
 @router.post(

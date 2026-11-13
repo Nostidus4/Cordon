@@ -15,8 +15,12 @@ import { INCIDENT_STATUS_VI, actionOutcomeVi, awaitsCouncil, faultsOfBuilding, r
 import { MEMBER_SHORT, approvalSlots } from "../pages/requests/logic";
 import { BUILDING_BY_ID, type BuildingId, type RuleState } from "../shared/buildings";
 import type { AgentRun, BuildingDetail, BuildingEvidence, FaultAction, FaultDef, FaultResult, Incident, MemberId } from "../types";
+import { CopilotPanel } from "./CopilotPanel";
 import { useStageStore, type DrawerTab } from "./stageStore";
+import { TxGuardPanel } from "./TxGuardPanel";
 import { CheckIcon, CrossIcon, FaceAvatar, ToyButton, ToyCard } from "./ui";
+import { AgentGuardPanel } from "./AgentGuardPanel";
+import { ViolationsPanel } from "./ViolationsPanel";
 
 export const STATE_TONE: Record<RuleState, { dot: string; soft: string; ink: string }> = {
   normal: { dot: "var(--green)", soft: "var(--teal-soft)", ink: "var(--teal-ink)" },
@@ -61,6 +65,8 @@ function Overview({ d, summary, module, topic, run }: { d: BuildingDetail; summa
           ))}
         </div>
       ) : null}
+      {d.id === "B06" ? <AgentGuardPanel /> : null}
+      {d.id === "B03" || d.id === "B07" ? <ViolationsPanel /> : null}
       <div>
         <div className="toy-eyebrow" style={{ fontSize: 13.5 }}>Vừa xảy ra</div>
         {d.recent.length === 0 ? <p className="toy-body m-0" style={{ fontSize: 13 }}>Chưa có gì.</p> : (
@@ -254,10 +260,11 @@ export function BuildingDrawer({ code }: { code: BuildingId }) {
         </div>
         <div className="toy-scroll mt-3 min-h-0 flex-1 overflow-y-auto pr-1" role="tabpanel">
           {!d ? <p className="toy-body m-0" role="status">{detail.isError ? "Chưa đọc được trạng thái tòa này." : "Đang đọc…"}</p>
-            : tab === "overview" ? <Overview d={d} summary={info.summaryVi} module={info.module} topic={info.topic} run={run.data ?? null} />
+            : tab === "overview" ? <><Overview d={d} summary={info.summaryVi} module={info.module} topic={info.topic} run={run.data ?? null} />{code === "B05" ? <TxGuardPanel /> : null}</>
             : tab === "rules" ? <Rules d={d} />
             : tab === "incident" && inc ? <IncidentTab inc={inc} demo={demo} />
             : <><div className="toy-eyebrow mb-1.5" style={{ fontSize: 14 }}>Thử gây sự cố</div><Faults building={code} faults={faults} /></>}
+          {code === "B02" && tab === "overview" ? <CopilotPanel /> : null}
         </div>
       </ToyCard>
     </div>
