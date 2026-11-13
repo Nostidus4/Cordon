@@ -184,7 +184,7 @@ def recent_items(rt: Runtime, bid: str) -> list[dict[str, Any]]:
         for ev in rt.event_log:
             if ev.name in EVENT_NAMES["B03"]:
                 add(_event_item(ev))
-        for a in st.attempts:
+        for a in st.attempts.all():
             if a.outcome != "ok" and a.reason_code in (
                 ReasonCode.RECIPIENT_NOT_ALLOWED.value,
                 ReasonCode.VAULT_PAUSED.value,
@@ -193,14 +193,14 @@ def recent_items(rt: Runtime, bid: str) -> list[dict[str, Any]]:
             ):
                 add(_attempt_item(rt, a))
     elif bid == "B04":
-        for a in st.attempts:
+        for a in st.attempts.all():
             if a.action in ("pay", "swap"):
                 add(_attempt_item(rt, a))
     elif bid == "B05":
         for ev in rt.event_log:
             if ev.name in EVENT_NAMES["B05"]:
                 add(_event_item(ev))
-        for a in st.attempts:
+        for a in st.attempts.all():
             if a.reason_code in _SHIELD_REASONS:
                 add(_attempt_item(rt, a))
     elif bid == "B06":
@@ -223,7 +223,7 @@ def recent_items(rt: Runtime, bid: str) -> list[dict[str, Any]]:
                     reason=r.reason_code,
                 )
             )
-        for a in st.attempts:
+        for a in st.attempts.all():
             if a.signer == AGENT_SEED and a.action == "pay":
                 add(_attempt_item(rt, a))
     elif bid == "B07":
