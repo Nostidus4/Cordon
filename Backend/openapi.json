@@ -2350,6 +2350,844 @@
         "title": "PauseRequest",
         "type": "object"
       },
+      "PayrollAdvanceRequest": {
+        "properties": {
+          "seconds": {
+            "maximum": 31622400.0,
+            "minimum": 1.0,
+            "title": "Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seconds"
+        ],
+        "title": "PayrollAdvanceRequest",
+        "type": "object"
+      },
+      "PayrollAgentRunOut": {
+        "properties": {
+          "actions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "facts": {
+            "additionalProperties": true,
+            "title": "Facts",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "injectionIgnored": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injectionignored"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reasonHash": {
+            "title": "Reasonhash",
+            "type": "string"
+          },
+          "reasonSource": {
+            "title": "Reasonsource",
+            "type": "string"
+          },
+          "reasonText": {
+            "title": "Reasontext",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/AgentStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          },
+          "untrustedInput": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Untrustedinput"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "outcome",
+          "actions",
+          "steps",
+          "reasonText",
+          "reasonSource",
+          "reasonHash",
+          "facts"
+        ],
+        "title": "PayrollAgentRunOut",
+        "type": "object"
+      },
+      "PayrollAgentRunRequest": {
+        "properties": {
+          "untrustedInput": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Untrustedinput"
+          }
+        },
+        "title": "PayrollAgentRunRequest",
+        "type": "object"
+      },
+      "PayrollCallOut": {
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "fn": {
+            "title": "Fn",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target",
+          "fn",
+          "args"
+        ],
+        "title": "PayrollCallOut",
+        "type": "object"
+      },
+      "PayrollEventOut": {
+        "properties": {
+          "block": {
+            "title": "Block",
+            "type": "integer"
+          },
+          "logIndex": {
+            "title": "Logindex",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          },
+          "txHash": {
+            "title": "Txhash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "block",
+          "txHash",
+          "logIndex",
+          "ts",
+          "payload",
+          "simulated"
+        ],
+        "title": "PayrollEventOut",
+        "type": "object"
+      },
+      "PayrollGuaranteeOut": {
+        "properties": {
+          "coverage": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "exposureAtRisk": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "headroom": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "reasonVi": {
+            "title": "Reasonvi",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "coverage",
+          "exposureAtRisk",
+          "headroom",
+          "reasonVi"
+        ],
+        "title": "PayrollGuaranteeOut",
+        "type": "object"
+      },
+      "PayrollLadderOut": {
+        "properties": {
+          "currentIndex": {
+            "title": "Currentindex",
+            "type": "integer"
+          },
+          "curve": {
+            "items": {
+              "$ref": "#/components/schemas/PayrollLadderPoint"
+            },
+            "title": "Curve",
+            "type": "array"
+          },
+          "cycleStart": {
+            "title": "Cyclestart",
+            "type": "integer"
+          },
+          "deadline": {
+            "title": "Deadline",
+            "type": "integer"
+          },
+          "now": {
+            "title": "Now",
+            "type": "integer"
+          },
+          "payday": {
+            "title": "Payday",
+            "type": "integer"
+          },
+          "rungs": {
+            "items": {
+              "$ref": "#/components/schemas/PayrollRungOut"
+            },
+            "title": "Rungs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "now",
+          "cycleStart",
+          "deadline",
+          "payday",
+          "currentIndex",
+          "rungs",
+          "curve"
+        ],
+        "title": "PayrollLadderOut",
+        "type": "object"
+      },
+      "PayrollLadderPoint": {
+        "properties": {
+          "ceilingAmount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ts",
+          "ceilingAmount"
+        ],
+        "title": "PayrollLadderPoint",
+        "type": "object"
+      },
+      "PayrollMemberRequest": {
+        "properties": {
+          "member": {
+            "default": "lan",
+            "title": "Member",
+            "type": "string"
+          }
+        },
+        "title": "PayrollMemberRequest",
+        "type": "object"
+      },
+      "PayrollPayeeOut": {
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "account",
+          "label",
+          "amount",
+          "paid"
+        ],
+        "title": "PayrollPayeeOut",
+        "type": "object"
+      },
+      "PayrollProposalOut": {
+        "properties": {
+          "approvals": {
+            "title": "Approvals",
+            "type": "integer"
+          },
+          "approvedBy": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Approvedby",
+            "type": "array"
+          },
+          "calls": {
+            "items": {
+              "$ref": "#/components/schemas/PayrollCallOut"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "integer"
+          },
+          "descriptionVi": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Descriptionvi",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "proposer": {
+            "title": "Proposer",
+            "type": "string"
+          },
+          "riskReportHash": {
+            "title": "Riskreporthash",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "executed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "proposer",
+          "calls",
+          "descriptionVi",
+          "riskReportHash",
+          "approvals",
+          "approvedBy",
+          "threshold",
+          "status",
+          "createdAt"
+        ],
+        "title": "PayrollProposalOut",
+        "type": "object"
+      },
+      "PayrollProposeRequest": {
+        "properties": {
+          "calls": {
+            "items": {
+              "$ref": "#/components/schemas/PayrollCallOut"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
+          "member": {
+            "default": "lan",
+            "title": "Member",
+            "type": "string"
+          },
+          "riskReportHash": {
+            "default": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "title": "Riskreporthash",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "calls"
+        ],
+        "title": "PayrollProposeRequest",
+        "type": "object"
+      },
+      "PayrollReportOut": {
+        "properties": {
+          "facts": {
+            "additionalProperties": true,
+            "title": "Facts",
+            "type": "object"
+          },
+          "reasonHash": {
+            "title": "Reasonhash",
+            "type": "string"
+          },
+          "reasonSource": {
+            "title": "Reasonsource",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ts",
+          "text",
+          "reasonSource",
+          "reasonHash",
+          "facts"
+        ],
+        "title": "PayrollReportOut",
+        "type": "object"
+      },
+      "PayrollRungOut": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "beforeDeadline": {
+            "title": "Beforedeadline",
+            "type": "integer"
+          },
+          "ceilingAmount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "maxDeployedBps": {
+            "title": "Maxdeployedbps",
+            "type": "integer"
+          },
+          "startsAt": {
+            "title": "Startsat",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "beforeDeadline",
+          "startsAt",
+          "maxDeployedBps",
+          "ceilingAmount",
+          "active"
+        ],
+        "title": "PayrollRungOut",
+        "type": "object"
+      },
+      "PayrollScaleRequest": {
+        "properties": {
+          "scale": {
+            "maximum": 100000.0,
+            "minimum": 1.0,
+            "title": "Scale",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scale"
+        ],
+        "title": "PayrollScaleRequest",
+        "type": "object"
+      },
+      "PayrollStateOut": {
+        "properties": {
+          "agents": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "bufferAmount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "bufferBps": {
+            "title": "Bufferbps",
+            "type": "integer"
+          },
+          "ceilingAmount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "coverageOk": {
+            "title": "Coverageok",
+            "type": "boolean"
+          },
+          "cycleId": {
+            "title": "Cycleid",
+            "type": "integer"
+          },
+          "cycleStart": {
+            "title": "Cyclestart",
+            "type": "integer"
+          },
+          "dayUnit": {
+            "title": "Dayunit",
+            "type": "integer"
+          },
+          "deadline": {
+            "title": "Deadline",
+            "type": "integer"
+          },
+          "deployedTotal": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "executed": {
+            "title": "Executed",
+            "type": "boolean"
+          },
+          "exposureAtRisk": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "faultTolerance": {
+            "title": "Faulttolerance",
+            "type": "integer"
+          },
+          "guarantee": {
+            "$ref": "#/components/schemas/PayrollGuaranteeOut"
+          },
+          "idle": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "killReason": {
+            "title": "Killreason",
+            "type": "integer"
+          },
+          "killReasonVi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Killreasonvi"
+          },
+          "killed": {
+            "title": "Killed",
+            "type": "boolean"
+          },
+          "nextRungAt": {
+            "title": "Nextrungat",
+            "type": "integer"
+          },
+          "now": {
+            "title": "Now",
+            "type": "integer"
+          },
+          "payday": {
+            "title": "Payday",
+            "type": "integer"
+          },
+          "payrollTotal": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "phase": {
+            "enum": [
+              "accruing",
+              "unwinding",
+              "deadline",
+              "payday",
+              "paid"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "principal": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "reserve": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "roster": {
+            "items": {
+              "$ref": "#/components/schemas/PayrollPayeeOut"
+            },
+            "title": "Roster",
+            "type": "array"
+          },
+          "rungs": {
+            "items": {
+              "$ref": "#/components/schemas/PayrollRungOut"
+            },
+            "title": "Rungs",
+            "type": "array"
+          },
+          "timeScale": {
+            "title": "Timescale",
+            "type": "integer"
+          },
+          "vaultCoversPayroll": {
+            "title": "Vaultcoverspayroll",
+            "type": "boolean"
+          },
+          "venues": {
+            "items": {
+              "$ref": "#/components/schemas/PayrollVenueOut"
+            },
+            "title": "Venues",
+            "type": "array"
+          },
+          "yieldRealized": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "required": [
+          "now",
+          "cycleId",
+          "cycleStart",
+          "payday",
+          "deadline",
+          "phase",
+          "payrollTotal",
+          "principal",
+          "reserve",
+          "idle",
+          "deployedTotal",
+          "yieldRealized",
+          "bufferAmount",
+          "ceilingAmount",
+          "nextRungAt",
+          "killed",
+          "killReason",
+          "coverage",
+          "exposureAtRisk",
+          "coverageOk",
+          "faultTolerance",
+          "bufferBps",
+          "dayUnit",
+          "timeScale",
+          "executed",
+          "venues",
+          "rungs",
+          "roster",
+          "agents",
+          "guarantee",
+          "vaultCoversPayroll"
+        ],
+        "title": "PayrollStateOut",
+        "type": "object"
+      },
+      "PayrollTxOut": {
+        "properties": {
+          "errorRaw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errorraw"
+          },
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "proposalId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposalid"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          },
+          "reasonVi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasonvi"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "txHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txhash"
+          }
+        },
+        "required": [
+          "ok",
+          "status",
+          "events"
+        ],
+        "title": "PayrollTxOut",
+        "type": "object"
+      },
+      "PayrollVenueOut": {
+        "properties": {
+          "addr": {
+            "title": "Addr",
+            "type": "string"
+          },
+          "allowed": {
+            "title": "Allowed",
+            "type": "boolean"
+          },
+          "assetsOf": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "capAmount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "deployed": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "due": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "frozen": {
+            "title": "Frozen",
+            "type": "boolean"
+          },
+          "frozenHint": {
+            "title": "Frozenhint",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "impaired": {
+            "title": "Impaired",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "yieldBpsPerDay": {
+            "title": "Yieldbpsperday",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "addr",
+          "label",
+          "allowed",
+          "impaired",
+          "frozenHint",
+          "frozen",
+          "deployed",
+          "capAmount",
+          "due",
+          "assetsOf",
+          "yieldBpsPerDay"
+        ],
+        "title": "PayrollVenueOut",
+        "type": "object"
+      },
       "PerDistrict": {
         "properties": {
           "enforced": {
@@ -3908,6 +4746,752 @@
         "summary": "Get Org",
         "tags": [
           "org"
+        ]
+      }
+    },
+    "/api/payroll": {
+      "get": {
+        "operationId": "state_api_payroll_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "State",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/agent/run": {
+      "post": {
+        "operationId": "agent_run_api_payroll_agent_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PayrollAgentRunRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollAgentRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Agent Run",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/demo/advance": {
+      "post": {
+        "operationId": "advance_api_payroll_demo_advance_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayrollAdvanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Advance",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/demo/reset": {
+      "post": {
+        "operationId": "demo_reset_api_payroll_demo_reset_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Demo Reset",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/demo/scale": {
+      "post": {
+        "operationId": "scale_api_payroll_demo_scale_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayrollScaleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scale",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/demo/venues/{venue}/freeze": {
+      "post": {
+        "operationId": "freeze_api_payroll_demo_venues__venue__freeze_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "venue",
+            "required": true,
+            "schema": {
+              "title": "Venue",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Freeze",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/demo/venues/{venue}/unfreeze": {
+      "post": {
+        "operationId": "unfreeze_api_payroll_demo_venues__venue__unfreeze_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "venue",
+            "required": true,
+            "schema": {
+              "title": "Venue",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unfreeze",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/events": {
+      "get": {
+        "operationId": "events_api_payroll_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PayrollEventOut"
+                  },
+                  "title": "Response Events Api Payroll Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Events",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/execute": {
+      "post": {
+        "operationId": "execute_api_payroll_execute_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollTxOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Execute",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/finalize": {
+      "post": {
+        "operationId": "finalize_api_payroll_finalize_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollTxOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Finalize",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/kill": {
+      "post": {
+        "operationId": "kill_api_payroll_kill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PayrollMemberRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollTxOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Kill",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/ladder": {
+      "get": {
+        "operationId": "ladder_api_payroll_ladder_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollLadderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ladder",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/proposals": {
+      "get": {
+        "operationId": "list_proposals_api_payroll_proposals_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PayrollProposalOut"
+                  },
+                  "title": "Response List Proposals Api Payroll Proposals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Proposals",
+        "tags": [
+          "payroll"
+        ]
+      },
+      "post": {
+        "operationId": "propose_api_payroll_proposals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayrollProposeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propose",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/proposals/{proposal_id}": {
+      "get": {
+        "operationId": "get_proposal_api_payroll_proposals__proposal_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Proposal",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/proposals/{proposal_id}/approve": {
+      "post": {
+        "operationId": "approve_api_payroll_proposals__proposal_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayrollMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/proposals/{proposal_id}/cancel": {
+      "post": {
+        "operationId": "cancel_api_payroll_proposals__proposal_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "title": "Proposal Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayrollMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/report": {
+      "get": {
+        "operationId": "report_api_payroll_report_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayrollReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Report",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/roster": {
+      "get": {
+        "operationId": "roster_api_payroll_roster_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PayrollPayeeOut"
+                  },
+                  "title": "Response Roster Api Payroll Roster Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Roster",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/runs": {
+      "get": {
+        "operationId": "runs_api_payroll_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PayrollAgentRunOut"
+                  },
+                  "title": "Response Runs Api Payroll Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Runs",
+        "tags": [
+          "payroll"
+        ]
+      }
+    },
+    "/api/payroll/venues": {
+      "get": {
+        "operationId": "venues_api_payroll_venues_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PayrollVenueOut"
+                  },
+                  "title": "Response Venues Api Payroll Venues Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Venues",
+        "tags": [
+          "payroll"
         ]
       }
     },

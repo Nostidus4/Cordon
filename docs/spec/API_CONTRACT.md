@@ -131,6 +131,8 @@ Mỗi message: `event: <type>` + `data: <JSON>`.
 | `city_updated` | `CityStates` |
 | `reset` | `{at, policyVersion, policyLabel, graphVersion, block}` |
 | `incident_updated` | `IncidentOut` (có (CITY_OPS), mục 4.4 của CITY_OPS) |
+| `payroll_updated` | `PayrollStateOut` (CITY-006, [PAYROLL.md](PAYROLL.md) mục 8) |
+| `payroll_event` | sự kiện chain của quỹ lương: `{name, block, txHash, logIndex, ts, payload, simulated}` (CITY-006) |
 
 Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`SSE_EVENT_TYPES`) và `Frontend/src/types/stream.ts` (`STREAM_TYPES`). Frontend phải bỏ qua type lạ, và tự kết nối lại khi mất kết nối.
 

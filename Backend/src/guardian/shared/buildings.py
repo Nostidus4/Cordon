@@ -87,6 +87,8 @@ BUILDINGS: tuple[BuildingDef, ...] = (
             *_incident_rules("B04"),
             RuleDef("B04.blocked_open", "incident", "Giao dịch vừa bị chặn, khu chưa được khoá"),
             RuleDef("B04.blocked_locked", "recovery", "Giao dịch vừa bị chặn, khu đã được khoá"),
+            RuleDef("B04.payroll_kill", "incident", "Công tắc khẩn cấp quỹ lương đang bật"),
+            RuleDef("B04.payroll_at_risk", "warning", "Có nơi gửi quỹ lương đang gặp sự cố"),
         ),
     ),
     BuildingDef(

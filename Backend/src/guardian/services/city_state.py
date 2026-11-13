@@ -22,6 +22,8 @@ order, so the detail endpoint can say which rule decides the colour and which ot
   B04 Cổng chi trả  latest scenario run, latest non-ok pay/swap attempt within ATTEMPT_WINDOW_S:
                     incident  B04.blocked_open    offending district not locked yet
                     recovery  B04.blocked_locked  offending district already locked
+                    incident  B04.payroll_kill    payroll kill switch is on (CITY-006)
+                    warning   B04.payroll_at_risk a payroll venue is impaired (CITY-006)
   B05 Trạm soi giao dịch
                     incident  B05.shield     an attempt hit DISTRICT_LOCKED / BLOCKED_AT_PROTOCOL in the last
                               SHIELD_WINDOW_S (the shield is repelling the attacker right now)
@@ -269,6 +271,28 @@ def evaluate_buildings(rt: Runtime) -> dict[str, BuildingEval]:
                     _ev("txHash", a.tx_hash),
                 )
             )
+
+    # B04 payroll float (CITY-006, PAYROLL.md decision 7): added after the old B04 rules
+    pay = rt.payroll.snapshot()
+    if pay.killed:
+        b4.matches.append(
+            _m(
+                "B04.payroll_kill",
+                "incident",
+                "Công tắc khẩn cấp quỹ lương đang bật: không đặt thêm tiền ra ngoài.",
+                _ev("killReason", pay.kill_reason),
+            )
+        )
+    impaired = [v for v in pay.venues if v.impaired]
+    if impaired:
+        b4.matches.append(
+            _m(
+                "B04.payroll_at_risk",
+                "warning",
+                f"{len(impaired)} nơi gửi quỹ lương đang gặp sự cố, tiền chờ rút về.",
+                _ev("venue", impaired[0].label),
+            )
+        )
 
     # B05 Trạm soi giao dịch
     b5 = ev["B05"]

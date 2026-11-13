@@ -185,6 +185,8 @@
     "event",
     "graph_updated",
     "incident_updated",
+    "payroll_event",
+    "payroll_updated",
     "proposal_updated",
     "reset"
   ]

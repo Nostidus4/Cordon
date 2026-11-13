@@ -388,6 +388,347 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** State */
+        get: operations["state_api_payroll_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/agent/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Agent Run */
+        post: operations["agent_run_api_payroll_agent_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/demo/advance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advance */
+        post: operations["advance_api_payroll_demo_advance_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/demo/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Demo Reset */
+        post: operations["demo_reset_api_payroll_demo_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/demo/scale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Scale */
+        post: operations["scale_api_payroll_demo_scale_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/demo/venues/{venue}/freeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze */
+        post: operations["freeze_api_payroll_demo_venues__venue__freeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/demo/venues/{venue}/unfreeze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unfreeze */
+        post: operations["unfreeze_api_payroll_demo_venues__venue__unfreeze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Events */
+        get: operations["events_api_payroll_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Execute */
+        post: operations["execute_api_payroll_execute_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finalize */
+        post: operations["finalize_api_payroll_finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/kill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Kill */
+        post: operations["kill_api_payroll_kill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/ladder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ladder */
+        get: operations["ladder_api_payroll_ladder_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Proposals */
+        get: operations["list_proposals_api_payroll_proposals_get"];
+        put?: never;
+        /** Propose */
+        post: operations["propose_api_payroll_proposals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Proposal */
+        get: operations["get_proposal_api_payroll_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/proposals/{proposal_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve */
+        post: operations["approve_api_payroll_proposals__proposal_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/proposals/{proposal_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_api_payroll_proposals__proposal_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Report */
+        get: operations["report_api_payroll_report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Roster */
+        get: operations["roster_api_payroll_roster_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runs */
+        get: operations["runs_api_payroll_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/payroll/venues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Venues */
+        get: operations["venues_api_payroll_venues_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/proposals": {
         parameters: {
             query?: never;
@@ -1323,6 +1664,306 @@ export interface components {
             /** Member */
             member: string;
         };
+        /** PayrollAdvanceRequest */
+        PayrollAdvanceRequest: {
+            /** Seconds */
+            seconds: number;
+        };
+        /** PayrollAgentRunOut */
+        PayrollAgentRunOut: {
+            /** Actions */
+            actions: {
+                [key: string]: unknown;
+            }[];
+            /** Facts */
+            facts: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: number;
+            /** Injectionignored */
+            injectionIgnored?: boolean | null;
+            /** Outcome */
+            outcome: string;
+            /** Reasonhash */
+            reasonHash: string;
+            /** Reasonsource */
+            reasonSource: string;
+            /** Reasontext */
+            reasonText: string;
+            /** Steps */
+            steps: components["schemas"]["AgentStep"][];
+            /** Ts */
+            ts: number;
+            /** Untrustedinput */
+            untrustedInput?: string | null;
+        };
+        /** PayrollAgentRunRequest */
+        PayrollAgentRunRequest: {
+            /** Untrustedinput */
+            untrustedInput?: string | null;
+        };
+        /** PayrollCallOut */
+        PayrollCallOut: {
+            /** Args */
+            args: {
+                [key: string]: unknown;
+            };
+            /** Fn */
+            fn: string;
+            /** Target */
+            target: string;
+        };
+        /** PayrollEventOut */
+        PayrollEventOut: {
+            /** Block */
+            block: number;
+            /** Logindex */
+            logIndex: number;
+            /** Name */
+            name: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Simulated */
+            simulated: boolean;
+            /** Ts */
+            ts: number;
+            /** Txhash */
+            txHash: string;
+        };
+        /** PayrollGuaranteeOut */
+        PayrollGuaranteeOut: {
+            coverage: components["schemas"]["Money"];
+            exposureAtRisk: components["schemas"]["Money"];
+            headroom: components["schemas"]["Money"];
+            /** Ok */
+            ok: boolean;
+            /** Reasonvi */
+            reasonVi: string;
+        };
+        /** PayrollLadderOut */
+        PayrollLadderOut: {
+            /** Currentindex */
+            currentIndex: number;
+            /** Curve */
+            curve: components["schemas"]["PayrollLadderPoint"][];
+            /** Cyclestart */
+            cycleStart: number;
+            /** Deadline */
+            deadline: number;
+            /** Now */
+            now: number;
+            /** Payday */
+            payday: number;
+            /** Rungs */
+            rungs: components["schemas"]["PayrollRungOut"][];
+        };
+        /** PayrollLadderPoint */
+        PayrollLadderPoint: {
+            ceilingAmount: components["schemas"]["Money"];
+            /** Ts */
+            ts: number;
+        };
+        /** PayrollMemberRequest */
+        PayrollMemberRequest: {
+            /**
+             * Member
+             * @default lan
+             */
+            member: string;
+        };
+        /** PayrollPayeeOut */
+        PayrollPayeeOut: {
+            /** Account */
+            account: string;
+            amount: components["schemas"]["Money"];
+            /** Label */
+            label: string;
+            /** Paid */
+            paid: boolean;
+        };
+        /** PayrollProposalOut */
+        PayrollProposalOut: {
+            /** Approvals */
+            approvals: number;
+            /** Approvedby */
+            approvedBy: string[];
+            /** Calls */
+            calls: components["schemas"]["PayrollCallOut"][];
+            /** Createdat */
+            createdAt: number;
+            /** Descriptionvi */
+            descriptionVi: string[];
+            /** Id */
+            id: number;
+            /** Proposer */
+            proposer: string;
+            /** Riskreporthash */
+            riskReportHash: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "executed" | "cancelled";
+            /** Threshold */
+            threshold: number;
+            /** Title */
+            title: string;
+        };
+        /** PayrollProposeRequest */
+        PayrollProposeRequest: {
+            /** Calls */
+            calls: components["schemas"]["PayrollCallOut"][];
+            /**
+             * Member
+             * @default lan
+             */
+            member: string;
+            /**
+             * Riskreporthash
+             * @default 0x0000000000000000000000000000000000000000000000000000000000000000
+             */
+            riskReportHash: string;
+            /** Title */
+            title: string;
+        };
+        /** PayrollReportOut */
+        PayrollReportOut: {
+            /** Facts */
+            facts: {
+                [key: string]: unknown;
+            };
+            /** Reasonhash */
+            reasonHash: string;
+            /** Reasonsource */
+            reasonSource: string;
+            /** Text */
+            text: string;
+            /** Ts */
+            ts: number;
+        };
+        /** PayrollRungOut */
+        PayrollRungOut: {
+            /** Active */
+            active: boolean;
+            /** Beforedeadline */
+            beforeDeadline: number;
+            ceilingAmount: components["schemas"]["Money"];
+            /** Index */
+            index: number;
+            /** Maxdeployedbps */
+            maxDeployedBps: number;
+            /** Startsat */
+            startsAt: number;
+        };
+        /** PayrollScaleRequest */
+        PayrollScaleRequest: {
+            /** Scale */
+            scale: number;
+        };
+        /** PayrollStateOut */
+        PayrollStateOut: {
+            /** Agents */
+            agents: string[];
+            bufferAmount: components["schemas"]["Money"];
+            /** Bufferbps */
+            bufferBps: number;
+            ceilingAmount: components["schemas"]["Money"];
+            coverage: components["schemas"]["Money"];
+            /** Coverageok */
+            coverageOk: boolean;
+            /** Cycleid */
+            cycleId: number;
+            /** Cyclestart */
+            cycleStart: number;
+            /** Dayunit */
+            dayUnit: number;
+            /** Deadline */
+            deadline: number;
+            deployedTotal: components["schemas"]["Money"];
+            /** Executed */
+            executed: boolean;
+            exposureAtRisk: components["schemas"]["Money"];
+            /** Faulttolerance */
+            faultTolerance: number;
+            guarantee: components["schemas"]["PayrollGuaranteeOut"];
+            idle: components["schemas"]["Money"];
+            /** Killreason */
+            killReason: number;
+            /** Killreasonvi */
+            killReasonVi?: string | null;
+            /** Killed */
+            killed: boolean;
+            /** Nextrungat */
+            nextRungAt: number;
+            /** Now */
+            now: number;
+            /** Payday */
+            payday: number;
+            payrollTotal: components["schemas"]["Money"];
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "accruing" | "unwinding" | "deadline" | "payday" | "paid";
+            principal: components["schemas"]["Money"];
+            reserve: components["schemas"]["Money"];
+            /** Roster */
+            roster: components["schemas"]["PayrollPayeeOut"][];
+            /** Rungs */
+            rungs: components["schemas"]["PayrollRungOut"][];
+            /** Timescale */
+            timeScale: number;
+            /** Vaultcoverspayroll */
+            vaultCoversPayroll: boolean;
+            /** Venues */
+            venues: components["schemas"]["PayrollVenueOut"][];
+            yieldRealized: components["schemas"]["Money"];
+        };
+        /** PayrollTxOut */
+        PayrollTxOut: {
+            /** Errorraw */
+            errorRaw?: string | null;
+            /** Events */
+            events: string[];
+            /** Ok */
+            ok: boolean;
+            /** Proposalid */
+            proposalId?: number | null;
+            /** Reasoncode */
+            reasonCode?: string | null;
+            /** Reasonvi */
+            reasonVi?: string | null;
+            /** Status */
+            status: string;
+            /** Txhash */
+            txHash?: string | null;
+        };
+        /** PayrollVenueOut */
+        PayrollVenueOut: {
+            /** Addr */
+            addr: string;
+            /** Allowed */
+            allowed: boolean;
+            assetsOf: components["schemas"]["Money"];
+            capAmount: components["schemas"]["Money"];
+            deployed: components["schemas"]["Money"];
+            due: components["schemas"]["Money"];
+            /** Frozen */
+            frozen: boolean;
+            /** Frozenhint */
+            frozenHint: boolean;
+            /** Id */
+            id: string;
+            /** Impaired */
+            impaired: boolean;
+            /** Label */
+            label: string;
+            /** Yieldbpsperday */
+            yieldBpsPerDay: number;
+        };
         /** PerDistrict */
         PerDistrict: {
             enforced: components["schemas"]["Money"];
@@ -2174,6 +2815,576 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrgOut"];
+                };
+            };
+        };
+    };
+    state_api_payroll_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollStateOut"];
+                };
+            };
+        };
+    };
+    agent_run_api_payroll_agent_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PayrollAgentRunRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollAgentRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    advance_api_payroll_demo_advance_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayrollAdvanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollStateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_reset_api_payroll_demo_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollStateOut"];
+                };
+            };
+        };
+    };
+    scale_api_payroll_demo_scale_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayrollScaleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollStateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freeze_api_payroll_demo_venues__venue__freeze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                venue: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollStateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unfreeze_api_payroll_demo_venues__venue__unfreeze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                venue: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollStateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    events_api_payroll_events_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollEventOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    execute_api_payroll_execute_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollTxOut"];
+                };
+            };
+        };
+    };
+    finalize_api_payroll_finalize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollTxOut"];
+                };
+            };
+        };
+    };
+    kill_api_payroll_kill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PayrollMemberRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollTxOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ladder_api_payroll_ladder_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollLadderOut"];
+                };
+            };
+        };
+    };
+    list_proposals_api_payroll_proposals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollProposalOut"][];
+                };
+            };
+        };
+    };
+    propose_api_payroll_proposals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayrollProposeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_proposal_api_payroll_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_api_payroll_proposals__proposal_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayrollMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_payroll_proposals__proposal_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayrollMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_api_payroll_report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollReportOut"];
+                };
+            };
+        };
+    };
+    roster_api_payroll_roster_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollPayeeOut"][];
+                };
+            };
+        };
+    };
+    runs_api_payroll_runs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollAgentRunOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    venues_api_payroll_venues_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayrollVenueOut"][];
                 };
             };
         };

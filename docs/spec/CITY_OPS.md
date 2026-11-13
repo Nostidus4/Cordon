@@ -33,6 +33,8 @@ Luật đổi màu giữ nguyên luật hiện có trong docstring của `servic
 | `B03.near_cap` | warning | Một khu đã dùng ≥ 80% hạn mức chung hôm nay |
 | `B04.blocked_open` | incident | Giao dịch vừa bị chặn, khu chưa được khoá |
 | `B04.blocked_locked` | recovery | Giao dịch vừa bị chặn, khu đã được khoá |
+| `B04.payroll_kill` | incident | Công tắc khẩn cấp quỹ lương đang bật |
+| `B04.payroll_at_risk` | warning | Có nơi gửi quỹ lương đang gặp sự cố |
 | `B05.shield` | incident | Chain vừa từ chối giao dịch của khu bị khoá / thẻ bị gạch |
 | `B05.locked` | recovery | Có khu đang bị khoá |
 | `B06.blocked` | warning | Lần chạy gần nhất của agent bị chặn / revert |
@@ -160,3 +162,7 @@ Một khu/khoá chỉ có một sự cố mở tại một thời điểm (gộp
 - B02: Copilot (#13): write tools có xác nhận + allowance, bộ eval 30 câu VI/EN.
 - B06/B03/B07: agent #12: demo prompt injection đầy đủ, bảng vi phạm, hash log giải thích ghi on-chain, timelock đổi luật.
 - B04: Quỹ lương (#21): bộ contract **mới, tách riêng** `PayrollVault` / `FloatPolicy` / `LadderScheduler` (interface doc riêng, không đụng bộ đã đóng băng), chạy sim trước rồi L1.
+
+## 10. Quỹ lương (B04, CITY-006)
+
+Xem [PAYROLL.md](PAYROLL.md): bộ contract riêng, agent chỉ allocate/unwind trong whitelist, bậc thang rút về trước T-1, công tắc khẩn cấp, demo một tháng trong 10 phút. Luật màu B04 thêm `B04.payroll_kill` và `B04.payroll_at_risk` (bảng mục 1).
