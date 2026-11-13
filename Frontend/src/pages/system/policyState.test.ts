@@ -4,7 +4,7 @@ import { decimalsOf, parseProtocol, policySnapshot } from "./policyState";
 
 const m = (raw: string) => ({ raw, display: raw });
 const graph = (locked: boolean, active: boolean): GraphSnapshot => ({
-  version: 1, policyVersion: 2, block: 9,
+  version: 1, policyVersion: 2, policyLabel: 2, block: 9,
   nodes: [{ id: "vault", type: "Vault", label: "v", data: { paused: false } }, { id: "k:key_a", type: "Key", label: "a", data: { active, keyDailyCap: m("10"), keySpentToday: m("3") } }, { id: "t:tUSDC", type: "Token", label: "tUSDC", data: {} }],
   edges: [], districts: [{ principalId: "p", label: "P", kind: "AGENT", dailyCap: null, spentToday: m("3"), locked, keys: ["key_a"] }],
 });

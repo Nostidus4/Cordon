@@ -44,7 +44,7 @@ export function ActionHistory() {
   const { data: org } = useOrg();
   const { data: health } = useHealth();
   const offset = health ? health.policyVersion - (policyLabel(health) ?? health.policyVersion) : 0;
-  const items = useMemo(() => buildHistory(events ?? [], org?.council.members ?? [], offset), [events, org, offset]);
+  const items = useMemo(() => buildHistory(events ?? [], org?.council ?? [], offset), [events, org, offset]);
   return (
     <section aria-labelledby="hist-title" className="glass flex min-h-0 flex-1 flex-col rounded-[var(--radius-lg)] p-4" data-tour="council-history">
       <div className="mb-3 flex items-center justify-between">

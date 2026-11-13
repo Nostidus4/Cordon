@@ -135,7 +135,7 @@ export function toReactFlow(snap: GraphSnapshot, boxes: Record<string, TweenBox>
       const owner = key?.data.principalId;
       if (owner && e.from === `p:${owner}`) continue;
     }
-    push(e.id, e.from, e.to, kind, e.source, e.type, e.source !== "onchain" && kind === "decl" ? { label: "tự khai", note: e.note, lane: laneOf(e.to) } : {});
+    push(e.id, e.from, e.to, kind, e.source, e.type, e.source !== "onchain" && kind === "decl" ? { label: "tự khai", lane: laneOf(e.to) } : {});
   }
   for (const d of snap.districts) push(busEdgeId(d.principalId), "vault", `p:${d.principalId}`, "bus", "onchain");
   if (v.mode === "map") push("x:council-vault", "council", "vault", "gov", "onchain");

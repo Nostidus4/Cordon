@@ -1,4 +1,4 @@
-// Read-only additions for the system dashboard: agent runs list, assistant logs (+ §9.4 number verification), health uptime.
+// Read-only additions for the system dashboard: agent runs list, assistant logs (+ §9.4 number verification).
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockApi, mockConfig } from "./server";
 import { numbersInText, readPath, renderValue, verifyAnswer } from "./assistantVerify";
@@ -56,14 +56,6 @@ describe("verifyAnswer (§9.4)", () => {
     expect(readPath({ calls: [{ fn: "setPrincipalDailyCap", args: { cap: "30000000000" } }] }, "calls[setPrincipalDailyCap].args.cap")).toBe("30000000000");
     expect(renderValue("30000000000")).toBe("30.000");
     expect(renderValue(6.5)).toBe("6,5");
-  });
-});
-
-describe("health.uptimeSec", () => {
-  it("is a non-negative integer", async () => {
-    const h = await mockApi.getHealth();
-    expect(Number.isInteger(h.uptimeSec)).toBe(true);
-    expect(h.uptimeSec).toBeGreaterThanOrEqual(0);
   });
 });
 

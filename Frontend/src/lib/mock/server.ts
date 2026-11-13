@@ -269,14 +269,15 @@ function liveProposal(p: Proposal): Proposal { return structuredClone(p); }
 
 // ---------- city ----------
 const RANK: Record<CityBuildingState, number> = { normal: 0, recovery: 1, warning: 2, incident: 3 };
-export function deriveCity(): CityStates {
+type MockStatus = { state: CityBuildingState; reasonVi: string; evidence?: { kind: string; ref: string; txHash?: string | null; simulated?: boolean } };
+function cityMap(): Record<CityBuildingId, MockStatus> {
   const openProps = S.proposals.filter((p) => p.status === "open");
   const r1 = computeFindings(S);
   const blocked = attempts.filter((a) => a.runId === currentRunId && a.outcome !== "ok");
   const lastBlocked = blocked[blocked.length - 1];
   const locked = Object.values(S.principals).filter((p) => p.locked);
   const nearCap = activeNear();
-  const c = {} as CityStates;
+  const c = {} as Record<CityBuildingId, MockStatus>;
   c.B01 = openProps.length ? { state: "warning", reasonVi: `${openProps.length} đề xuất đang chờ Hội đồng duyệt`, evidence: { kind: "proposal", ref: String(openProps[0].id) } }
     : { state: "normal", reasonVi: "Hội đồng không có đề xuất nào chờ duyệt" };
   const lastLog = assistantLogs[assistantLogs.length - 1];
@@ -300,6 +301,11 @@ export function deriveCity(): CityStates {
   const worst = (Object.values(c) as { state: CityBuildingState }[]).reduce<CityBuildingState>((w, x) => (RANK[x.state] > RANK[w] ? x.state : w), "normal");
   c.B08 = { state: worst, reasonVi: worst === "normal" ? "Toàn thành phố bình thường" : worst === "incident" ? "Có sự cố đang xử lý" : worst === "warning" ? "Có cảnh báo cần xem" : "Đang khôi phục sau khoá khu" };
   return c;
+}
+export function deriveCity(): CityStates {
+  const c = cityMap();
+  const buildings = (Object.keys(c) as CityBuildingId[]).map((id) => ({ id, name: BUILDING_BY_ID[id].name, state: c[id].state, reasonVi: c[id].reasonVi, evidence: c[id].evidence ? [{ kind: c[id].evidence!.kind, value: c[id].evidence!.ref }] : [] }));
+  return { buildings, graphVersion: S.graphVersion, policyVersion: S.policyVersion, policyLabel: S.policyVersion, updatedAt: nowSec() };
 }
 function activeNear(): { id: string; pct: number } | null {
   for (const p of Object.values(S.principals)) {
@@ -565,7 +571,7 @@ function injectFault(id: string): FaultResult {
       const blocked = att.filter((a) => a.outcome !== "ok");
       const leakedKey = att[0]?.signer ?? "key_minh";
       incidentId = startIncident({ building: "B05", faultId: def.id, titleVi: "Thẻ của anh Minh có dấu hiệu bị lộ", detectVi: `${blocked.length} lần thử bị chặn trong vài phút`, subject: { principalId: "minh", key: leakedKey },
-        trigger: { reasonCode: blocked[0]?.reasonCode ?? null, attemptIds: blocked.map((a) => a.id) },
+        trigger: { reasonCode: blocked[0]?.reasonCode ?? null, attemptIds: blocked.map((a) => Number(a.id)) },
         contain: () => { const r = lockPrincipal({ principalId: "minh", member: "lan" }); return { detailVi: "Khoá khu anh Minh bằng chữ ký chị Lan", txHash: r.txHash }; },
         proposal: { title: "Tắt thẻ bị lộ và mở lại khu anh Minh", detailVi: "tắt thẻ bị lộ, mở lại khu", calls: [
           { target: "PolicyVault", fn: "deactivateKey", args: { key: leakedKey }, describe: "Tắt thẻ bị lộ" },
@@ -584,7 +590,7 @@ function injectFault(id: string): FaultResult {
       actions.push(fromAttempt(at));
       const oldCap = agentKey?.dailyCap ?? 0n;
       incidentId = startIncident({ building: "B06", faultId: def.id, titleVi: "Agent bị nhét lệnh lạ", detectVi: "Có văn bản lạ được nạp vào agent và một lệnh chuyển thẳng bị chặn", subject: { principalId: agentKey?.principalId ?? null, key: "key_agent_rebalance" },
-        trigger: { reasonCode: at.reasonCode, attemptIds: [at.id] },
+        trigger: { reasonCode: at.reasonCode, attemptIds: [Number(at.id)] },
         contain: () => { if (agentKey) agentKey.dailyCap = 0n; return { detailVi: "Hạ hạn mức thẻ agent về 0", txHash: fakeTxHash(`cap${++counter}`) }; },
         proposal: { title: "Trả lại hạn mức cho thẻ agent", detailVi: "trả hạn mức cũ cho thẻ agent", calls: [{ target: "PolicyVault", fn: "restoreKeyCap", args: { key: "key_agent_rebalance", cap: oldCap.toString() }, describe: "Trả hạn mức cũ cho thẻ agent" }],
           recover: () => { if (agentKey) agentKey.dailyCap = oldCap; } }, closeVi: "" }).id;
@@ -609,13 +615,13 @@ function injectFault(id: string): FaultResult {
 function buildingDetail(id: string): BuildingDetail {
   const info = BUILDING_BY_ID[id as BuildingId];
   if (!info) throw new ApiError("BUILDING_NOT_FOUND", `Không có tòa ${id}`, 404);
-  const st = deriveCity()[info.id];
+  const st = cityMap()[info.id];
   const inc = openIncidentOf(info.id);
   const activeRuleId = ruleForState(info.id, st.state, inc ? (inc.status === "recovering" ? "recovering" : "open") : null);
   const evidence: BuildingEvidence[] = [];
   const lastBlocked = [...attempts].reverse().find((a) => a.outcome !== "ok" && a.reasonCode);
   if ((info.id === "B04" || info.id === "B05") && lastBlocked?.reasonCode) evidence.push({ kind: "reasonCode", value: lastBlocked.reasonCode });
-  if (st.evidence) evidence.push({ kind: st.evidence.kind, value: st.evidence.ref, txHash: st.evidence.txHash ?? null, simulated: st.evidence.simulated ?? true });
+  if (st.evidence) evidence.push({ kind: st.evidence.kind, value: st.evidence.ref });
   return {
     ...structuredClone(info), state: st.state, reasonVi: st.reasonVi, evidence,
     rules: info.rules.map((r) => ({ ...r, active: r.id === activeRuleId })), activeRuleId,
@@ -625,7 +631,7 @@ function buildingDetail(id: string): BuildingDetail {
 
 function recentOf(id: BuildingId): BuildingRecent[] {
   const out: BuildingRecent[] = [];
-  const r = (ts: number, kind: BuildingRecent["kind"], summaryVi: string, extra: Partial<BuildingRecent> = {}) => out.push({ ts, kind, summaryVi, txHash: null, simulated: true, reasonCode: null, ref: null, ...extra });
+  const r = (ts: number, kind: BuildingRecent["kind"], summaryVi: string, extra: Partial<BuildingRecent> = {}) => out.push({ ts, kind, summaryVi, txHash: null, simulated: true, reasonCode: null, ref: "", ...extra });
   if (id === "B04" || id === "B05") {
     for (const a of attempts.slice(-10)) {
       if (id === "B05" && a.outcome !== "blocked_at_protocol" && a.action.kind !== "lock") continue;
@@ -688,13 +694,15 @@ export const mockApi = {
   async getHealth(): Promise<Health> {
     await lat();
     const lastAgent = agentRuns[agentRuns.length - 1];
-    return { ok: true, l1: { block: currentBlock(), latestBlockAt: nowIso() }, cchain: { block: 41_902_118 + Math.floor((Date.now() - bootAt) / 2000) }, indexerLagMs: 400,
-      agent: { status: "idle", lastRunAt: lastAgent?.createdAt ?? null }, demoMode: true, chainMode: "sim", policyVersion: S.policyVersion, uptimeSec: Math.floor((Date.now() - bootAt) / 1000) };
+    return { status: "ok", chainMode: "sim", demoMode: true, simulated: true, l1Block: currentBlock(), cChainBlock: 41_902_118 + Math.floor((Date.now() - bootAt) / 2000), indexerLagBlocks: 0,
+      policyVersion: S.policyVersion, policyLabel: S.policyVersion, graphVersion: S.graphVersion,
+      agent: { status: "idle", lastRunAt: lastAgent ? isoSec(lastAgent.createdAt) : null }, lastBlockAt: nowSec(), blockStalled: false };
   },
   async getOrg(): Promise<Org> {
     await lat();
-    return { company: { name: "Mây Labs (giả định)", fictional: true }, mainTreasury: { label: "Safe 3/5 · Fuji C-Chain", balance: money(MAIN_TREASURY), token: "tUSDC" },
-      vault: { label: "PolicyVault · Guardian L1", usdc: money(S.vaultUsdc), tkb: money(S.vaultTkb) }, council: { members: structuredClone(S.members), threshold: 2 } };
+    return { id: "may_labs", name: "Mây Labs (giả định)", fictional: true, mainTreasury: { label: "Safe 3/5 · Fuji C-Chain", balance: money(MAIN_TREASURY) },
+      vault: { label: "PolicyVault · Guardian L1", balance: money(S.vaultUsdc), tkb: money(S.vaultTkb) }, council: structuredClone(S.members), threshold: 2,
+      policyVersion: S.policyVersion, policyLabel: S.policyVersion };
   },
   async getGraph(): Promise<GraphSnapshot> { await lat(); return buildGraph(S, currentBlock()); },
   async simulate(req: SimulateRequest): Promise<SimResult> { await lat(); return simulate(S, req.compromised, req.change); },

@@ -31,7 +31,6 @@ export interface GraphEdge {
   to: string;
   type: EdgeType;
   source: EdgeSource;
-  note?: string;
 }
 
 export interface District {
@@ -47,8 +46,8 @@ export interface District {
 export interface GraphSnapshot {
   version: number;
   policyVersion: number;
-  /** Version to show: raw - baseline + 1 (v1 at the start of scene 1). Absent in the mock, where raw is already that. */
-  policyLabel?: number;
+  /** Version to show: raw - baseline + 1 (v1 at the start of scene 1). The mock sends the same number as policyVersion. */
+  policyLabel: number;
   block: number;
   nodes: GraphNode[];
   edges: GraphEdge[];

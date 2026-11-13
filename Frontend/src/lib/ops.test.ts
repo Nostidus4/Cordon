@@ -66,7 +66,7 @@ describe("texts", () => {
 describe("city states and rules", () => {
   it("derives buildingStates from the city states", () => {
     expect(buildingStatesFrom(undefined)).toBeUndefined();
-    const c = { B01: { state: "warning", reasonVi: "" }, B02: { state: "normal", reasonVi: "" } } as unknown as CityStates;
+    const c = { buildings: [{ id: "B01", state: "warning" }, { id: "B02", state: "normal" }] } as unknown as CityStates;
     expect(buildingStatesFrom(c)).toEqual({ B01: "warning", B02: "normal" });
   });
   it("picks the rule that paints a building", () => {

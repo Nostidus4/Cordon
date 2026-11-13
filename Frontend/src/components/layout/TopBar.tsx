@@ -31,8 +31,8 @@ export function TopBar() {
   const demoMode = useUiStore((s) => s.demoMode);
   const setPalette = useUiStore((s) => s.setPaletteOpen);
   const reset = useDemoReset();
-  const status: "ok" | "bad" | "warn" = isError ? "bad" : h && !h.ok ? "warn" : "ok";
-  const block = h ? fmtDisplay(toBase(h.l1.block)) : "…";
+  const status: "ok" | "bad" | "warn" = isError ? "bad" : h && h.status !== "ok" ? "warn" : "ok";
+  const block = h ? fmtDisplay(toBase(h.l1Block)) : "…";
   return (
     <div className="flex h-14 items-center gap-4 px-6">
       <div className="flex items-center gap-3">

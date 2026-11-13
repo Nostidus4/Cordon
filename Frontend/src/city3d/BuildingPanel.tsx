@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { BUILDING_BY_CODE, STATES, STATE_COLOR, STATE_ICON, STATE_LABEL } from "./buildings";
 import { useCityStore } from "./cityStore";
-import { StatusChip, EvidenceBadge, type Status } from "../components/ui";
+import { StatusChip, type Status } from "../components/ui";
 
 const STATUS: Record<string, Status> = { normal: "ok", warning: "warn", incident: "bad", recovery: "locked" };
 import { BuildingIcon } from "./icons";
@@ -42,8 +42,7 @@ export default function BuildingPanel() {
       {live && reason?.evidence && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-slate-300">
           <span>Bằng chứng:</span>
-          <span className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[11px]">{reason.evidence.kind} · {reason.evidence.ref}</span>
-          <EvidenceBadge txHash={reason.evidence.txHash} simulated={reason.evidence.simulated} />
+          <span className="rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[11px]">{reason.evidence.kind} · {reason.evidence.value}</span>
         </div>
       )}
       {live && <p className="mt-1 text-[11px] text-slate-400">Dữ liệu trực tiếp. Bấm nút bên dưới để chuyển sang chế độ demo.</p>}

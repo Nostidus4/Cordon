@@ -336,7 +336,7 @@ export function buildGraph(s: State, block: number): GraphSnapshot {
     }
   }
   for (const e of s.declared)
-    edges.push({ id: e.id, from: `p:${e.from}`, to: `k:${e.to}`, type: e.relation, source: "declared", note: e.note });
+    edges.push({ id: e.id, from: `p:${e.from}`, to: `k:${e.to}`, type: e.relation, source: "declared" });
   for (const r of s.recipients) nodes.push({ id: `r:${r}`, type: "Recipient", label: r, data: { address: fakeAddress(r) } });
   for (const pr of s.protocols) nodes.push({ id: `pr:${pr}`, type: "Protocol", label: `${pr}.swapExactIn`, data: {} });
   for (const t of s.tokens) nodes.push({ id: `t:${t}`, type: "Token", label: t, data: {} });
@@ -345,7 +345,7 @@ export function buildGraph(s: State, block: number): GraphSnapshot {
     for (const r of s.recipients) edges.push({ id: `e:${k.id}-pay-${r}`, from: `k:${k.id}`, to: `r:${r}`, type: "MAY_PAY", source: "onchain" });
   }
   if (s.keys.key_agent_rebalance) edges.push({ id: "e:key_agent_rebalance-call-MockDEX", from: "k:key_agent_rebalance", to: "pr:MockDEX", type: "MAY_CALL", source: "onchain" });
-  return { version: s.graphVersion, policyVersion: s.policyVersion, block, nodes, edges, districts: buildDistricts(s) };
+  return { version: s.graphVersion, policyVersion: s.policyVersion, policyLabel: s.policyVersion, block, nodes, edges, districts: buildDistricts(s) };
 }
 export function buildDistrictDetail(s: State, pid: string): DistrictDetail | null {
   const p = s.principals[pid]; if (!p) return null;

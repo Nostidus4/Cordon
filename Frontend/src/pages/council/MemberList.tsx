@@ -53,9 +53,9 @@ export function MemberList() {
   const { data: org } = useOrg();
   return (
     <section aria-labelledby="members-title" className="flex min-h-0 flex-col">
-      <h2 id="members-title" className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-faint">Thành viên · {org?.council.members.length ?? 3} người, cần {org?.council.threshold ?? 2} để nới</h2>
+      <h2 id="members-title" className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-faint">Thành viên · {org?.council.length ?? 3} người, cần {org?.threshold ?? 2} để nới</h2>
       <ul className="flex min-h-0 flex-1 flex-col gap-2.5">
-        {org ? org.council.members.map((m) => <Member key={m.id} m={m} total={org.council.members.length} />) : [0, 1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-[var(--radius-lg)]" />)}
+        {org ? org.council.map((m) => <Member key={m.id} m={m} total={org.council.length} />) : [0, 1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-[var(--radius-lg)]" />)}
       </ul>
     </section>
   );

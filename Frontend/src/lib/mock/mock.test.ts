@@ -87,8 +87,9 @@ describe("scene 4 (spec §4.3 table)", () => {
     expect(s7.txHash).toBeNull();
     expect(s7.reasonCode).toBe("BLOCKED_AT_PROTOCOL");
     const city = await mockApi.getCityStates();
-    expect(city.B05.state).toBe("recovery");
-    expect(city.B04.state).toBe("incident");
+    const st = (id: string) => city.buildings.find((b) => b.id === id)?.state;
+    expect(st("B05")).toBe("recovery");
+    expect(st("B04")).toBe("incident");
     un();
   });
   it("agent: swap 5.000 first, CARD_DAILY_CAP after the card is exhausted", async () => {
@@ -104,7 +105,7 @@ describe("scene 4 (spec §4.3 table)", () => {
     await mockApi.pauseAll({ member: "lan" });
     const r = await mockApi.runAgentOnce();
     expect(r.reasonCode).toBe("VAULT_PAUSED");
-    expect((await mockApi.getCityStates()).B03.state).toBe("incident");
+    expect((await mockApi.getCityStates()).buildings.find((b) => b.id === "B03")?.state).toBe("incident");
   });
   it("assistant numbers come from state", async () => {
     const a = await mockApi.askAssistant({ question: "Nếu anh Huy cũng bị chiếm thì sao?", context: { screen: "simulate" } });

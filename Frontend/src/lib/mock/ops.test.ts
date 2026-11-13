@@ -78,7 +78,7 @@ describe("F05 incident lifecycle (mock)", () => {
     // building colour comes from the open incident, rule id is incident_open
     const b5 = await mockApi.getBuilding("B05");
     expect(b5.state).toBe("incident"); expect(b5.activeRuleId).toBe("B05.incident_open"); expect(b5.incidentId).toBe(1);
-    expect((await mockApi.getCityStates()).B05.state).toBe("incident");
+    expect((await mockApi.getCityStates()).buildings.find((b) => b.id === "B05")?.state).toBe("incident");
     expect((await mockApi.getIncidents("open")).map((i) => i.id)).toEqual([1]);
 
     // the responder never approves: one vote is not enough, two executes
@@ -91,7 +91,7 @@ describe("F05 incident lifecycle (mock)", () => {
     expect(done.resolvedAt).not.toBeNull();
     expect((await mockApi.getDistrict("minh")).locked).toBe(false);
     expect(await mockApi.getIncidents("open")).toEqual([]);
-    expect((await mockApi.getCityStates()).B05.state).toBe("normal");
+    expect((await mockApi.getCityStates()).buildings.find((b) => b.id === "B05")?.state).toBe("normal");
     const seen = msgs.filter((m): m is Extract<StreamMessage, { type: "incident_updated" }> => m.type === "incident_updated").map((m) => (m.data as Incident).status);
     expect(seen).toContain("detected"); expect(seen).toContain("contained"); expect(seen).toContain("awaiting_council"); expect(seen).toContain("recovering"); expect(seen[seen.length - 1]).toBe("resolved");
     un();
