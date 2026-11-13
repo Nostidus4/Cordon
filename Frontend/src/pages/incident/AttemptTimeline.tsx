@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ExternalLink } from "lucide-react";
 import type { Attempt } from "../../types";
+import { attemptLabel, stepOf } from "../../lib/dto";
 import { REASONS, reasonVi } from "../../shared/reasonCodes";
 import { EvidenceBadge, Tooltip, cn } from "../../components/ui";
 import { shortHash } from "../../lib/format";
@@ -44,23 +45,23 @@ function Row({ a, latest, agentNote }: { a: Attempt; latest: boolean; agentNote?
   const ok = a.outcome === "ok", blocked = a.outcome === "blocked_at_protocol";
   return (
     <motion.li layout={!reduce} initial={reduce ? false : { opacity: 0, x: 18, scale: 0.97 }} animate={{ opacity: 1, x: 0, scale: 1 }} transition={{ type: "spring", stiffness: 340, damping: 28 }}
-      data-step={a.step} data-outcome={a.outcome}
+      data-step={stepOf(a)} data-outcome={a.outcome}
       className={cn("relative grid grid-cols-[48px_1fr] gap-x-2.5 rounded-[var(--radius-md)] border px-2.5 py-[3px]",
         ok ? "border-ok/20 bg-ok-soft/40" : "border-bad/30 bg-bad-soft/50", latest && (ok ? "border-ok/55" : "border-bad/60"))}>
-      <div className="flex flex-col items-center gap-1 pt-0.5" title={`bước ${a.step}`}>
-        <span className="tnum text-[11px] font-semibold text-faint">{a.scenarioTime}</span>
+      <div className="flex flex-col items-center gap-1 pt-0.5" title={`bước ${stepOf(a)}`}>
+        <span className="tnum text-[11px] font-semibold text-faint">{a.displayTime}</span>
         <span title={WHO[who].title} className={cn("whitespace-nowrap rounded px-1 text-[9.5px] font-semibold leading-[14px]", WHO[who].cls)}>{WHO[who].text}</span>
       </div>
       <div className="min-w-0">
         <p className="text-[12.5px] leading-snug text-muted">
           <span className="mr-1.5 text-[13px] font-semibold text-text">{a.signerLabel}</span>
-          {a.action.label}
+          {attemptLabel(a)}
         </p>
         {agentNote ? <p className="mt-1 border-l-2 border-brand/60 pl-2 text-[12px] italic leading-snug text-[#cfc9ff]">“{agentNote}”</p> : null}
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className={cn("inline-flex items-center gap-1.5 text-[12px] font-semibold", ok ? "text-ok" : "text-bad")}>
             <span aria-hidden className={cn("grid size-[17px] shrink-0 place-items-center rounded-full text-[10px] font-bold", ok ? "bg-ok text-[#04261d]" : "bg-bad-strong text-white")}>{ok ? "✓" : "✕"}</span>
-            {ok ? (a.action.kind === "lock" ? "Đã khoá khu" : "Được chi") : reasonVi(a.reasonCode) || "Bị chặn"}
+            {ok ? (a.action === "lock" ? "Đã khoá khu" : "Được chi") : reasonVi(a.reasonCode) || "Bị chặn"}
           </span>
           {ok || blocked ? <EvidenceBadge txHash={a.txHash} simulated={a.simulated} outcome={a.outcome} errorRaw={a.errorRaw} /> : <RevertProof a={a} />}
         </div>

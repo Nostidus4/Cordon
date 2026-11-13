@@ -1,4 +1,5 @@
 // Section 3 (the centerpiece): every attempt as a row of the 8 checks of PolicyVault.pay/swap (spec §6.3).
+import { attemptLabel, stepOf, timeOf } from "../../../lib/dto";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { REASONS } from "../../../shared/reasonCodes";
@@ -10,7 +11,7 @@ import { callSignature, errorName, traceAttempt, type CheckStage } from "../trac
 import { ACCENT, CheckGlyph, Chip, Empty, Hash, Section } from "../ui";
 import { AttemptDrawer } from "./Drawer";
 
-const targetLabel = (s: CheckStage, a: Attempt) => (s.id === "target" ? (a.action.kind === "swap" ? "Chợ đổi duyệt" : "Người nhận duyệt") : s.label);
+const targetLabel = (s: CheckStage, a: Attempt) => (s.id === "target" ? (a.action === "swap" ? "Chợ đổi duyệt" : "Người nhận duyệt") : s.label);
 
 function Flow({ a }: { a: Attempt }) {
   const t = traceAttempt(a);
@@ -53,13 +54,13 @@ function Row({ a, label, selected, onOpen }: { a: Attempt; label: string; select
   return (
     <motion.li layout={reduced ? false : "position"} initial={reduced ? false : { opacity: 0, y: -16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 26 }} style={{ listStyle: "none" }}>
-      <button type="button" className="sx-row" data-o={a.outcome} data-sel={selected} onClick={onOpen} aria-label={`Mở chi tiết: ${a.action.label}`}>
+      <button type="button" className="sx-row" data-o={a.outcome} data-sel={selected} onClick={onOpen} aria-label={`Mở chi tiết: ${attemptLabel(a)}`}>
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
           <Chip t={a.outcome === "ok" ? "ok" : a.outcome === "reverted" ? "bad" : "warn"} mono>{a.outcome === "ok" ? "✓ OK" : a.outcome === "reverted" ? "✕ REVERTED" : "✕ BLOCKED_AT_PROTOCOL"}</Chip>
-          <span style={{ color: "var(--ink-2)", fontSize: 12 }}>bước {a.step} · {a.scenarioTime}</span>
+          <span style={{ color: "var(--ink-2)", fontSize: 12 }}>bước {stepOf(a)} · {timeOf(a)}</span>
           <code className="mono" style={{ fontWeight: 600, color: "var(--ink)", minWidth: 0, overflowWrap: "anywhere" }}>{callSignature(a)}</code>
           <span style={{ flex: 1 }} />
-          {a.action.amount ? <span className="font-toy tnum" style={{ fontWeight: 800, fontSize: 19, color: a.outcome === "ok" ? "var(--ink)" : "var(--ink-2)", textDecoration: a.outcome === "ok" ? "none" : "line-through", textDecorationThickness: 2 }}>{a.action.amount.display}<span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-2)", marginLeft: 4, textDecoration: "none", display: "inline-block" }}>{a.action.token ?? "tUSDC"}</span></span> : null}
+          {a.amount ? <span className="font-toy tnum" style={{ fontWeight: 800, fontSize: 19, color: a.outcome === "ok" ? "var(--ink)" : "var(--ink-2)", textDecoration: a.outcome === "ok" ? "none" : "line-through", textDecorationThickness: 2 }}>{a.amount.display}<span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-2)", marginLeft: 4, textDecoration: "none", display: "inline-block" }}>{a.token ?? "tUSDC"}</span></span> : null}
         </div>
         <Flow a={a} />
         {reason ? (
@@ -87,7 +88,7 @@ export function Pipeline() {
   const { data: graph } = useGraph();
   const [filter, setFilter] = useState<"all" | "ok" | "blocked">("all");
   const [limit, setLimit] = useState(10);
-  const [selId, setSelId] = useState<string | null>(null);
+  const [selId, setSelId] = useState<number | null>(null);
   const all = useMemo(() => [...(attempts ?? [])].reverse(), [attempts]);
   const shown = all.filter((a) => (filter === "all" ? true : filter === "ok" ? a.outcome === "ok" : a.outcome !== "ok"));
   const labelOf = (pid: string | null) => (pid ? graph?.districts.find((d) => d.principalId === pid)?.label ?? pid : "");

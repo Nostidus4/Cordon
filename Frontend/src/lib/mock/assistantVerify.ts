@@ -40,7 +40,7 @@ export function renderValue(v: unknown): string | null {
 
 export interface VerifyResult { checks: AssistantNumberCheck[]; uncovered: string[]; verified: boolean }
 
-export function verifyAnswer(answer: AssistantAnswer, tools: Partial<Record<AssistantAnswer["numbers"][number]["source"], unknown>>): VerifyResult {
+export function verifyAnswer(answer: Pick<AssistantAnswer, "answer" | "numbers">, tools: Partial<Record<AssistantAnswer["numbers"][number]["source"], unknown>>): VerifyResult {
   const checks: AssistantNumberCheck[] = answer.numbers.map((n) => {
     const toolValue = renderValue(readPath(tools[n.source], n.path));
     return { ...n, toolValue, match: toolValue !== null && norm(toolValue) === norm(n.value) };

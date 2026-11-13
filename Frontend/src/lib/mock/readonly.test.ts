@@ -15,25 +15,21 @@ describe("getAgentRuns", () => {
     const list = await mockApi.getAgentRuns();
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe(run.id);
-    expect(list[0].inputs?.vaultUsdc.display).toBe("200.000");
-    expect(list[0].inputs?.vaultTkb.display).toBe("0");
-    expect(list[0].inputs?.maxPerRun.display).toBe("5.000");
-    expect(list[0].decision.amountIn?.display).toBe("5.000");
+    expect(list[0].balances.vaultTusdc.display).toBe("200.000");
+    expect(list[0].balances.vaultTtkb.display).toBe("0");
+    expect(list[0].decision?.amountIn.display).toBe("5.000");
   });
 });
 
 describe("getAssistantLogs", () => {
-  it("records tool calls and verifies numbers against the tool values", async () => {
+  it("records answers and verifies numbers against the tool values", async () => {
     expect(await mockApi.getAssistantLogs()).toEqual([]);
     for (const q of ASSISTANT_QUESTIONS) await mockApi.askAssistant({ question: q.text, context: { screen: q.screen } });
     const logs = await mockApi.getAssistantLogs();
     expect(logs).toHaveLength(4);
-    const huy = logs[0];
-    expect(huy.toolCalls[0].tool).toBe("simulate_compromise");
-    expect(huy.checks.map((c) => [c.value, c.toolValue, c.match])).toEqual([["140.000", "140.000", true], ["7%", "7", true]]);
-    for (const l of logs) expect(l.checks.every((c) => c.match)).toBe(true);
-    // §9.4: every number in every fixed answer must be listed in numbers[] (wording matches the backend template)
-    expect(logs.map((l) => l.uncovered)).toEqual([[], [], [], []]);
+    expect(logs[0].question).toBe(ASSISTANT_QUESTIONS[0].text);
+    expect(logs[0].questionId).toBe(`${ASSISTANT_QUESTIONS[0].screen}.${ASSISTANT_QUESTIONS[0].id}`);
+    expect(logs.every((l) => l.answer.length > 0)).toBe(true);
     expect(logs.map((l) => l.numbersVerified)).toEqual([true, true, true, true]);
   });
   it("is cleared by reset", async () => {

@@ -1,4 +1,5 @@
 // Pure helpers of the event log: which contract emitted an event, its key payload fields, filtering and search.
+import { eventKey } from "../../lib/dto";
 import type { ChainEvent } from "../../types";
 import { shortHash } from "../../lib/format";
 
@@ -69,7 +70,7 @@ function matchesQuery(e: ChainEvent, q: string): boolean {
 export function filterEvents(events: readonly ChainEvent[], f: EventFilter): ChainEvent[] {
   return events
     .filter((e) => (f.contracts.size === 0 || f.contracts.has(contractOf(e.name))) && (f.names.size === 0 || f.names.has(e.name)) && matchesQuery(e, f.q))
-    .sort((a, b) => b.block - a.block || b.logIndex - a.logIndex || (a.id < b.id ? 1 : -1));
+    .sort((a, b) => b.block - a.block || b.logIndex - a.logIndex || (eventKey(a) < eventKey(b) ? 1 : -1));
 }
 
 export const lastBlock = (events: readonly ChainEvent[]): number | null => events.reduce<number | null>((m, e) => (m === null || e.block > m ? e.block : m), null);
