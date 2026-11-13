@@ -28,11 +28,19 @@ from guardian.domain.snapshot import KeyState, PolicySnapshot
 from guardian.graph.findings import compute_findings
 from guardian.services import views
 from guardian.services.event_bus import EventBus
+from guardian.workers.health import BlockWatch, LatencyStats
 from guardian.workers.indexer import Indexer
 
 EVENT_LOG_SIZE = 5000
 RESPONDER_EVENTS = frozenset({"Paused", "Executed"})
 log = logging.getLogger("guardian.runtime")
+
+
+def _on_loop(loop: asyncio.AbstractEventLoop) -> bool:
+    try:
+        return asyncio.get_running_loop() is loop
+    except RuntimeError:
+        return False
 
 
 @dataclass
@@ -201,6 +209,9 @@ class Runtime:
         self.scenario_tasks: dict[str, asyncio.Task[None]] = {}
         self.event_log: deque[ChainEvent] = deque(maxlen=EVENT_LOG_SIZE)
         self.indexer: Indexer | None = None
+        # sim mints a block per tx only, so an idle sim demo is not a stall
+        self.block_watch = BlockWatch(self.clock, stall_after=60.0 if self.is_l1 else None)
+        self.sse_latency = LatencyStats()
         self._live = not self.is_l1  # L1: the backfill at startup is recorded, not streamed
         self._last_city: list[tuple[str, str, str]] | None = None
         self._in_responder = False  # set by responder.react
@@ -322,7 +333,19 @@ class Runtime:
     def _on_chain_event(self, ev: ChainEvent) -> None:
         self.event_log.append(ev)
         if self._live:
-            self.bus.publish("event", views.api_event(ev, self.token_decimals()))
+            t0 = time.perf_counter()
+            item = views.api_event(ev, self.token_decimals())
+
+            def publish_and_record() -> None:
+                self.bus.publish("event", item)
+                self.sse_latency.record(time.perf_counter() - t0)
+
+            # bus.publish hops threads itself; measure receipt -> fan-out by running it on the loop
+            loop = self.bus._loop
+            if loop is not None and not loop.is_closed() and not _on_loop(loop):
+                loop.call_soon_threadsafe(publish_and_record)
+            else:
+                publish_and_record()
             if ev.name in RESPONDER_EVENTS:
                 self._schedule_responder_tick()
 

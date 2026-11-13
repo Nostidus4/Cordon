@@ -70,7 +70,7 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 
 | Method | Path | Mô tả | Trạng thái |
 |---|---|---|---|
-| GET | `/health` | block L1/C, `indexerLagBlocks`, agent, `demoMode`, `chainMode`, `simulated`, `policyVersion` (thô) và `policyLabel` (số hiển thị, mục 4.1); thêm cảnh báo block đứng (issue API-004) | có |
+| GET | `/health` | block L1/C, `indexerLagBlocks`, agent, `demoMode`, `chainMode`, `simulated`, `policyVersion` (thô) và `policyLabel` (số hiển thị, mục 4.1); quan sát `lastBlockAt`, `blockStalled`, `warnings`, `eventToSse` (mục 4.3) | có |
 | GET | `/org` | công ty, quỹ chính, kho, Council | có |
 | GET | `/graph` | `GraphSnapshot` (`policyVersion` thô + `policyLabel`, mục 4.1) | có |
 | GET | `/city/states` | trạng thái 8 công trình cho thành phố 3D | có |
@@ -107,6 +107,15 @@ Cùng hợp đồng HTTP ở sim và l1: trả `{status, policyVersion, policyLa
 Mọi endpoint ký (`actions`, `agent/run-once`, `demo/*`, `proposals` POST, `scenario/*`) chỉ hoạt động khi `DEMO_MODE` bật, có rate limit và log. `DEMO_MODE` không bao giờ bật trên mạng thật (`core/demo_guard.py`).
 
 Hợp đồng giữa Backend và Frontend được kiểm tự động: OpenAPI do FastAPI sinh được commit ở `Backend/openapi.json` (issue API-001) và test `API-002` (#6) đối chiếu từng schema với `Frontend/src/types`.
+
+### 4.3 `/health`: quan sát
+
+- `lastBlockAt`: unix giây lúc head L1 tiến lần cuối (`null` khi chưa có lần đọc `/health` nào; head được ghi nhận mỗi lần gọi `/health`).
+- `blockStalled`: `true` khi head không tiến quá 60 giây. Chỉ kiểm ở `CHAIN_MODE=l1`; sim mỗi tx đúc một block nên không bao giờ đứng.
+- `warnings`: mã cảnh báo, rỗng khi ổn. `BLOCK_STALLED` (block đứng > 60 giây), `INDEXER_LAG` (lag > 10 block), `INDEXER_ERROR` (chu kỳ indexer gần nhất lỗi), `SSE_SLOW` (latency event→SSE tối đa trong 100 event gần nhất > 3000 ms).
+- `eventToSse`: `{lastMs, maxMs, samples}`, đo từ lúc API nhận chain event đến lúc đẩy xong vào hàng đợi của mọi subscriber SSE, trên 100 event gần nhất. Spec yêu cầu < 3 giây. `lastMs`/`maxMs` là `null` khi `samples` = 0.
+
+Các trường này bổ sung, không đổi trường cũ.
 
 ## 5. SSE `/api/stream`
 
