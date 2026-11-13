@@ -21,9 +21,9 @@ import { TopBar } from "./TopBar";
 import { useStageDevHooks } from "./devHooks";
 import { useEnsureScene } from "./useEnsureScene";
 import { forgetRequestNumbers, useRememberRequestNumbers } from "./requestMemory";
-import { ToyButton, ToyCard } from "./ui";
-import { BuildingCard } from "./BuildingCard";
-import { IncidentTracker } from "./IncidentTracker";
+import { ToyCard } from "./ui";
+import { BuildingDrawer } from "./BuildingDrawer";
+import { StatusStrip } from "./StatusStrip";
 import { IntroScene } from "./scenes/IntroScene";
 import { LookScene } from "./scenes/LookScene";
 import { TryScene } from "./scenes/TryScene";
@@ -49,6 +49,7 @@ export default function StagePage() {
   const liveStates = useMemo(() => buildingStatesFrom(cityStates), [cityStates]);
   const { data: openIncidents } = useIncidents("open");
   const hasIncident = !!pickTrackedIncident(openIncidents);
+  const drawerOpen = picked?.type === "building";
   const nightPref = useStageStore((s) => s.nightPref);
   const autoNight = useStageStore((s) => s.autoNight);
   const cardsReady = useLoadStore((s) => s.assembled); // stepper + overlay cards pop in once the city has assembled (or 3D is off)
@@ -113,29 +114,20 @@ export default function StagePage() {
 
   if (!scene) return <Navigate to="/" replace />;
   return (
-    <div className="stage fixed inset-0 overflow-hidden bg-[#6f8ff3]" data-scene={scene}>
+    <div className="stage fixed inset-0 overflow-hidden bg-[#6f8ff3]" data-scene={scene} data-drawer={drawerOpen ? "open" : undefined} data-strip={hasIncident || preparing || ((scene === "look" || scene === "try") && (policyLabel(graph) ?? 1) >= 2) ? "on" : undefined}>
       <CityLayer {...props} />
       {cardsReady ? <TopBar scene={scene} night={night} onGo={go} onNight={(n) => useStageStore.getState().setNightPref(n)} onReset={onReset} resetting={reset.isPending} /> : null}
       <main className="pointer-events-none absolute inset-0 z-20" id="stage-overlay">
         {cardsReady ? <>
-        <IncidentTracker top={hasIncident && (scene === "look" || scene === "try") && (policyLabel(graph) ?? 1) >= 2 ? 140 : 84} />
-        {picked?.type === "building" ? <BuildingCard code={picked.code} /> : null}
-        {(scene === "look" || scene === "try") && (policyLabel(graph) ?? 1) >= 2 && !preparing ? (
-          <div className="pointer-events-auto absolute left-1/2 top-[84px] -translate-x-1/2">
-            <ToyCard className="flex items-center gap-3 py-2 pl-5 pr-2.5" style={{ borderRadius: 999 }} label="Đang ở chính sách mới">
-              <span className="toy-body" style={{ color: "var(--ink)", fontWeight: 700 }}>Đang ở chính sách mới</span>
-              <ToyButton size="sm" color="orange" onClick={onReset}>Chơi lại từ đầu?</ToyButton>
-            </ToyCard>
-          </div>
-        ) : null}
         {preparing ? (
-          <div className="pointer-events-none absolute inset-x-0 top-[84px] flex justify-center" role="status">
-            <ToyCard className="flex items-center gap-3 px-6 py-3" style={{ borderRadius: 999 }} label="Đang chuẩn bị cảnh">
+          <div className="stage-strip" data-slot="status-strip" role="status">
+            <ToyCard className="flex h-full items-center justify-center gap-3 px-6 py-0" style={{ borderRadius: 999 }} label="Đang chuẩn bị cảnh">
               <span className="toy-wiggle inline-block size-4 rounded-full" style={{ background: "var(--violet)" }} aria-hidden />
               <span className="font-toy text-[19px] font-bold" style={{ color: "var(--ink)" }}>Đang chuẩn bị cảnh…</span>
             </ToyCard>
           </div>
-        ) : null}
+        ) : <StatusStrip policyNew={(scene === "look" || scene === "try") && (policyLabel(graph) ?? 1) >= 2} onReset={onReset} drawerOpen={drawerOpen} />}
+        {drawerOpen && picked?.type === "building" ? <BuildingDrawer code={picked.code} /> : null}
         {scene === "intro" ? <IntroScene key="intro" /> : null}
         {scene === "look" ? <LookScene key="look" /> : null}
         {scene === "try" ? <TryScene key="try" /> : null}

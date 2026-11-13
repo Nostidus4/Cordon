@@ -179,3 +179,29 @@
   .stage-loader-poster, .stage-loader-card, .stage-loader-bar > i, .stage-topbar-in, .stage-loader-done span { transition: none; animation: none; }
   .stage-loader[data-done="1"] .stage-loader-card { animation: none; }
 }
+
+/* ---------- screen regions (one owner per region; see stage/overlap.ts) ----------
+   top bar | status strip (top centre, <= 56px) | scene-left (bottom left) | scene-right (right column) | scene-bottom | drawer (right column, replaces scene-right while open) */
+.stage { --drawer-w: clamp(360px, 20vw, 420px); }
+.stage-strip { position: absolute; z-index: 30; top: 88px; height: 48px; left: 50%; transform: translateX(-50%); width: min(560px, max(300px, calc(100vw - 780px))); pointer-events: none; }
+.stage-strip[data-drawer-open="true"] { left: calc((100vw - var(--drawer-w) - 24px) / 2); width: min(560px, max(300px, calc(100vw - var(--drawer-w) - 96px))); }
+.stage-drawer { position: absolute; z-index: 30; right: 24px; top: 88px; bottom: 108px; width: var(--drawer-w); display: flex; pointer-events: none; }
+.stage[data-drawer="open"] [data-slot="scene-right"] { display: none; }
+.stage .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* narrow / short screens: the drawer is a bottom sheet (max 60% height), the scene's bottom-left card shrinks to a chip while it is open */
+@media (max-width: 1099px), (max-height: 699px) {
+  .stage-strip, .stage-strip[data-drawer-open="true"] { top: 100px; left: 50%; width: calc(100vw - 24px); }
+  .stage-drawer { left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; max-height: 60vh; }
+  .stage[data-strip="on"] [data-slot="scene-right"] { top: 160px !important; }
+  .stage[data-drawer="open"] [data-slot="scene-bottom"] { display: none; }
+  .stage[data-drawer="open"] [data-slot="scene-left"] { top: 156px !important; bottom: auto !important; left: 12px !important; width: auto !important; padding: 0 !important; }
+  .stage[data-drawer="open"] [data-slot="scene-left"] > * { display: none !important; }
+  .stage[data-drawer="open"] [data-slot="scene-left"]::before {
+    content: "Cảnh đang chạy"; display: inline-block; padding: 7px 16px 6px; border-radius: 999px; background: var(--cream); border: 3px solid #fff;
+    box-shadow: 0 3px 0 var(--edge); font-family: var(--font-toy); font-weight: 700; font-size: 15px; color: var(--ink);
+  }
+}
+@media (max-width: 1099px), (max-height: 699px) {
+  .stage[data-drawer="open"] [data-slot="scene-left"][data-intro] { display: none; }
+}

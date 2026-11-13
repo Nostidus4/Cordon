@@ -51,7 +51,7 @@ export function LookScene() {
 
   return (
     <>
-      <div className="absolute bottom-12 left-6">
+      <div className="absolute bottom-12 left-6" data-slot="scene-left">
         <ToyCard className="w-[min(430px,calc(100vw-48px))] px-6 pb-6 pt-5" label="Bạn nghĩ anh Minh cầm bao nhiêu">
           <Ribbon scene="look">Cảnh 1 · Nhìn</Ribbon>
           <div className="toy-eyebrow mt-1" style={{ fontSize: 17 }}>Bạn nghĩ anh Minh chỉ cầm</div>
@@ -81,7 +81,7 @@ export function LookScene() {
       </div>
 
       {info ? (
-        <div className="absolute right-6 top-24">
+        <div className="absolute right-6 top-24" data-slot="scene-right">
           <ToyCard className="w-[300px] p-4" label="Chi tiết" key={picked ? JSON.stringify(picked) : "x"}>
             <div className="flex items-start gap-3">
               <KindIcon kind={info?.kind ?? "other"} size={46} />
