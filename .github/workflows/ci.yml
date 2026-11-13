@@ -45,6 +45,10 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Generated OpenAPI types are up to date
+        run: |
+          npm run gen:openapi
+          git diff --exit-code src/types/generated/openapi.d.ts
 
   chain-l1:
     # L1 adapter + the ChainPort conformance suite against a real EVM: anvil + the Foundry artifacts

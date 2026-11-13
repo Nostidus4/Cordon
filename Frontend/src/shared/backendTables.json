@@ -1,0 +1,191 @@
+{
+  "reasons": {
+    "BLOCKED_AT_PROTOCOL": {
+      "en": "Card removed from chain allow list",
+      "error": null,
+      "vi": "Thẻ đã bị gạch khỏi chain, không gửi được giao dịch"
+    },
+    "CARD_DAILY_CAP": {
+      "en": "Card daily cap reached",
+      "error": "KeyDailyCapExceeded",
+      "vi": "Thẻ này đã hết hạn mức hôm nay"
+    },
+    "DISTRICT_DAILY_CAP": {
+      "en": "District daily cap reached",
+      "error": "PrincipalDailyCapExceeded",
+      "vi": "Cả khu hôm nay đã gần hết phần chung"
+    },
+    "DISTRICT_LOCKED": {
+      "en": "District cordoned off",
+      "error": "PrincipalIsLocked",
+      "vi": "Khu đã bị khoá"
+    },
+    "KEY_NOT_REGISTERED": {
+      "en": "Card not registered",
+      "error": "KeyNotRegistered",
+      "vi": "Thẻ chưa đăng ký"
+    },
+    "PROTOCOL_NOT_ALLOWED": {
+      "en": "Protocol not approved",
+      "error": "ProtocolNotAllowed",
+      "vi": "Chợ đổi tiền chưa duyệt"
+    },
+    "RECIPIENT_NOT_ALLOWED": {
+      "en": "Recipient not approved",
+      "error": "RecipientNotAllowed",
+      "vi": "Người nhận chưa duyệt"
+    },
+    "SLIPPAGE": {
+      "en": "Slippage too high",
+      "error": "SlippageTooHigh",
+      "vi": "Trượt giá quá mức"
+    },
+    "TOKEN_NOT_ALLOWED": {
+      "en": "Token not approved",
+      "error": "TokenNotAllowed",
+      "vi": "Loại tiền chưa duyệt"
+    },
+    "VAULT_PAUSED": {
+      "en": "Vault paused",
+      "error": "VaultPaused",
+      "vi": "Cả kho đang dừng"
+    }
+  },
+  "scenario4": {
+    "dailyCap": 30000000000,
+    "district": "minh",
+    "steps": [
+      {
+        "action": "swap",
+        "display_time": "09:00",
+        "expected_district_spent_after": 5000000000,
+        "expected_outcome": "ok",
+        "expected_reason": null,
+        "note": "agent that is really running",
+        "params": {
+          "amount_in": 5000000000,
+          "dex": "mock_dex",
+          "min_out": 0,
+          "token_in": "tUSDC",
+          "token_out": "tTKB"
+        },
+        "signer": "key_agent_rebalance",
+        "step": 0
+      },
+      {
+        "action": "pay",
+        "display_time": "14:01",
+        "expected_district_spent_after": 5000000000,
+        "expected_outcome": "reverted",
+        "expected_reason": "RECIPIENT_NOT_ALLOWED",
+        "note": "",
+        "params": {
+          "amount": 20000000000,
+          "to": "stranger_wallet",
+          "token": "tUSDC"
+        },
+        "signer": "key_agent_intl_pay",
+        "step": 1
+      },
+      {
+        "action": "swap",
+        "display_time": "14:02",
+        "expected_district_spent_after": 5000000000,
+        "expected_outcome": "reverted",
+        "expected_reason": "PROTOCOL_NOT_ALLOWED",
+        "note": "",
+        "params": {
+          "amount_in": 5000000000,
+          "dex": "evil_dex",
+          "min_out": 0,
+          "token_in": "tUSDC",
+          "token_out": "tTKB"
+        },
+        "signer": "key_agent_rebalance",
+        "step": 2
+      },
+      {
+        "action": "pay",
+        "display_time": "14:02",
+        "expected_district_spent_after": 15000000000,
+        "expected_outcome": "ok",
+        "expected_reason": null,
+        "note": "",
+        "params": {
+          "amount": 10000000000,
+          "to": "vendor_data_api",
+          "token": "tUSDC"
+        },
+        "signer": "key_agent_data",
+        "step": 3
+      },
+      {
+        "action": "pay",
+        "display_time": "14:03",
+        "expected_district_spent_after": 25000000000,
+        "expected_outcome": "ok",
+        "expected_reason": null,
+        "note": "",
+        "params": {
+          "amount": 10000000000,
+          "to": "vendor_cloud",
+          "token": "tUSDC"
+        },
+        "signer": "key_minh",
+        "step": 4
+      },
+      {
+        "action": "pay",
+        "display_time": "14:03",
+        "expected_district_spent_after": 25000000000,
+        "expected_outcome": "reverted",
+        "expected_reason": "DISTRICT_DAILY_CAP",
+        "note": "",
+        "params": {
+          "amount": 10000000000,
+          "to": "vendor_cloud",
+          "token": "tUSDC"
+        },
+        "signer": "key_svc_payment",
+        "step": 5
+      },
+      {
+        "action": "lock",
+        "display_time": "14:04",
+        "expected_district_spent_after": null,
+        "expected_outcome": "ok",
+        "expected_reason": null,
+        "note": "1 council member tightens; 5 keys setNone",
+        "params": {
+          "principal_id": "minh"
+        },
+        "signer": "council_lan",
+        "step": 6
+      },
+      {
+        "action": "raw_call",
+        "display_time": "14:05",
+        "expected_district_spent_after": null,
+        "expected_outcome": "blocked_at_protocol",
+        "expected_reason": "BLOCKED_AT_PROTOCOL",
+        "note": "no tx hash",
+        "params": {
+          "data": "0x095ea7b3",
+          "target": "tSCAM"
+        },
+        "signer": "key_minh",
+        "step": 7
+      }
+    ]
+  },
+  "sseEventTypes": [
+    "agent_run",
+    "attempt",
+    "city_updated",
+    "event",
+    "graph_updated",
+    "incident_updated",
+    "proposal_updated",
+    "reset"
+  ]
+}

@@ -1,4 +1,4 @@
-.PHONY: openapi e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
+.PHONY: openapi shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
 
 API_URL ?= http://localhost:8000
 
@@ -24,6 +24,10 @@ lint:
 # Export FastAPI's OpenAPI to Backend/openapi.json (CI fails when the committed file is stale)
 openapi:
 	cd Backend && uv run python -m guardian.tools.export_openapi
+
+# Dump Python shared tables to Frontend/src/shared/backendTables.json (pytest + vitest compare it)
+shared-tables:
+	cd Backend && uv run python -m guardian.tools.export_shared_tables
 
 build:
 	cd Frontend && npm run build
