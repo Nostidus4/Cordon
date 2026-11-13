@@ -29,7 +29,7 @@ export function Overview() {
   const ok = attempts?.filter((a) => a.outcome === "ok").length ?? 0;
   const blocked = (attempts?.length ?? 0) - ok;
   const uptime = Math.floor((now - mountedAt) / 1000);
-  const sim = health?.chainMode !== "live";
+  const sim = health?.chainMode !== "l1";
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
       <Stat k="Chain" v={sim ? "sim" : "Guardian L1"} tone={sim ? "warn" : "ok"} />
