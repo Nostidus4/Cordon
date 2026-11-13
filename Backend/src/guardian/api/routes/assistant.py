@@ -32,5 +32,5 @@ async def logs(rt: RuntimeDep, limit: int = Query(200, ge=1)):  # type: ignore[n
             "screen": r.screen,
             "flaggedUntrusted": r.flagged_untrusted,
         }
-        for r in rt.stores.assistant_logs[-limit:]
+        for r in rt.stores.assistant_logs.all()[-limit:]
     ]

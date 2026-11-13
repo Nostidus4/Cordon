@@ -126,5 +126,5 @@ jobs:
         run: uv run alembic upgrade head && uv run alembic downgrade base
       - name: Schema, unique (tx_hash, log_index), clean downgrade
         run: uv run pytest -q -rs tests/test_db_migrations.py
-      - name: API suite on Postgres (events, attempts, scenario runs persisted)
+      - name: API suite on Postgres (events, attempts, runs, proposals, agent runs, assistant logs persisted)
         run: uv run alembic upgrade head && uv run pytest -q -rs --ignore=tests/chain_l1 -k "not l1"

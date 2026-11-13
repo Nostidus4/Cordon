@@ -20,7 +20,8 @@ log = logging.getLogger("guardian.demo_reset")
 async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
     """Back to scene 1.
 
-    sim: the in-memory chain is rewound and request #12 seeded.
+    sim: the in-memory chain is rewound and request #12 seeded. With a database the stored sim events go too;
+    at startup with restored state (`rt.restored`) nothing is rewound or seeded.
     l1 at startup: only the in-memory stores are cleared (no request #12, no chain work).
     l1 on `POST /api/demo/reset`: the ledger cannot be rewound, so `make demo-reset` has already deployed a
     FRESH contract set and written it to the deployments file (`infra/l1/demo-reset.sh`). This call reloads that
@@ -34,17 +35,26 @@ async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
             rt.reload_deployment()
         except L1StartupError as exc:
             raise ApiError(502, "RELOAD_FAILED", f"Không nạp được bộ hợp đồng mới: {exc}") from exc
-    if not rt.is_l1:
+    restored = (
+        not rt.is_l1 and startup and rt.restored
+    )  # state came back from the stored sim events
+    if not rt.is_l1 and not restored:
         rt.chain.reset()
         rt.event_log.clear()
-    # at startup the stores are freshly built and may hold persisted attempts/runs
+        if not startup and rt._sim_sink is not None:
+            # the rewound sim chain reuses its tx hashes: the old sim rows would collide and replay wrongly
+            rt._sim_sink.clear()
+    # at startup the stores are freshly built and may hold persisted attempts/runs (kept); a proposal
+    # without chain events is orphaned, so those go
     if not startup:
         rt.stores.clear()
+    elif not restored:
+        rt.stores.proposals.clear()
     seeded: int | None = None
-    if not rt.is_l1:
+    if not rt.is_l1 and not restored:
         _seed_request_12(rt)
         seeded = 12
-    elif not startup:
+    elif rt.is_l1 and not startup:
         seeded = _seed_request_12_l1(rt)
     rt.graph_version += 1
     snap = rt.snapshot()
@@ -120,7 +130,7 @@ def seed_request_13(rt: Runtime) -> int | None:
             p.change.get("kind") == "move_key"
             and p.change.get("to") == "huy"
             and p.change.get("key") == key
-            for p in rt.stores.proposals.values()
+            for p in rt.stores.proposals.all()
         ):
             return None
         out = ps.propose(

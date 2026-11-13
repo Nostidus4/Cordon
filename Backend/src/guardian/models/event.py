@@ -20,7 +20,7 @@ class Event(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    chain: Mapped[str] = mapped_column(Enum("l1", "c", name="event_chain"))
+    chain: Mapped[str] = mapped_column(Enum("l1", "c", "sim", name="event_chain"))
     block: Mapped[int] = mapped_column(BigInteger)
     tx_hash: Mapped[str] = mapped_column(String)
     log_index: Mapped[int]

@@ -233,7 +233,7 @@ def run_once(
 
 
 def _finish(rt: Runtime, rec: AgentRunRec) -> dict[str, Any]:
-    rt.stores.agent_runs.append(rec)
+    rt.stores.agent_runs.add(rec)
     out = agent_run_out(rec)
     rt.publish("agent_run", out)
     rt.notify_state_changed()

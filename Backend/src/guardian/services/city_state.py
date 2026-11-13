@@ -157,10 +157,12 @@ def evaluate_buildings(rt: Runtime) -> dict[str, BuildingEval]:
     recent_conf = [c for c in st.conflicts if now - c.ts <= CONFLICT_WINDOW_S]
     executed = [
         p
-        for p in st.proposals.values()
+        for p in st.proposals.all()
         if p.executed_at is not None and now - p.executed_at <= RECOVERY_WINDOW_S
     ]
-    open_ids = [i for i in sorted(st.proposals) if rt.chain.proposal_state(i).status == "open"]
+    open_ids = [
+        i for i in (p.id for p in st.proposals.all()) if rt.chain.proposal_state(i).status == "open"
+    ]
     if recent_conf:
         c = recent_conf[-1]
         b1.matches.append(
@@ -197,7 +199,7 @@ def evaluate_buildings(rt: Runtime) -> dict[str, BuildingEval]:
     # B02 Trợ lý AI
     b2 = ev["B02"]
     b2.normal_reason = "Trợ lý trả lời với số liệu đã kiểm chứng."
-    last_ans = st.assistant_logs[-1] if st.assistant_logs else None
+    last_ans = next(iter(reversed(st.assistant_logs.all())), None)
     if last_ans is not None and not last_ans.numbers_verified:
         b2.matches.append(
             _m(
@@ -306,7 +308,7 @@ def evaluate_buildings(rt: Runtime) -> dict[str, BuildingEval]:
     # B06 Agent cân đối
     b6 = ev["B06"]
     b6.normal_reason = "Agent cân đối sẵn sàng."
-    last_run = st.agent_runs[-1] if st.agent_runs else None
+    last_run = next(iter(reversed(st.agent_runs.all())), None)
     if last_run is not None and last_run.outcome in ("blocked", "reverted"):
         why = reason_text(last_run.reason_code) if last_run.reason_code else "bị từ chối"
         b6.matches.append(

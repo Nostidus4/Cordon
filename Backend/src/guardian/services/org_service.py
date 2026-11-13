@@ -62,7 +62,7 @@ def health(rt: Runtime) -> dict[str, Any]:
         )
         if on
     ]
-    runs = rt.stores.agent_runs
+    runs = rt.stores.agent_runs.all()
     return {
         "status": "ok",
         "chainMode": rt.settings.chain_mode,

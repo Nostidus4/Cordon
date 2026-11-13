@@ -10,7 +10,7 @@ from guardian.graph.builder import build_graph
 from guardian.graph.findings import compute_findings
 from guardian.graph.simulate import simulate_compromise
 from guardian.services import views
-from guardian.services.runtime import Runtime
+from guardian.services.runtime import Runtime, SimRunRec
 
 
 def graph(rt: Runtime) -> dict[str, Any]:
@@ -34,6 +34,19 @@ def simulate(
         res = simulate_compromise(snap, compromised, change)
     except (ValueError, KeyError) as e:
         raise ApiError(422, "INVALID_CHANGE", f"Thay đổi không hợp lệ: {e}") from e
-    if change is not None:
-        return {"before": views.api_sim(res["before"]), "after": views.api_sim(res["after"])}
-    return views.api_sim(res)
+    out = (
+        {"before": views.api_sim(res["before"]), "after": views.api_sim(res["after"])}
+        if change is not None
+        else views.api_sim(res)
+    )
+    sims = rt.stores.sim_runs
+    sims.add(
+        SimRunRec(
+            str(len(sims.all()) + 1),
+            {"compromised": compromised, "change": change_raw},
+            out,
+            rt.graph_version,
+            rt.now(),
+        )
+    )
+    return out
