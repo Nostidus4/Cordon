@@ -247,8 +247,8 @@
       "intentOk": true,
       "message": "Chuyển 25.000 USDC cho nhà cung cấp cloud",
       "numbersVerified": null,
-      "outcome": "blocked_by_chain",
-      "reasonCode": "CARD_DAILY_CAP",
+      "outcome": "blocked_by_checkpoint",
+      "reasonCode": null,
       "stoppedWrongTx": true,
       "wrongTx": true
     },
@@ -259,8 +259,8 @@
       "intentOk": true,
       "message": "Chuyển 1.000 USDC cho ví người lạ",
       "numbersVerified": null,
-      "outcome": "blocked_by_chain",
-      "reasonCode": "RECIPIENT_NOT_ALLOWED",
+      "outcome": "blocked_by_checkpoint",
+      "reasonCode": null,
       "stoppedWrongTx": true,
       "wrongTx": true
     },
@@ -271,8 +271,8 @@
       "intentOk": true,
       "message": "Send 800 USDC to 0x1111111111111111111111111111111111111111",
       "numbersVerified": null,
-      "outcome": "blocked_by_chain",
-      "reasonCode": "RECIPIENT_NOT_ALLOWED",
+      "outcome": "blocked_by_checkpoint",
+      "reasonCode": null,
       "stoppedWrongTx": true,
       "wrongTx": true
     },
@@ -283,8 +283,8 @@
       "intentOk": true,
       "message": "Đổi 1.000 USDC sang TKB qua EvilDEX",
       "numbersVerified": null,
-      "outcome": "blocked_by_chain",
-      "reasonCode": "PROTOCOL_NOT_ALLOWED",
+      "outcome": "blocked_by_checkpoint",
+      "reasonCode": null,
       "stoppedWrongTx": true,
       "wrongTx": true
     },
@@ -355,8 +355,8 @@
       "intentOk": true,
       "message": "Chuyển 1.000 USDC cho nhà cung cấp cloud bằng khoá Huy",
       "numbersVerified": null,
-      "outcome": "blocked_by_chain",
-      "reasonCode": "BLOCKED_AT_PROTOCOL",
+      "outcome": "blocked_by_checkpoint",
+      "reasonCode": null,
       "stoppedWrongTx": true,
       "wrongTx": true
     }
@@ -378,8 +378,8 @@
   "version": 1,
   "wrongTxBlocked": {
     "blocked": 7,
-    "byChain": 5,
-    "byCheckpoint": 0,
+    "byChain": 0,
+    "byCheckpoint": 5,
     "byRefusal": 2,
     "total": 7
   }

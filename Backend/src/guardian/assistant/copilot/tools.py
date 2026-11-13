@@ -161,7 +161,7 @@ class CopilotTools:
                 "amount": str(n_in),
                 "tokenOut": t_out.address,
                 "minOut": str(n_min),
-                "data": dex.selector,
+                "data": None,
                 "memo": "",
                 "source": SOURCE,
             },

@@ -46,12 +46,9 @@ def _as_prepared(prepared: dict[str, Any]) -> Any:
         except ImportError:
             continue
         if model is not None:
-            try:
-                return model.model_validate(prepared)
-            except Exception:
-                log.warning(
-                    "txguard PreparedTx rejected the copilot draft; passing a dict", exc_info=True
-                )
+            return model.model_validate(
+                prepared
+            )  # a mismatch raises: caught in check(), logged, no check
     return prepared
 
 

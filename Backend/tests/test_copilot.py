@@ -141,7 +141,11 @@ async def test_draft_is_prepared_tx_shaped(app: FastAPI, rt: Runtime) -> None:
     assert p["kind"] == "pay" and p["source"] == "copilot" and p["amount"] == "5000000000"
     assert p["signer"] == rt.addr("key_minh") and p["to"] == rt.addr("vendor_cloud")
     assert d["details"]["amount"] == {"raw": "5000000000", "display": "5.000"}
-    assert d["txCheckId"] is None and d["txCheckLevel"] is None  # no B05 in this branch
+    assert int(d["txCheckId"]) > 0 and d["txCheckLevel"] in (
+        "safe",
+        "caution",
+        "danger",
+    )  # real B05 check
 
 
 # ------------------------------------------------------------------ confirm / reject
@@ -184,8 +188,9 @@ async def test_chain_refusal_is_recorded_with_reason_code(app: FastAPI, rt: Runt
     ) as c:
         over = (await say(c, "Chuyển 25.000 USDC cho nhà cung cấp cloud"))["draft"]["id"]
         stranger = (await say(c, STRANGER))["draft"]["id"]
-        o = (await c.post(f"{BASE}/drafts/{over}/confirm", json={})).json()
-        s = (await c.post(f"{BASE}/drafts/{stranger}/confirm", json={})).json()
+        ack = {"acknowledgeRisk": True}  # B05 may call these danger; the chain is what we test here
+        o = (await c.post(f"{BASE}/drafts/{over}/confirm", json=ack)).json()
+        s = (await c.post(f"{BASE}/drafts/{stranger}/confirm", json=ack)).json()
     assert o["status"] == "blocked" and o["result"]["ok"] is False
     assert o["result"]["reasonCode"] == "CARD_DAILY_CAP"
     assert s["status"] == "blocked" and s["result"]["reasonCode"] == "RECIPIENT_NOT_ALLOWED"
@@ -278,6 +283,9 @@ def test_default_checkpoint_is_none_without_txguard(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(cp_mod.importlib, "import_module", fake_import)
     assert cp_mod.default_checkpoint().check(None, {"kind": "pay"}) is None
+    assert (
+        cp_mod.default_checkpoint().check(None, {"kind": "pay"}) is None
+    )  # invalid shape: logged, no check
 
 
 def test_default_checkpoint_calls_txguard_service_when_present(
@@ -292,10 +300,22 @@ def test_default_checkpoint_calls_txguard_service_when_present(
 
     mod.check = check  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "guardian.txguard.service", mod)
-    res = cp_mod.default_checkpoint().check(None, {"kind": "pay", "source": "copilot"})
-    assert res == CheckpointResult("7", "caution") and seen[0]["source"] == "copilot"
+    tx = {
+        "kind": "pay",
+        "signer": "key_minh",
+        "to": "vendor_cloud",
+        "amount": "5",
+        "source": "copilot",
+    }
+    res = cp_mod.default_checkpoint().check(None, tx)
+    assert (
+        res == CheckpointResult("7", "caution") and seen[0].source == "copilot"
+    )  # PreparedTx model
     mod.check = lambda rt, p: (_ for _ in ()).throw(RuntimeError("boom"))  # type: ignore[attr-defined,assignment,misc]
-    assert cp_mod.default_checkpoint().check(None, {"kind": "pay"}) is None
+    assert cp_mod.default_checkpoint().check(None, tx) is None
+    assert (
+        cp_mod.default_checkpoint().check(None, {"kind": "pay"}) is None
+    )  # invalid shape: logged, no check
 
 
 # ------------------------------------------------------------------ refusals
@@ -468,3 +488,27 @@ async def test_eval_endpoint(app: FastAPI, monkeypatch: pytest.MonkeyPatch, tmp_
     assert got["intentAccuracy"] == report["intentAccuracy"]
     assert got["wrongTxBlocked"]["total"] == report["wrongTxBlocked"]["total"]
     assert len(got["cases"]) == 30
+
+
+# ------------------------------------------------------------------ real B05 checkpoint (no fake)
+async def test_real_txguard_checks_copilot_drafts(app: FastAPI, rt: Runtime) -> None:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as c:
+        ok = (await say(c, PAY))["draft"]
+        bad = (await say(c, "Chuyển 1.000 USDC cho ví người lạ"))["draft"]
+        swap = (await say(c, "Đổi 1.000 USDC sang TKB"))["draft"]
+        evil = (await say(c, "Đổi 1.000 USDC sang TKB qua EvilDEX"))["draft"]
+        for d in (ok, bad, swap, evil):
+            assert int(d["txCheckId"]) > 0
+            assert d["txCheckLevel"] in ("safe", "caution", "danger")
+        assert bad["txCheckLevel"] == "danger"
+        by_id = {x["id"]: x for x in (await c.get("/api/txguard/checks")).json()}
+        for d in (ok, bad, swap, evil):
+            assert by_id[int(d["txCheckId"])]["prepared"]["source"] == "copilot"
+        before = len(rt.stores.attempts)
+        r = await c.post(f"{BASE}/drafts/{bad['id']}/confirm", json={})
+        assert r.status_code == 409 and r.json()["error"]["code"] == "RISK_ACK_REQUIRED"
+        assert len(rt.stores.attempts) == before
+        r = await c.post(f"{BASE}/drafts/{bad['id']}/confirm", json={"acknowledgeRisk": True})
+        assert r.status_code == 200 and r.json()["status"] == "blocked"  # chain still enforces

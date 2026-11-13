@@ -120,6 +120,23 @@ expectTypeOf<DiffQ<S["SimulateRequest"], T.SimulateRequest>>().toEqualTypeOf<Kno
 expectTypeOf<DiffQ<S["DraftRequest"], T.DraftProposalRequest>>().toEqualTypeOf<Known<"compromised", never, never>>();
 // ProposeRequest <-> CreateProposalRequest
 expectTypeOf<DiffQ<S["ProposeRequest"], T.CreateProposalRequest>>().toEqualTypeOf<Known<"title" | "member", "proposer", never>>();
+// B05 Tx Guardian (CITY-003)
+// TxCheckOut <-> TxCheck
+expectTypeOf<DiffR<S["TxCheckOut"], T.TxCheck>>().toEqualTypeOf<Known<never, never, never>>();
+// PreparedTx <-> PreparedTx
+expectTypeOf<DiffQ<S["PreparedTx"], T.PreparedTx>>().toEqualTypeOf<Known<never, never, never>>();
+// StateDiff <-> StateDiff
+expectTypeOf<DiffR<S["StateDiff"], T.StateDiff>>().toEqualTypeOf<Known<never, never, never>>();
+// TxFlow <-> TxFlow
+expectTypeOf<DiffR<S["TxFlow"], T.TxFlow>>().toEqualTypeOf<Known<never, never, never>>();
+// TxApproval <-> TxApproval
+expectTypeOf<DiffR<S["TxApproval"], T.TxApproval>>().toEqualTypeOf<Known<never, never, never>>();
+// TxFinding <-> TxFinding
+expectTypeOf<DiffR<S["TxFinding"], T.TxFinding>>().toEqualTypeOf<Known<never, never, never>>();
+// TxNumber <-> TxNumber
+expectTypeOf<DiffR<S["TxNumber"], T.TxNumber>>().toEqualTypeOf<Known<never, never, never>>();
+// SentTx <-> SentTx
+expectTypeOf<DiffR<S["SentTx"], T.SentTx>>().toEqualTypeOf<Known<never, never, never>>();
 
 // Copilot (CITY-004): PreparedTxOut / DraftDetails / DraftResult / CopilotDraftOut / CopilotReply / CopilotEvalOut and requests
 expectTypeOf<DiffR<S["PreparedTxOut"], T.CopilotPreparedTx>>().toEqualTypeOf<Known<never, never, never>>();

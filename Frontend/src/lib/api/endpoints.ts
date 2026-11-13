@@ -5,7 +5,7 @@ import type {
   ActionResult, AgentRun, AskRequest, AssistantAnswer, AssistantLog, Attempt, ChainEvent, CityStates, CreateProposalRequest, DistrictDetail,
   DraftProposalRequest, Finding, GraphSnapshot, Health, LockRequest, MemberId, Org, PauseRequest, Proposal, ProposalDraft,
   ScenarioRun, SimResult, SimulateRequest, StreamListener,
-  BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident,
+  BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident, PreparedTxInput, TxCheck,
   CopilotDraft, CopilotEval, CopilotReply,
 } from "../../types";
 import { connectSse } from "../sse";
@@ -53,6 +53,12 @@ export interface Api {
   confirmCopilotDraft(id: number, acknowledgeRisk: boolean): Promise<CopilotDraft>;
   rejectCopilotDraft(id: number): Promise<CopilotDraft>;
   getCopilotEval(): Promise<CopilotEval>;
+  /** B05 Tx Guardian (CITY-003, spec CITY_OPS §7): simulate before signing; send/reject act on a pending check. */
+  checkTx(tx: PreparedTxInput): Promise<TxCheck>;
+  getTxChecks(limit?: number): Promise<TxCheck[]>;
+  getTxCheck(id: number): Promise<TxCheck>;
+  sendTx(id: number): Promise<TxCheck>;
+  rejectTx(id: number): Promise<TxCheck>;
   /** Stream subscription (SSE /api/stream in live mode, in-process bus in mock mode). Returns unsubscribe. */
   subscribe(listener: StreamListener): () => void;
 }
@@ -93,6 +99,11 @@ const liveApi: Api = {
   confirmCopilotDraft: (id, acknowledgeRisk) => http("POST", `/assistant/copilot/drafts/${id}/confirm`, { acknowledgeRisk }),
   rejectCopilotDraft: (id) => http("POST", `/assistant/copilot/drafts/${id}/reject`),
   getCopilotEval: () => http("GET", "/assistant/copilot/eval"),
+  checkTx: (tx) => http("POST", "/txguard/check", tx),
+  getTxChecks: (limit = 50) => http("GET", `/txguard/checks?limit=${limit}`),
+  getTxCheck: (id) => http("GET", `/txguard/checks/${id}`),
+  sendTx: (id) => http("POST", `/txguard/checks/${id}/send`),
+  rejectTx: (id) => http("POST", `/txguard/checks/${id}/reject`),
   subscribe: (l) => connectSse(l),
 };
 

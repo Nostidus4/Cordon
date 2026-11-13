@@ -175,8 +175,10 @@ class Stores:
         self.copilot_drafts: dict[
             int, Any
         ] = {}  # CopilotDraftRec (assistant/copilot/models.py), CITY-004
+        self.tx_checks: dict[int, Any] = {}  # B05 Tx Guardian checks (TxCheckOut), CITY-003
         self._ids = 0
         self._incident_ids = 0
+        self._txcheck_ids = 0
 
     def next_id(self) -> int:
         self._ids += 1
@@ -185,6 +187,10 @@ class Stores:
     def next_incident_id(self) -> int:
         self._incident_ids += 1
         return self._incident_ids
+
+    def next_txcheck_id(self) -> int:
+        self._txcheck_ids += 1
+        return self._txcheck_ids
 
 
 class Runtime:

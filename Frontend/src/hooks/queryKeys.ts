@@ -16,5 +16,6 @@ export const qk = {
   copilotDrafts: ["copilotDrafts"] as const,
   copilotEval: ["copilotEval"] as const,
   agentRuns: ["agentRuns"] as const,
+  txChecks: ["txChecks"] as const,
   incidents: (status: "open" | "all" = "open") => ["incidents", status] as const,
 };
