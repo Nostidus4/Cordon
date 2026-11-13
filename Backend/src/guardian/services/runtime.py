@@ -13,6 +13,7 @@ subscriber callbacks are bridged to SSE through `EventBus.publish` (thread-safe)
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from collections import deque
 from collections.abc import Callable
@@ -30,6 +31,8 @@ from guardian.services.event_bus import EventBus
 from guardian.workers.indexer import Indexer
 
 EVENT_LOG_SIZE = 5000
+RESPONDER_EVENTS = frozenset({"Paused", "Executed"})
+log = logging.getLogger("guardian.runtime")
 
 
 @dataclass
@@ -100,6 +103,9 @@ class AgentRunRec:
     reason_code: str | None
     attempt_id: int | None
     balances: dict[str, Any] = field(default_factory=dict)
+    steps: list[dict[str, Any]] = field(default_factory=list)  # AgentStep dicts (CITY_OPS §2)
+    untrusted_input: str | None = None
+    injection_ignored: bool | None = None
 
 
 @dataclass
@@ -111,6 +117,27 @@ class AssistantLogRec:
     answer: str
     numbers_verified: bool
     screen: str | None = None
+    flagged_untrusted: bool = False  # set by the responder (B02): answer marked as not trustworthy
+
+
+@dataclass
+class IncidentRec:
+    """One responder incident (CITY_OPS §4). `internal` holds the responder's own bookkeeping."""
+
+    id: int
+    building: str
+    title_vi: str
+    status: str  # detected | contained | awaiting_council | recovering | resolved
+    opened_at: int
+    kind: str  # attempts | agent | conflict | assistant | paused
+    fault_id: str | None = None
+    resolved_at: int | None = None
+    principal_id: str | None = None
+    key: str | None = None
+    trigger: dict[str, Any] = field(default_factory=dict)
+    steps: list[dict[str, Any]] = field(default_factory=list)
+    proposal_id: int | None = None
+    internal: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -133,11 +160,17 @@ class Stores:
         self.agent_runs: list[AgentRunRec] = []
         self.assistant_logs: list[AssistantLogRec] = []
         self.conflicts: list[ConflictRec] = []
+        self.incidents: list[IncidentRec] = []
         self._ids = 0
+        self._incident_ids = 0
 
     def next_id(self) -> int:
         self._ids += 1
         return self._ids
+
+    def next_incident_id(self) -> int:
+        self._incident_ids += 1
+        return self._incident_ids
 
 
 class Runtime:
@@ -169,6 +202,8 @@ class Runtime:
         self.indexer: Indexer | None = None
         self._live = not self.is_l1  # L1: the backfill at startup is recorded, not streamed
         self._last_city: list[tuple[str, str, str]] | None = None
+        self._in_responder = False  # set by responder.react
+        self._responder_task: asyncio.Task[None] | None = None
         self._unsubscribe: Callable[[], None] = lambda: None
         if self.is_l1:
             self._start_indexer()
@@ -222,7 +257,25 @@ class Runtime:
     def bind_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
         self.bus.bind_loop(loop)
 
+    def start_responder_ticker(self, interval: float = 2.0) -> None:
+        """Time-based incident transitions (recovering -> resolved) need a clock tick, not only events."""
+        if self._responder_task is not None or not self.settings.responder_enabled:
+            return
+
+        async def loop() -> None:
+            while True:
+                await asyncio.sleep(interval)
+                try:
+                    self.responder_tick()
+                except Exception:
+                    log.exception("responder tick failed")
+
+        self._responder_task = asyncio.get_running_loop().create_task(loop())
+
     async def shutdown(self) -> None:
+        if self._responder_task is not None:
+            self._responder_task.cancel()
+            self._responder_task = None
         for t in list(self.scenario_tasks.values()):
             t.cancel()
         self._unsubscribe()
@@ -269,6 +322,27 @@ class Runtime:
         self.event_log.append(ev)
         if self._live:
             self.bus.publish("event", views.api_event(ev, self.token_decimals()))
+            if ev.name in RESPONDER_EVENTS:
+                self._schedule_responder_tick()
+
+    def _schedule_responder_tick(self) -> None:
+        """Chain events can arrive from the indexer thread (L1) or inside a chain call (sim): never act
+        there, hop to the event loop and let the responder look at the stores."""
+        loop = self.bus._loop
+        if loop is not None and not loop.is_closed() and self.settings.responder_enabled:
+            loop.call_soon_threadsafe(self.responder_tick)
+
+    def responder_tick(self, publish: bool = True) -> Any:
+        """Run the responder once (idempotent, never re-entrant). With `publish`, a change it made is announced
+        (graph/proposal/city/incident SSE) through `notify_state_changed`."""
+        if not self.settings.responder_enabled:
+            return None
+        from guardian.services import responder
+
+        res = responder.react(self)
+        if publish and (res.changed or res.chain_touched):
+            self.notify_state_changed(graph=res.chain_touched)
+        return res
 
     def publish(self, event_type: str, data: dict[str, Any]) -> None:
         self.bus.publish(event_type, data)
@@ -284,6 +358,9 @@ class Runtime:
         """Call after any state-changing operation: graph_updated, proposal_updated, city_updated."""
         from guardian.services.proposal_service import proposal_out
 
+        # the responder may add chain effects (containment): city/graph below already see them
+        react = self.responder_tick(publish=False)
+        graph = graph or bool(react and react.chain_touched)
         if graph:
             self.graph_version += 1
             snap = self.snapshot()

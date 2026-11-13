@@ -30,6 +30,21 @@ class Settings(BaseSettings):
     scenario_delay_seconds: float = 3.0
     rate_limit_per_minute: int = 120
 
+    # CITY_OPS responder (docs/spec/CITY_OPS.md §4): detection always on when enabled; signing containment
+    # needs DEMO_MODE. None = "decide from demo mode".
+    responder_enabled: bool = True
+    responder_auto_contain: bool | None = None
+
+    @property
+    def auto_contain_enabled(self) -> bool:
+        """Containment signs with a Council member's demo key, so it also needs DEMO_MODE."""
+        on = (
+            self.demo_enabled
+            if self.responder_auto_contain is None
+            else self.responder_auto_contain
+        )
+        return on and self.demo_enabled
+
     @property
     def demo_enabled(self) -> bool:
         return self.chain_mode == "sim" if self.demo_mode is None else self.demo_mode
