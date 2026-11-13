@@ -1,7 +1,7 @@
 // Shared stage state: what the active scene wants the city to show, the "next recommended action" (Space), day/night, progress.
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
-import type { CityStageProps, PickTarget } from "./contract";
+import type { CameraShot, CityStageProps, PickTarget } from "./contract";
 import type { StageScene } from "./logic";
 
 interface StageStore {
@@ -16,6 +16,9 @@ interface StageStore {
   setNightPref: (v: boolean | null) => void;
   autoNight: boolean;
   setAutoNight: (v: boolean) => void;
+  /** temporary camera shot that wins over the scene's own (e.g. framing the building of a new incident); null = scene decides */
+  shotOverride: CameraShot | null;
+  setShotOverride: (s: CameraShot | null) => void;
   picked: PickTarget | null;
   setPicked: (p: PickTarget | null) => void;
   reached: StageScene[];
@@ -37,6 +40,8 @@ export const useStageStore = create<StageStore>((set) => ({
   setNightPref: (nightPref) => set({ nightPref }),
   autoNight: false,
   setAutoNight: (autoNight) => set({ autoNight }),
+  shotOverride: null,
+  setShotOverride: (shotOverride) => set({ shotOverride }),
   picked: null,
   setPicked: (picked) => set({ picked }),
   reached: [],

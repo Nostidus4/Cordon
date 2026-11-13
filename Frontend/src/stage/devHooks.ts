@@ -3,12 +3,14 @@
 //   ?stepMs=300                           delay between attacker steps (default 0 here, 2600 in the real mock)
 //   ?night=1|0                            force night / day
 //   ?mode=replay                          Xem lại
+//   ?building=B05 (any scene: opens the "Bên trong tòa" card) · ?fault=F05_KEY_LEAK (mock: injects that fault; add &stepMs=1500 to watch the steps)
 //   ?who=minh,huy (try) · ?ask=<id> (try/request) · ?approve=1 (fix) · ?pick=k:key_agent_data (look) · ?end=1 (request)
 import { useEffect } from "react";
 import { api } from "../lib/api";
 import { env } from "../config/env";
 import { mockConfig } from "../lib/mock/server";
 import { useUiStore } from "../store/uiStore";
+import type { BuildingCode } from "./contract";
 import { useStageStore } from "./stageStore";
 
 let started = false;
@@ -25,6 +27,10 @@ export function useStageDevHooks() {
     const q = new URLSearchParams(window.location.search);
     if (q.get("mode") === "replay") useUiStore.getState().setMode("replay");
     if (q.get("night")) useStageStore.getState().setNightPref(q.get("night") === "1");
+    const b = q.get("building");
+    if (b) setTimeout(() => useStageStore.getState().setPicked({ type: "building", code: b as BuildingCode }), 1200);
+    const fault = q.get("fault");
+    if (fault && env.apiMode === "mock") { mockConfig.latencyMs = 0; mockConfig.stepDelayMs = Number(q.get("stepMs") ?? 0); setTimeout(() => { void api.injectFault(fault); }, 600); }
     const stage = q.get("autoplay");
     if (!stage || env.apiMode !== "mock") return;
     started = true;

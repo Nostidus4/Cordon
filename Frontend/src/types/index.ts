@@ -12,5 +12,6 @@ export * from "./assistant";
 export * from "./health";
 export * from "./org";
 export * from "./city";
+export * from "./ops";
 export * from "./stream";
 export * from "./api";

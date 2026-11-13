@@ -1,6 +1,7 @@
 // AgentRun DTO (spec §7.1, §8.2 agent_runs).
 import type { Money } from "./common";
 import type { ReasonCode } from "../shared/reasonCodes";
+import type { AgentStep } from "./ops";
 
 /** Inputs the rule engine used (spec §7.1). Additive/optional: a backend may omit it. */
 export interface AgentRunInputs {
@@ -35,4 +36,9 @@ export interface AgentRun {
   reasonCode: ReasonCode | null;
   createdAt: string;
   inputs?: AgentRunInputs;
+  /** CITY_OPS §2: read -> decide -> simulate -> send -> explain timeline (optional; older backends omit it). */
+  steps?: AgentStep[];
+  /** Foreign text fed to the agent (fault F06); the rule engine never reads it. */
+  untrustedInput?: string | null;
+  injectionIgnored?: boolean;
 }
