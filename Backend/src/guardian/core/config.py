@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # None = "decide from credentials": on when an API key is present, off otherwise (templates only).
     llm_enabled: bool | None = None
     llm_model: str = "claude-opus-5-5"
-    llm_timeout_seconds: float = 8.0  # hard budget for ALL LLM calls of one request
+    llm_timeout_seconds: float = 15.0  # hard budget for ALL LLM calls of one request
     # the agent reason is written on the event loop (it sits between chain writes), so it gets a short budget:
     # past it the template sentence is used and the SSE stream is never held for long
     llm_reason_timeout_seconds: float = 3.0

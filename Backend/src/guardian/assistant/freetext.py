@@ -15,7 +15,7 @@ from typing import Any
 from guardian.assistant import fixed_questions as fq
 from guardian.assistant.prompt import ASSISTANT_SYSTEM, untrusted_block
 from guardian.assistant.tools import AssistantTools
-from guardian.assistant.verifier import verify
+from guardian.assistant.verifier import NUMBER_RE, norm, verify
 from guardian.core.errors import ApiError
 from guardian.core.llm import LlmSession, LlmUnavailable
 
@@ -56,29 +56,62 @@ TOOL_DECLS: list[dict[str, Any]] = [
 
 ANSWER_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "properties": {
-        "answer": {"type": "string"},
-        "numbers": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "label": {"type": "string"},
-                    "value": {"type": "string"},
-                    "source": {
-                        "type": "string",
-                        "enum": ["simulate", "district", "proposal", "graph"],
-                    },
-                    "path": {"type": "string"},
-                },
-                "required": ["label", "value", "source", "path"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    "required": ["answer", "numbers"],
+    "properties": {"answer": {"type": "string"}},
+    "required": ["answer"],
     "additionalProperties": False,
 }
+SOURCES = ("simulate", "district", "proposal", "graph")
+
+
+def flatten(node: Any, path: str = "") -> list[tuple[str, str]]:
+    """(normalized value, dotted path) for every number a tool result really holds. `{raw, display}` money is one
+    value (its display); list lengths get a `.length` entry. Strings are never numbers: labels/memos are untrusted."""
+    out: list[tuple[str, str]] = []
+    if isinstance(node, dict):
+        if "display" in node and "raw" in node:
+            return [(norm(node), f"{path}.display")]
+        for k, v in node.items():
+            out += flatten(v, f"{path}.{k}" if path else str(k))
+    elif isinstance(node, list):
+        out.append((str(len(node)), f"{path}.length"))
+        for i, v in enumerate(node):
+            out += flatten(v, f"{path}.{i}")
+    elif isinstance(node, (int, float)) and not isinstance(node, bool):
+        out.append((norm(node), path))
+    return out
+
+
+def _compact(node: Any) -> Any:
+    """Prompt-sized view of a tool result: no raw base units, highlights or addresses."""
+    if isinstance(node, dict):
+        return {k: _compact(v) for k, v in node.items() if k not in ("raw", "highlights")}
+    if isinstance(node, list):
+        return [_compact(v) for v in node if not (isinstance(v, str) and v.startswith("0x"))]
+    return node
+
+
+def build_numbers(answer: str, data: dict[str, Any]) -> list[dict[str, str]] | None:
+    """Every number token of the answer must equal a value some tool of THIS request returned; `numbers[]` is built
+    here from those matches (never taken from the model). None if any token has no match."""
+    index: dict[str, str] = {}
+    for source in SOURCES:
+        if source in data:
+            for value, path in flatten(data[source], source):
+                index.setdefault(value, path)
+    numbers: list[dict[str, str]] = []
+    for tok in dict.fromkeys(NUMBER_RE.findall(answer)):
+        path = index.get(tok)
+        if path is None:
+            return None
+        numbers.append(
+            {
+                "label": path.split(".")[-2 if path.endswith(".display") else -1],
+                "value": tok,
+                "source": path.split(".")[0],
+                "path": path,
+            }
+        )
+    return numbers
 
 
 def _dispatch(tools: AssistantTools, data: dict[str, Any]) -> dict[str, Callable[..., Any]]:
@@ -115,20 +148,41 @@ def _dispatch(tools: AssistantTools, data: dict[str, Any]) -> dict[str, Callable
     }
 
 
+def _seed(run: dict[str, Callable[..., Any]], data: dict[str, Any]) -> dict[str, Any]:
+    """The snapshot the fixed questions rely on, read through the same tools so its numbers are verifiable too:
+    districts, findings and the two-district compromise estimate. Most questions then need no tool round."""
+    snap: dict[str, Any] = {}
+    for name, args in (
+        ("get_graph", {}),
+        ("list_findings", {}),
+        ("simulate_compromise", {"principals": ["minh", "huy"]}),
+    ):
+        try:
+            snap[name] = _compact(run[name](**args))
+        except (ApiError, KeyError, ValueError):
+            continue
+    return snap
+
+
 def answer_with_llm(
     session: LlmSession,
     tools: AssistantTools,
     question: str,
     context: dict[str, Any] | None = None,
 ) -> tuple[fq.Built, bool]:
-    """Returns (built, verified). Raises `LlmUnavailable` on any provider failure or an unverifiable result."""
+    """Returns (built, True). Raises `LlmUnavailable` (message says why) on any provider failure or an answer whose
+    numbers are not all in this request's tool results."""
     data: dict[str, Any] = {}
     run = _dispatch(tools, data)
+    snapshot = untrusted_block("snapshot", json.dumps(_seed(run, data), ensure_ascii=False))
     ctx_note = ""
     if context and context.get("principalIds"):
         ctx_note = "\n" + untrusted_block("screen_context", json.dumps(context["principalIds"]))
     messages: list[dict[str, Any]] = [
-        {"role": "user", "content": untrusted_block("question", question) + ctx_note}
+        {
+            "role": "user",
+            "content": snapshot + "\n" + untrusted_block("question", question) + ctx_note,
+        }
     ]
     calls = 0
     while True:
@@ -173,18 +227,17 @@ def _result(tool_use_id: str, content: str, is_error: bool) -> dict[str, Any]:
 
 def _finish(text: str, data: dict[str, Any]) -> tuple[fq.Built, bool]:
     try:
-        raw = json.loads(text)
-        answer, numbers = raw["answer"], raw["numbers"]
-        if not isinstance(answer, str) or not isinstance(numbers, list):
+        answer = json.loads(text)["answer"]
+        if not isinstance(answer, str):
             raise TypeError
-        numbers = [{k: str(n[k]) for k in ("label", "value", "source", "path")} for n in numbers]
     except (ValueError, KeyError, TypeError) as e:
         raise LlmUnavailable("invalid structured output") from e
-    if len(answer.split()) > fq.MAX_WORDS or not answer.strip():
-        return fq.Built(fq.FALLBACK_ANSWER), False
-    if not all(n["source"] in ("simulate", "district", "proposal", "graph") for n in numbers):
-        return fq.Built(fq.FALLBACK_ANSWER), False
-    if not verify(answer, numbers, data):
-        return fq.Built(fq.FALLBACK_ANSWER), False
+    if not answer.strip() or len(answer.split()) > fq.MAX_WORDS:
+        raise LlmUnavailable("length: empty or over 80 words")
+    numbers = build_numbers(answer, data)
+    if numbers is None or not verify(answer, numbers, data):
+        known = {v for src in SOURCES if src in data for v, _ in flatten(data[src], src)}
+        missing = [t for t in dict.fromkeys(NUMBER_RE.findall(answer)) if t not in known]
+        raise LlmUnavailable(f"verify: number(s) in no tool result: {missing[:5]}")
     highlight = data.get("simulate", {}).get("highlights") or {"nodeIds": [], "edgeIds": []}
     return fq.Built(answer, numbers=numbers, highlight=highlight), True
