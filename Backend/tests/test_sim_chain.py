@@ -11,6 +11,7 @@ from guardian.chain.sim.council import affected_principals
 from guardian.shared.money import to_base
 from guardian.shared.reason_codes import ReasonCode as R
 from guardian.shared.scenario4 import SCENARIO4_DISTRICT, SCENARIO4_STEPS
+from tests.idport import IdPort
 
 
 def _pid(c: SimChain, *args) -> int:  # type: ignore[no-untyped-def]
@@ -24,7 +25,7 @@ SEL = "0x" + "00" * 4
 
 
 def mk():
-    return SimChain(clock=lambda: T0)
+    return IdPort(SimChain(clock=lambda: T0))
 
 
 def u(n):

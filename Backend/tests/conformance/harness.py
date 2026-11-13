@@ -14,6 +14,7 @@ from typing import Any
 from guardian.chain.base import TxResult
 from guardian.domain.snapshot import PolicySnapshot
 from guardian.shared.money import to_base
+from tests.idport import IdPort
 
 DAY = 86400
 u = to_base
@@ -26,6 +27,9 @@ class Net:
     chain: Any  # a ChainPort (+ balance / proposal_state / apply_policy_v2 / _addr, shared by both)
     seed: dict[str, Any]
     env: Any = None  # anvil Env when kind == "l1"
+
+    def __post_init__(self) -> None:
+        self.chain = IdPort(self.chain)  # tests speak seed ids, the chain takes hex only (CHN-004)
 
     def advance_day(self, days: int = 1) -> None:
         """Time travel: sim `advance_day`, anvil `evm_increaseTime` + `evm_mine`."""

@@ -35,7 +35,7 @@ def lock(rt: Runtime, member: str, principal_id: str) -> dict[str, Any]:
     require_member(snap, member)
     if principal_id not in snap.principals:
         raise ApiError(404, "DISTRICT_NOT_FOUND", f"Không có khu '{principal_id}'.")
-    res = rt.chain.emergency_lock(member, principal_id)
+    res = rt.chain.emergency_lock(rt.addr(member), principal_id)
     _raise_if_failed(res)
     run = next(
         (r for r in reversed(rt.stores.runs.values()) if r.status in ("running", "waiting_lock")),
@@ -66,7 +66,7 @@ def lock(rt: Runtime, member: str, principal_id: str) -> dict[str, Any]:
 
 def pause(rt: Runtime, member: str) -> dict[str, Any]:
     require_member(rt.snapshot(), member)
-    res = rt.chain.emergency_pause(member)
+    res = rt.chain.emergency_pause(rt.addr(member))
     _raise_if_failed(res)
     rt.notify_state_changed()
     return _out(res, member=member)

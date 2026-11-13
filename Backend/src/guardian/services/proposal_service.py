@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from guardian.chain.errors import ChainRevert
-from guardian.chain.sim import SimChain
 from guardian.core.errors import ApiError
 from guardian.domain.snapshot import PolicySnapshot
 from guardian.graph import changes as chg
@@ -153,7 +152,11 @@ def propose(
     change = resolve_change(snap, finding_id, change_raw)
     d = build_draft(snap, change)
     res = rt.chain.propose(
-        member, title or d["title"], d["subject"], views.chain_calls(d["calls"]), d["hash"]
+        rt.addr(member),
+        title or d["title"],
+        d["subject"],
+        views.chain_calls(d["calls"], rt.addr),
+        d["hash"],
     )
     if res.proposal_id is None:
         raise ChainRevert(res.error_raw or "reverted", res.reason_code)
@@ -205,7 +208,7 @@ def propose_calls(
         "graphVersion": snap.policy_version,
     }
     h = risk_report_hash(report)
-    res = rt.chain.propose(member, title, subject, views.chain_calls(calls), h)
+    res = rt.chain.propose(rt.addr(member), title, subject, views.chain_calls(calls, rt.addr), h)
     if res.proposal_id is None:
         raise ChainRevert(res.error_raw or "reverted", res.reason_code)
     pid = res.proposal_id
@@ -239,7 +242,7 @@ def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
     rec = rt.stores.proposals.get(proposal_id)
     if rec is None:
         raise ApiError(404, "PROPOSAL_NOT_FOUND", f"Không có đề xuất #{proposal_id}.")
-    res = rt.chain.approve(member, proposal_id)
+    res = rt.chain.approve(rt.addr(member), proposal_id)
     if res.status != "ok":
         if res.error_raw == "ConflictOfInterest":
             record_conflict(rt, member, proposal_id)
@@ -315,10 +318,3 @@ def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
 
 def list_proposals(rt: Runtime) -> list[dict[str, Any]]:
     return [proposal_out(rt, i) for i in sorted(rt.stores.proposals, reverse=True)]
-
-
-def reference_v2_snapshot() -> PolicySnapshot:
-    """Clean policy-v2 state (no spend): the baseline the seeded request #12 is evaluated on."""
-    ref = SimChain()
-    ref.apply_policy_v2()
-    return ref.snapshot()

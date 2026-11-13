@@ -63,8 +63,8 @@ def run_once(
     snap = rt.snapshot()
     ks = rt.key_by_seed(AGENT_SEED, snap)
     district = snap.principals.get(ks.principal_id)
-    usdc = rt.chain.balance("vault", "tUSDC")
-    ttkb = rt.chain.balance("vault", "tTKB")
+    usdc = rt.chain.balance(rt.addr("vault"), rt.addr("tUSDC"))
+    ttkb = rt.chain.balance(rt.addr("vault"), rt.addr("tTKB"))
     ttkb_dec = next(t.decimals for t in snap.tokens if t.symbol == "tTKB")
     ttkb_value = ttkb * 10**6 // 10**ttkb_dec  # MockDEX: 1 tTKB = 1 tUSDC in value
     k_left = key_remaining(snap, ks.address)
@@ -142,7 +142,13 @@ def run_once(
     }
     sel = next(p.selector for p in snap.protocols if p.seed_id == "mock_dex")
     sim_reason = rt.chain.simulate_swap(
-        AGENT_SEED, "mock_dex", sel, decision.token_in, decision.token_out, decision.amount_in, 0
+        rt.addr(AGENT_SEED),
+        rt.addr("mock_dex"),
+        sel,
+        rt.addr(decision.token_in),
+        rt.addr(decision.token_out),
+        decision.amount_in,
+        0,
     )
     steps.append(
         _step(

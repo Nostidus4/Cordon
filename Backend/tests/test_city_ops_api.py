@@ -185,7 +185,7 @@ async def test_f01_creates_a_proposal_when_none_conflicts(client: httpx.AsyncCli
     # cancel request #13 (huy's): no open proposal has a conflicted member any more
     await post(client, "/api/faults/F01_CONFLICT_APPROVAL/inject")
     rt: Runtime = client._transport.app.state.runtime  # type: ignore[attr-defined]
-    rt.chain.cancel("trang", 13)
+    rt.chain.cancel(rt.addr("trang"), 13)
     n_before = len(rt.stores.proposals)
     res = await post(client, "/api/faults/F01_CONFLICT_APPROVAL/inject")
     assert len(rt.stores.proposals) == n_before + 1

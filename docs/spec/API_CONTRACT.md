@@ -8,7 +8,7 @@ Nguồn mã: `Backend/src/guardian/chain/base.py`, `Backend/src/guardian/domain/
 
 `ChainPort` (Protocol, `chain/base.py`) là ranh giới duy nhất giữa ứng dụng và chain. Hai bản cài đặt phải **không thể phân biệt** từ phía gọi (cùng kết quả cho cùng chuỗi lệnh, trừ trường `simulated`, tx hash và block).
 
-**Địa chỉ.** Hợp đồng: `signer`, `member`, `key`, `to` là **địa chỉ hex**. `shortcut:` lớp dịch vụ và attacker hiện còn truyền seed id (`key_minh`, `tUSDC`, `vendor_cloud`, member `lan`...) và sim tự phân giải; chuyển hết sang hex (dùng `shared/addresses.py: derive_address`, trùng địa chỉ trong `seed/may_labs.json`) đụng hơn 10 chỗ gọi (`attempt_service`, `agent_service`, `action_service`, `proposal_service`, `attacker/steps`, `attacker/cli`, scenario4 dùng chung với Frontend) và đổi `signer` trong `AttemptOut`, nên để lại; làm trước khi có adapter L1.
+**Địa chỉ.** Hợp đồng: `signer`, `member`, `key`, `to` là **địa chỉ hex**. Code ứng dụng đổi id sang hex ngay tại chỗ gọi `ChainPort` (`Runtime.addr`, sổ địa chỉ dựng từ snapshot: `domain/address_book.py`); store và API vẫn giữ id (`AttemptOut.signer` không đổi). Sim và adapter L1 từ chối mọi thứ không phải hex (CHN-004).
 
 **Đồng bộ.** `ChainPort` là hàm đồng bộ. Adapter L1 phải chạy lệnh web3 ngoài event loop (threadpool) sau **một lock** tuần tự hoá mọi thao tác chain, khớp quy tắc "không `await` giữa chừng một thao tác chain" của sim (`services/runtime.py`). `shortcut:` port async là hướng nâng cấp nếu cần thông lượng.
 
@@ -153,7 +153,7 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 - [ ] Chạy trọn luồng trực tiếp (live) Frontend ↔ Backend -> WEB-001 (#17)
 - [ ] Kiểm tương đương (parity) schema/mock/backend tự động -> QA-001 (#21)
 - [ ] `chain/sim` lệch [CONTRACTS.md](CONTRACTS.md) mục 6: `KeyAdded.kind` phát chữ hoa (`HUMAN`) thay vì `human`; `Proposed.subjectPrincipal` là `null` thay vì bytes32 rỗng. Sửa sim khi viết adapter L1 / bộ test conformance
-- [x] `Runtime.sim` đã bỏ: app code đi qua `ChainPort` (`proposal_state`...). Còn lại: app code vẫn truyền seed id (`key_minh`, `lan`, `tUSDC`) vào ChainPort (adapter L1 phân giải), đổi sang hex là đổi `AttemptOut.signer` (thay đổi hợp đồng)
+- [x] `Runtime.sim` đã bỏ: app code đi qua `ChainPort` (`proposal_state`...) và truyền địa chỉ hex vào `ChainPort`; id chỉ nằm trong store/API (không đổi API) (CHN-004)
 
 ## 8. Tiêu chí đóng băng (`API-001`), đã đạt 2026-11-12
 
@@ -172,4 +172,4 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 
 Không có `EventStore` riêng: `GET /api/events?since=` đọc `ChainPort.events_since(block)` (cả sim lẫn l1, adapter l1 tự đọc log), còn `Runtime.event_log` (deque) là bản ghi để dựng thành phố/sự cố. Khi có Postgres (DB-002), sink DB thay `InMemoryEventSink` mà không đổi ChainPort.
 
-`chain/base.py`: `DemoControls` (chỉ `reset`, chỉ sim; `demo_reset` gọi khi `not rt.is_l1`, l1 nạp bộ contract mới, mục 4.2) và `DemoChain(ChainPort, DemoControls)`. `balance` đã nằm trong `ChainPort`. `advance_day`, `topup`, `direct_call`, `apply_policy_v2` không do dịch vụ/API gọi nên không nằm trong `DemoControls`.
+`chain/base.py`: `DemoControls` (chỉ `reset`, chỉ sim; sau `reset` id proposal kế tiếp là 12 như script demo-reset của l1; `demo_reset` gọi khi `not rt.is_l1`, l1 nạp bộ contract mới, mục 4.2) và `DemoChain(ChainPort, DemoControls)`. `balance` đã nằm trong `ChainPort`. `advance_day`, `topup`, `direct_call`, `apply_policy_v2` không do dịch vụ/API gọi nên không nằm trong `DemoControls`.

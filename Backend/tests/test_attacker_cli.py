@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from guardian.attacker import cli
-from guardian.attacker.steps import ATTACK_STEPS, STEP7, execute_step
+from guardian.attacker.steps import ATTACK_STEPS, STEP7, address_resolver, execute_step
 from guardian.chain.sim import SimChain
 from guardian.main import create_app
 from guardian.services.runtime import Runtime
@@ -25,7 +25,7 @@ def _ready() -> SimChain:
     """Policy v2 + the agent swap (step 0): the state scene 4 starts from."""
     chain = _sim()
     chain.apply_policy_v2()
-    execute_step(chain, cli.SCENARIO4_STEPS[0])
+    execute_step(chain, cli.SCENARIO4_STEPS[0], address_resolver(chain))
     return chain
 
 
@@ -86,7 +86,7 @@ def test_step7_after_lock_blocked_at_protocol_without_tx_hash() -> None:
     code, _ = _run(chain, "--step", "all", "--simulate-lock")
     assert code == cli.EXIT_OK
     assert chain.snapshot().principals["minh"].locked
-    r = execute_step(chain, STEP7)
+    r = execute_step(chain, STEP7, address_resolver(chain))
     assert (r.outcome, r.reason_code, r.tx_hash, r.block) == (
         "blocked_at_protocol",
         "BLOCKED_AT_PROTOCOL",
@@ -133,7 +133,7 @@ def test_wait_for_lock_times_out_then_sees_lock() -> None:
     def sleep(s: float) -> None:
         ticks.append(s)
         if len(ticks) == 2:
-            chain.emergency_lock("council_lan", "minh")
+            chain.emergency_lock(chain._addr("council_lan"), "minh")
 
     assert cli.wait_for_lock(chain, "minh", timeout=5, sleep=sleep)
     assert len(ticks) == 2
@@ -159,7 +159,7 @@ def test_each_executed_step_creates_one_attempt_in_the_api() -> None:
     with TestClient(app) as client:
         chain = rt.chain
         chain.apply_policy_v2()
-        execute_step(chain, cli.SCENARIO4_STEPS[0])
+        execute_step(chain, cli.SCENARIO4_STEPS[0], address_resolver(chain))
         reporter = cli.Reporter("http://test", None, "run-9", client=client)
         _scene(chain, ATTACK_STEPS, reporter, lock=True)
         _scene(chain, [STEP7], reporter)

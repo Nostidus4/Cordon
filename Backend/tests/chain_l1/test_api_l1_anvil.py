@@ -62,7 +62,7 @@ def l1_settings(**kw: Any) -> Settings:
 async def l1_app(env: Env, l1: L1Chain) -> AsyncIterator[FastAPI]:
     """The real app, `CHAIN_MODE=l1`, on the seeded anvil (node-held signers stand in for test keys)."""
     settings = l1_settings()
-    rt = Runtime(settings, chain=l1)
+    rt = Runtime(settings, chain=l1._chain)
     app = create_app(settings, rt)
     async with app.router.lifespan_context(app):
         yield app
@@ -321,8 +321,10 @@ async def test_demo_mode_is_refused_on_a_chain_that_is_not_a_test_chain(
     l1: L1Chain,
 ) -> None:
     with pytest.raises(DemoModeError, match="chain id 31337 is not a test chain"):
-        Runtime(l1_settings(demo_chain_ids=[424242]), chain=l1)
-    rt = Runtime(l1_settings(demo_mode=False, demo_chain_ids=[424242]), chain=l1)  # read-only: fine
+        Runtime(l1_settings(demo_chain_ids=[424242]), chain=l1._chain)
+    rt = Runtime(
+        l1_settings(demo_mode=False, demo_chain_ids=[424242]), chain=l1._chain
+    )  # read-only: fine
     await rt.shutdown()
 
 

@@ -16,9 +16,11 @@ from guardian.chain.l1 import L1Chain
 from guardian.chain.sim import SimChain
 from guardian.shared.scenario4 import SCENARIO4_DISTRICT, SCENARIO4_STEPS, Scenario4Step
 from tests.chain_l1.anvil_env import Env
+from tests.idport import IdPort
 
 
 def _run_step(chain: Any, st: Scenario4Step, selector: str) -> Any:
+    chain = IdPort(chain)  # scenario ids -> hex (CHN-004)
     p = st.params
     if st.action == "swap":
         return chain.swap(
