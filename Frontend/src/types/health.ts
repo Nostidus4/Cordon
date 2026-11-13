@@ -2,7 +2,7 @@
 export interface Health {
   /** "ok" | "degraded" (open set on the backend). */
   status: string;
-  chainMode: "sim" | "live";
+  chainMode: "sim" | "l1";
   demoMode: boolean;
   /** True while txHashes are simulated (CHAIN_MODE=sim). */
   simulated: boolean;
