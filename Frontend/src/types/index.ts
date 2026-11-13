@@ -15,4 +15,5 @@ export * from "./city";
 export * from "./ops";
 export * from "./stream";
 export * from "./api";
+export * from "./copilot";
 export * from "./txguard";

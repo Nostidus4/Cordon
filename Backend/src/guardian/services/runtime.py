@@ -71,7 +71,7 @@ class AttemptRec:
     principal_spent_after: dict[str, str] | None = None
     key_spent_after: dict[str, str] | None = None
     simulated: bool = True
-    source: str = "server"  # server | agent | external
+    source: str = "server"  # server | agent | external | copilot
 
 
 @dataclass
@@ -238,6 +238,9 @@ class Stores:
         self.assistant_logs: list[AssistantLogRec] = []
         self.conflicts: list[ConflictRec] = []
         self.incidents: list[IncidentRec] = []
+        self.copilot_drafts: dict[
+            int, Any
+        ] = {}  # CopilotDraftRec (assistant/copilot/models.py), CITY-004
         self.tx_checks: dict[int, Any] = {}  # B05 Tx Guardian checks (TxCheckOut), CITY-003
         self._ids = 0
         self._incident_ids = 0

@@ -92,6 +92,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assistant/copilot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Message
+         * @description Prepare-only: a read answer, a refusal, or a PENDING draft. Never changes chain state.
+         */
+        post: operations["message_api_assistant_copilot_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/copilot/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Drafts */
+        get: operations["drafts_api_assistant_copilot_drafts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/copilot/drafts/{draft_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm
+         * @description The ONLY path that sends. 409 when the draft is not pending, or when the checkpoint said `danger`
+         *     and `acknowledgeRisk` is not true.
+         */
+        post: operations["confirm_api_assistant_copilot_drafts__draft_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/copilot/drafts/{draft_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject
+         * @description Never touches the chain.
+         */
+        post: operations["reject_api_assistant_copilot_drafts__draft_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/copilot/eval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eval Report
+         * @description Latest report written by `make copilot-eval`.
+         */
+        get: operations["eval_report_api_assistant_copilot_eval_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/assistant/logs": {
         parameters: {
             query?: never;
@@ -967,6 +1065,90 @@ export interface components {
             /** Updatedat */
             updatedAt: number;
         };
+        /** ConfirmRequest */
+        ConfirmRequest: {
+            /**
+             * Acknowledgerisk
+             * @default false
+             */
+            acknowledgeRisk: boolean;
+        };
+        /** CopilotDraftOut */
+        CopilotDraftOut: {
+            /** Createdat */
+            createdAt: number;
+            details: components["schemas"]["DraftDetails"];
+            /** Id */
+            id: number;
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "pay" | "swap";
+            prepared: components["schemas"]["PreparedTxOut"];
+            result?: components["schemas"]["DraftResult"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "confirmed" | "rejected" | "sent" | "blocked";
+            /** Summaryvi */
+            summaryVi: string;
+            /** Txcheckid */
+            txCheckId?: string | null;
+            /** Txchecklevel */
+            txCheckLevel?: ("safe" | "caution" | "danger") | null;
+        };
+        /** CopilotEvalOut */
+        CopilotEvalOut: {
+            /** Cases */
+            cases: components["schemas"]["EvalCase"][];
+            /** Chainmode */
+            chainMode: string;
+            intentAccuracy: components["schemas"]["EvalAccuracy"];
+            readsVerified: components["schemas"]["EvalAccuracy"];
+            /** Total */
+            total: number;
+            validSent: components["schemas"]["EvalAccuracy"];
+            /** Version */
+            version: number;
+            wrongTxBlocked: components["schemas"]["EvalBlocked"];
+        };
+        /** CopilotNumber */
+        CopilotNumber: {
+            /** Label */
+            label: string;
+            /** Path */
+            path: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "simulate" | "district" | "proposal" | "graph" | "draft";
+            /** Value */
+            value: string;
+        };
+        /** CopilotReply */
+        CopilotReply: {
+            draft?: components["schemas"]["CopilotDraftOut"] | null;
+            highlight: components["schemas"]["Highlights"];
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "read" | "pay" | "swap" | "forecast_refused" | "injection_refused" | "unknown";
+            /** Numbers */
+            numbers: components["schemas"]["CopilotNumber"][];
+            /** Numbersverified */
+            numbersVerified: boolean;
+            /** Replyvi */
+            replyVi: string;
+        };
+        /** CopilotRequest */
+        CopilotRequest: {
+            /** Message */
+            message: string;
+        };
         /** CouncilMemberOut */
         CouncilMemberOut: {
             /** Address */
@@ -1021,6 +1203,19 @@ export interface components {
             spentToday: components["schemas"]["Money"];
             youThink: components["schemas"]["Money"];
         };
+        /** DraftDetails */
+        DraftDetails: {
+            amount: components["schemas"]["Money"];
+            minOut?: components["schemas"]["Money"] | null;
+            /** Signerlabel */
+            signerLabel: string;
+            /** Tolabel */
+            toLabel: string;
+            /** Tokenoutsymbol */
+            tokenOutSymbol?: string | null;
+            /** Tokensymbol */
+            tokenSymbol: string;
+        };
         /** DraftOut */
         DraftOut: {
             /** Calls */
@@ -1066,6 +1261,75 @@ export interface components {
             compromised?: string[] | null;
             /** Findingid */
             findingId?: string | null;
+        };
+        /** DraftResult */
+        DraftResult: {
+            /** Ok */
+            ok: boolean;
+            /** Reasoncode */
+            reasonCode?: string | null;
+            /**
+             * Simulated
+             * @default true
+             */
+            simulated: boolean;
+            /** Txhash */
+            txHash?: string | null;
+        };
+        /** EvalAccuracy */
+        EvalAccuracy: {
+            /** Correct */
+            correct: number;
+            /** Total */
+            total: number;
+        };
+        /**
+         * EvalBlocked
+         * @description Wrong transactions that must not succeed, and how each was stopped.
+         */
+        EvalBlocked: {
+            /** Blocked */
+            blocked: number;
+            /** Bychain */
+            byChain: number;
+            /** Bycheckpoint */
+            byCheckpoint: number;
+            /** Byrefusal */
+            byRefusal: number;
+            /** Total */
+            total: number;
+        };
+        /** EvalCase */
+        EvalCase: {
+            /**
+             * Expectedintent
+             * @enum {string}
+             */
+            expectedIntent: "read" | "pay" | "swap" | "forecast_refused" | "injection_refused" | "unknown";
+            /** Id */
+            id: string;
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "read" | "pay" | "swap" | "forecast_refused" | "injection_refused" | "unknown";
+            /** Intentok */
+            intentOk: boolean;
+            /** Message */
+            message: string;
+            /** Numbersverified */
+            numbersVerified?: boolean | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "answered" | "refused" | "sent" | "blocked_by_chain" | "blocked_by_checkpoint" | "unmatched";
+            /** Reasoncode */
+            reasonCode?: string | null;
+            /** Stoppedwrongtx */
+            stoppedWrongTx: boolean;
+            /** Wrongtx */
+            wrongTx: boolean;
         };
         /** EventOut */
         EventOut: {
@@ -1447,6 +1711,42 @@ export interface components {
             to: string;
             /** Token */
             token?: string | null;
+            /** Tokenout */
+            tokenOut?: string | null;
+        };
+        /**
+         * PreparedTxOut
+         * @description B05 `PreparedTx` field names. `signer`/`token`/`to`/`tokenOut` are hex addresses; `amount`/`minOut` raw ints.
+         */
+        PreparedTxOut: {
+            /** Amount */
+            amount: string;
+            /** Data */
+            data?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pay" | "swap" | "approve" | "raw";
+            /**
+             * Memo
+             * @default
+             */
+            memo: string;
+            /** Minout */
+            minOut?: string | null;
+            /** Signer */
+            signer: string;
+            /**
+             * Source
+             * @default copilot
+             * @enum {string}
+             */
+            source: "paste" | "city" | "copilot" | "attacker";
+            /** To */
+            to: string;
+            /** Token */
+            token: string;
             /** Tokenout */
             tokenOut?: string | null;
         };
@@ -1935,6 +2235,145 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    message_api_assistant_copilot_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopilotRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotReply"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    drafts_api_assistant_copilot_drafts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotDraftOut"][];
+                };
+            };
+        };
+    };
+    confirm_api_assistant_copilot_drafts__draft_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConfirmRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotDraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_api_assistant_copilot_drafts__draft_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotDraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    eval_report_api_assistant_copilot_eval_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopilotEvalOut"];
                 };
             };
         };
