@@ -39,7 +39,7 @@ Luật đổi màu giữ nguyên luật hiện có trong docstring của `servic
 | `B07.high` | warning | Còn cờ rủi ro mức cao đang mở |
 | `B08.worst` | (xấu nhất) | Trạng thái xấu nhất của 7 tòa kia |
 
-`shared/buildings` cho mỗi tòa: `id, name, module, topic, summaryVi, rules[]` với `rule = {id, state, whenVi}` (`whenVi`: câu mô tả điều kiện, ví dụ "Có đề xuất chờ duyệt"). `rules[].id` theo bảng dưới.
+`shared/buildings` cho mỗi tòa: `id, name, module, topic, summaryVi, rules[]` với `rule = {id, state, whenVi}` (`whenVi`: câu mô tả điều kiện, ví dụ "Có đề xuất chờ duyệt"). `rules[].id` theo bảng trên.
 
 UI tiếng Việt, không hiện tên hàm hay tiếng Anh. Tên module/contract chỉ hiện ở dòng nhỏ "Bên trong" (mục 2), vì đó là thông tin người xem kỹ thuật cần.
 
