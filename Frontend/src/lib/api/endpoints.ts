@@ -5,7 +5,7 @@ import type {
   ActionResult, AgentRun, AskRequest, AssistantAnswer, AssistantLog, Attempt, ChainEvent, CityStates, CreateProposalRequest, DistrictDetail,
   DraftProposalRequest, Finding, GraphSnapshot, Health, LockRequest, MemberId, Org, PauseRequest, Proposal, ProposalDraft,
   ScenarioRun, SimResult, SimulateRequest, StreamListener,
-  BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident,
+  BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident, PreparedTxInput, TxCheck,
 } from "../../types";
 import { useConnStore } from "../../store/connStore";
 import { connectSse } from "../sse";
@@ -46,6 +46,12 @@ export interface Api {
   injectFault(id: string): Promise<FaultResult>;
   getIncidents(status?: "open" | "all"): Promise<Incident[]>;
   getIncident(id: number): Promise<Incident>;
+  /** B05 Tx Guardian (CITY-003, spec CITY_OPS §7): simulate before signing; send/reject act on a pending check. */
+  checkTx(tx: PreparedTxInput): Promise<TxCheck>;
+  getTxChecks(limit?: number): Promise<TxCheck[]>;
+  getTxCheck(id: number): Promise<TxCheck>;
+  sendTx(id: number): Promise<TxCheck>;
+  rejectTx(id: number): Promise<TxCheck>;
   /** Stream subscription (SSE /api/stream in live mode, in-process bus in mock mode). Returns unsubscribe. */
   subscribe(listener: StreamListener): () => void;
 }
@@ -81,6 +87,11 @@ const liveApi: Api = {
   injectFault: (id) => http("POST", `/faults/${encodeURIComponent(id)}/inject`),
   getIncidents: (status = "all") => http("GET", `/incidents?status=${status}`),
   getIncident: (id) => http("GET", `/incidents/${id}`),
+  checkTx: (tx) => http("POST", "/txguard/check", tx),
+  getTxChecks: (limit = 50) => http("GET", `/txguard/checks?limit=${limit}`),
+  getTxCheck: (id) => http("GET", `/txguard/checks/${id}`),
+  sendTx: (id) => http("POST", `/txguard/checks/${id}/send`),
+  rejectTx: (id) => http("POST", `/txguard/checks/${id}/reject`),
   subscribe: (l) => connectSse(l, (open) => useConnStore.getState().setSse(open)),
 };
 

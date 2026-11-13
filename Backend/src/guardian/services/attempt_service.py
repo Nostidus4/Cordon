@@ -91,8 +91,15 @@ def run_spend(
     step: int | None = None,
     display_time: str | None = None,
     source: str = "server",
+    guard_source: str | None = None,
 ) -> AttemptRec:
-    """simulate (for the reason) -> send tx (even when it will revert) -> record + publish."""
+    """simulate (for the reason) -> send tx (even when it will revert) -> record + publish.
+
+    `guard_source` (e.g. "attacker"): first record a B05 Tx Guardian check of this spend (CITY-003); it only reads."""
+    if guard_source:
+        from guardian.txguard import service as txguard
+
+        txguard.record_attempt(rt, signer, action, params, guard_source)
     chain, snap = rt.chain, rt.snapshot()
     ks = rt.key_by_seed(signer, snap)
     sim_reason: ReasonCode | None = None
@@ -106,7 +113,11 @@ def run_spend(
         sim_reason = chain.simulate_pay(*pay_args)
         res = chain.pay(*pay_args, params.get("memo", ""))
     elif action == "swap":
-        sel = next(p.selector for p in snap.protocols if p.seed_id == params["dex"])
+        # a DEX the seed does not list (Tx Guardian sends it anyway so the chain says no) uses the one swap selector
+        sel = next(
+            (p.selector for p in snap.protocols if p.seed_id == params["dex"]),
+            snap.protocols[0].selector,
+        )
         to_seed = params["dex"]
         args = (
             s_addr,

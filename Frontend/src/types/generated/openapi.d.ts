@@ -563,6 +563,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/txguard/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check */
+        post: operations["check_api_txguard_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/txguard/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Checks */
+        get: operations["list_checks_api_txguard_checks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/txguard/checks/{check_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Check */
+        get: operations["get_check_api_txguard_checks__check_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/txguard/checks/{check_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject */
+        post: operations["reject_api_txguard_checks__check_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/txguard/checks/{check_id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send */
+        post: operations["send_api_txguard_checks__check_id__send_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1332,6 +1417,39 @@ export interface components {
             /** Principalid */
             principalId: string;
         };
+        /** PreparedTx */
+        PreparedTx: {
+            /** Amount */
+            amount?: string | null;
+            /** Data */
+            data?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pay" | "swap" | "approve" | "raw";
+            /**
+             * Memo
+             * @default
+             */
+            memo: string;
+            /** Minout */
+            minOut?: string | null;
+            /** Signer */
+            signer: string;
+            /**
+             * Source
+             * @default paste
+             * @enum {string}
+             */
+            source: "paste" | "city" | "copilot" | "attacker";
+            /** To */
+            to: string;
+            /** Token */
+            token?: string | null;
+            /** Tokenout */
+            tokenOut?: string | null;
+        };
         /** ProposalOut */
         ProposalOut: {
             /** Approvalcount */
@@ -1403,6 +1521,11 @@ export interface components {
             /** Via */
             via: string[];
         };
+        /**
+         * ReasonCode
+         * @enum {string}
+         */
+        ReasonCode: "VAULT_PAUSED" | "KEY_NOT_REGISTERED" | "DISTRICT_LOCKED" | "TOKEN_NOT_ALLOWED" | "PROTOCOL_NOT_ALLOWED" | "RECIPIENT_NOT_ALLOWED" | "CARD_DAILY_CAP" | "DISTRICT_DAILY_CAP" | "SLIPPAGE" | "BLOCKED_AT_PROTOCOL";
         /** RecentItem */
         RecentItem: {
             /**
@@ -1470,6 +1593,17 @@ export interface components {
             /** Step */
             step?: number | null;
         };
+        /** SentTx */
+        SentTx: {
+            /** Ok */
+            ok: boolean;
+            /** Reasoncode */
+            reasonCode?: string | null;
+            /** Simulated */
+            simulated: boolean;
+            /** Txhash */
+            txHash?: string | null;
+        };
         /** SimResult */
         SimResult: {
             /** Findings */
@@ -1518,6 +1652,26 @@ export interface components {
              */
             samples: number;
         };
+        /** StateDiff */
+        StateDiff: {
+            /** Approvals */
+            approvals: components["schemas"]["TxApproval"][];
+            chainReason?: components["schemas"]["ReasonCode"] | null;
+            /** Inflows */
+            inflows: components["schemas"]["TxFlow"][];
+            /** Outflows */
+            outflows: components["schemas"]["TxFlow"][];
+            /** Principalid */
+            principalId?: string | null;
+            /** Recipient */
+            recipient: string;
+            /** Recipientknown */
+            recipientKnown: boolean;
+            /** Recipientlabel */
+            recipientLabel?: string | null;
+            /** Simulated */
+            simulated: boolean;
+        };
         /** Suggestion */
         Suggestion: {
             /** Change */
@@ -1535,6 +1689,76 @@ export interface components {
             percentOfMainTreasury: number;
             vaultBalance: components["schemas"]["Money"];
             youThink: components["schemas"]["Money"];
+        };
+        /** TxApproval */
+        TxApproval: {
+            amount: components["schemas"]["Money"];
+            /** Spender */
+            spender: string;
+            /** Token */
+            token: string;
+            /** Unlimited */
+            unlimited: boolean;
+        };
+        /** TxCheckOut */
+        TxCheckOut: {
+            /** Createdat */
+            createdAt: number;
+            diff: components["schemas"]["StateDiff"];
+            /**
+             * Explanationsource
+             * @enum {string}
+             */
+            explanationSource: "template" | "llm";
+            /** Explanationvi */
+            explanationVi: string;
+            /** Findings */
+            findings: components["schemas"]["TxFinding"][];
+            /** Id */
+            id: number;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "safe" | "caution" | "danger";
+            /** Numbers */
+            numbers: components["schemas"]["TxNumber"][];
+            /** Numbersverified */
+            numbersVerified: boolean;
+            prepared: components["schemas"]["PreparedTx"];
+            sentTx?: components["schemas"]["SentTx"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "sent" | "rejected";
+        };
+        /** TxFinding */
+        TxFinding: {
+            /** Detailvi */
+            detailVi: string;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "caution" | "danger";
+            /** Ruleid */
+            ruleId: string;
+            /** Titlevi */
+            titleVi: string;
+        };
+        /** TxFlow */
+        TxFlow: {
+            amount: components["schemas"]["Money"];
+            /** Token */
+            token: string;
+        };
+        /** TxNumber */
+        TxNumber: {
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -2486,6 +2710,163 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    check_api_txguard_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreparedTx"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TxCheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_checks_api_txguard_checks_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TxCheckOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_check_api_txguard_checks__check_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                check_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TxCheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_api_txguard_checks__check_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                check_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TxCheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_api_txguard_checks__check_id__send_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                check_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TxCheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
