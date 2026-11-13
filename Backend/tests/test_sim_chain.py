@@ -2,11 +2,22 @@
 
 import random
 
+import pytest
+
 from guardian.agent_rebalance.rule_engine import decide
+from guardian.chain.errors import ChainRevert
 from guardian.chain.sim import SimChain
+from guardian.chain.sim.council import affected_principals
 from guardian.shared.money import to_base
 from guardian.shared.reason_codes import ReasonCode as R
 from guardian.shared.scenario4 import SCENARIO4_DISTRICT, SCENARIO4_STEPS
+
+
+def _pid(c: SimChain, *args) -> int:  # type: ignore[no-untyped-def]
+    r = c.propose(*args)
+    assert r.proposal_id is not None, r.error_raw
+    return r.proposal_id
+
 
 T0 = 1_800_000_000 - 1_800_000_000 % 86400 + 3600  # 01:00 UTC
 SEL = "0x" + "00" * 4
@@ -126,7 +137,12 @@ def test_t7_lock_blocks_district_and_sets_none():
     c = mk()
     c.apply_policy_v2()
     r = c.emergency_lock("lan", "minh")
-    assert r.status == "ok" and [e.name for e in r.events] == ["PrincipalLocked", "EmergencyAction"]
+    # Like L1: the vault flag, one precompile RoleSet per key of the district (5 after v2), the tag
+    assert r.status == "ok" and [e.name for e in r.events] == [
+        "PrincipalLocked",
+        *["AllowListRoleSet"] * 5,
+        "EmergencyAction",
+    ]
     snap = c.snapshot()
     assert snap.principals["minh"].locked
     assert all(not snap.keys[k].allow_listed for k in snap.principals["minh"].keys)
@@ -172,7 +188,7 @@ def test_t9_tighten_one_loosen_two_thirds_outsider_nothing():
     pid = c.propose(
         "trang",
         "raise",
-        None,
+        "minh",
         [
             {
                 "target": "vault",
@@ -187,7 +203,7 @@ def test_t9_tighten_one_loosen_two_thirds_outsider_nothing():
     assert c.snapshot().keys[k].daily_cap == u(10_000)
     assert c.approve("trang", pid).error_raw == "AlreadyApproved"
     r2 = c.approve("huy", pid)
-    assert [e.name for e in r2.events][-2:] == ["CapChanged", "Executed"]
+    assert [e.name for e in r2.events][-3:] == ["CapChanged", "PolicyVersionBumped", "Executed"]
     assert c.snapshot().keys[k].daily_cap == u(50_000)
     assert c.cancel("trang", pid).error_raw == "ProposalNotOpen"
 
@@ -412,3 +428,196 @@ def test_scene4_end_to_end_on_policy_v2():
         "Paid",
         "Paid",
     ]
+
+
+def test_key_cap_zero_to_positive_is_loosening():
+    """Raising a key cap from 0 (no spending power) is loosening, requires 2/3 path.
+
+    Regression test for: https://github.com/Nostidus4/Cordon/issues/44
+    A key cap of 0 means the key cannot spend at all. Raising it grants spending power,
+    so it should be classified as loosening (not tightening). The 1-member path should reject it.
+    """
+    c = mk()
+    k = c._addr("key_minh")
+    # First, lower the cap to 0 via 1-member path (tightening)
+    r = c.lower_key_cap("huy", k, 0)
+    assert r.status == "ok" and r.reason_code is None
+    assert c.snapshot().keys[k].daily_cap == 0
+
+    # Now attempt to raise it from 0 via the 1-member lowerCap (NotTightening, like the contract)
+    r = c.lower_key_cap("huy", k, u(10_000))  # This internal API is for tightening only
+    assert r.status == "reverted" and r.error_raw == "NotTightening"
+    # Try via direct_call with the symbolic API
+    r = c.direct_call(
+        "huy",
+        {"target": "vault", "fn": "setKeyDailyCap", "args": {"key": "key_minh", "cap": u(10_000)}},
+    )
+    assert r.status == "reverted" and r.error_raw == "NeedsThreshold"
+    # Raising via proposal (2/3 path) should work
+    pid = _pid(
+        c,
+        "trang",
+        "raise key cap from zero",
+        "minh",
+        [
+            {
+                "target": "vault",
+                "fn": "setKeyDailyCap",
+                "args": {"key": "key_minh", "cap": u(10_000)},
+            }
+        ],
+        "0x00",
+    )
+    assert c.approve("trang", pid).status == "ok"
+    assert c.approve("lan", pid).status == "ok"
+    assert c.snapshot().keys[k].daily_cap == u(10_000)
+
+
+def test_key_cap_positive_to_lower_is_tightening():
+    """Lowering a key cap is tightening, works via 1-member path."""
+    c = mk()
+    k = c._addr("key_minh")
+    # Set initial cap via proposal
+    pid = _pid(
+        c,
+        "trang",
+        "set key cap",
+        "minh",
+        [
+            {
+                "target": "vault",
+                "fn": "setKeyDailyCap",
+                "args": {"key": "key_minh", "cap": u(10_000)},
+            }
+        ],
+        "0x00",
+    )
+    c.approve("trang", pid)
+    c.approve("lan", pid)
+    assert c.snapshot().keys[k].daily_cap == u(10_000)
+    # Now lower it via 1-member path (should work)
+    r = c.lower_key_cap("huy", k, u(5_000))
+    assert r.status == "ok" and r.reason_code is None
+    assert c.snapshot().keys[k].daily_cap == u(5_000)
+
+
+def test_district_cap_zero_to_positive_is_still_tightening():
+    """Setting a district cap from 0 (unset) to any positive value is tightening.
+
+    For districts, 0 means "no cap" (unlimited). Setting any cap is a restriction.
+    This rule should remain unchanged after the key-cap fix.
+    """
+    c = mk()
+    # All districts start with cap = 0
+    assert c.snapshot().principals["minh"].daily_cap == 0
+    # Setting a cap from 0 is tightening, works via 1-member path
+    r = c.lower_district_cap("trang", "minh", u(5_000))
+    assert r.status == "ok" and r.reason_code is None
+    assert c.snapshot().principals["minh"].daily_cap == u(5_000)
+
+
+# ---- Council conflict of interest: derived from the calls, like GuardianCouncil (CHN-002) ----
+def _move(key, to):
+    return {"target": "registry", "fn": "moveKey", "args": {"key": key, "to": to}}
+
+
+def test_affected_principals_are_derived_from_the_calls():
+    c = mk()
+
+    def ap(calls):
+        return affected_principals(calls, c._principal_of_ref)
+
+    def v(fn, **a):
+        return {"target": "vault", "fn": fn, "args": a}
+
+    # moveKey: the key's current principal and the receiving one, in first-seen order
+    assert ap([_move("key_huy_1", "minh")]) == ["huy", "minh"]
+    assert ap([_move("key_agent_data", "minh"), _move("key_agent_intl_pay", "minh")]) == [
+        "agent_data",
+        "minh",
+        "agent_intl_pay",
+    ]
+    assert ap([v("setPrincipalDailyCap", principal_id="minh", cap=1)]) == ["minh"]
+    assert ap(
+        [v("lockPrincipal", principal_id="huy"), v("unlockPrincipal", principal_id="lan")]
+    ) == [
+        "huy",
+        "lan",
+    ]
+    assert ap([v("setKeyDailyCap", key="key_lan", cap=1)]) == ["lan"]
+    assert ap([{"target": "tx_allowlist", "fn": "setNone", "args": {"address": "key_minh"}}]) == [
+        "minh"
+    ]
+    assert ap([{"target": "registry", "fn": "deactivateKey", "args": {"key": "key_huy_2"}}]) == [
+        "huy"
+    ]
+    assert ap([{"target": "registry", "fn": "createPrincipal", "args": {"id": "new"}}]) == ["new"]
+    assert ap(
+        [{"target": "registry", "fn": "addKey", "args": {"id": "new", "key": "0x" + "ab" * 20}}]
+    ) == ["new"]
+    # nothing principal-specific: empty set (any subject, including none, is accepted)
+    assert ap([v("pauseAll"), v("unpauseAll"), v("bumpPolicyVersion")]) == []
+    assert ap([v("setKeyDailyCap", key="0x" + "ab" * 20, cap=1)]) == []  # unregistered key
+    with pytest.raises(ChainRevert) as e:
+        ap([{"target": "registry", "fn": "moveKey", "args": {"key": "key_minh"}}])
+    assert e.value.name == "BadCallArgs"
+
+
+def test_subject_must_be_among_the_affected_principals():
+    c = mk()
+    lock_minh = [{"target": "vault", "fn": "lockPrincipal", "args": {"principal_id": "minh"}}]
+    for wrong in (None, "huy", "nobody"):
+        r = c.propose("trang", "x", wrong, lock_minh, "0x00")
+        assert (r.status, r.error_raw, r.proposal_id) == ("reverted", "SubjectMismatch", None), (
+            wrong
+        )
+    assert c.council.proposals == {}
+    assert _pid(c, "trang", "x", "minh", lock_minh, "0x00") == 1
+    # no affected principal at all: the declared subject is not checked
+    unpause = [{"target": "vault", "fn": "unpauseAll", "args": {}}]
+    assert _pid(c, "trang", "p", None, unpause, "0x") == 2
+    assert _pid(c, "trang", "p", "huy", unpause, "0x") == 3
+    assert c.council.proposals[1].affected == ["minh"]
+    # an empty call list is BadCallArgs, as in the contract
+    r = c.propose("trang", "empty", "minh", [], "0x")
+    assert (r.status, r.error_raw) == ("reverted", "BadCallArgs")
+
+
+def test_member_of_an_affected_district_cannot_approve_even_if_not_the_subject():
+    c = mk()
+    # declared subject minh, but the key being moved comes from huy's district
+    pid = _pid(c, "trang", "huy key to minh", "minh", [_move("key_huy_1", "minh")], "0x01")
+    assert c.council.proposals[pid].affected == ["huy", "minh"]
+    r = c.approve("huy", pid)
+    assert r.status == "reverted" and r.error_raw == "ConflictOfInterest" and r.events == []
+    assert c.approve("lan", pid).status == "ok"  # lan's district is not touched
+    assert c.approve("trang", pid).status == "ok"
+    assert c.snapshot().keys[c._addr("key_huy_1")].principal_id == "minh"
+
+
+def test_affected_set_is_read_at_propose_time():
+    c = mk()
+    pid = _pid(c, "trang", "p", "minh", [_move("key_huy_1", "minh")], "0x01")
+    # later the key moves elsewhere; the stored set still protects huy
+    other = _pid(c, "trang", "q", "lan", [_move("key_huy_1", "lan")], "0x02")
+    c.approve("lan", pid)
+    c.approve("trang", pid)
+    assert c.council.proposals[other].affected == ["huy", "lan"]
+    assert c.approve("huy", pid).error_raw == "ProposalNotOpen"
+    assert c.approve("huy", other).error_raw == "ConflictOfInterest"
+    assert c.council.proposals[pid].affected == ["huy", "minh"]
+
+
+def test_policy_v2_still_approvable_by_lan_and_trang():
+    c = mk()
+    v2 = c._seed["policy_v2"]
+    pid = _pid(c, "lan", v2["title"], v2["subject_principal"], v2["calls"], "0x01")
+    # four keys come from their own districts; neither lan nor trang is among them
+    assert set(c.council.proposals[pid].affected) == {
+        "minh",
+        "agent_data",
+        "agent_intl_pay",
+        "agent_rebalance",
+        "svc_payment",
+    }
+    assert c.approve("huy", pid).status == "ok"  # huy's district is untouched too

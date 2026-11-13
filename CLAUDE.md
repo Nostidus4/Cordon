@@ -45,6 +45,15 @@ Delegate không mở rộng quyền. Luôn hỏi người dùng trước khi: co
 
 Private key chỉ dùng **testnet**, nằm trong `.env*` (không commit). `DEMO_MODE` chỉ bật trên Guardian L1 test.
 
+## Ý tưởng cốt lõi (người dùng chốt, không đổi)
+
+1. AI agent và các thẻ (khoá) tiêu tiền của công ty, nhưng không ai cầm toàn quyền.
+2. Chain chặn bằng luật: hạn mức thẻ, hạn mức chung của **khu**, whitelist. Một thẻ lộ chỉ thiệt trong khu của nó.
+3. **Siết** thì làm ngay (tự động hoặc một thành viên Hội đồng); **nới** luôn cần Hội đồng 2/3. Không có đường tự động nào được nới.
+4. Thành phố 3D cho người xem thấy toàn bộ điều trên, từ dữ liệu thật.
+
+**Phép thử trước khi thêm tính năng hoặc ghép đề UniHack mới:** chỉ làm khi nó (a) thêm một nơi tiêu tiền / một agent mới mà vẫn bị cùng bộ luật đó chặn, hoặc (b) làm việc chặn / khôi phục mạnh hơn hay dễ thấy hơn. Không đạt cả hai (ví dụ sản phẩm xã hội cho cá nhân, game) thì không làm; báo người dùng. Mỗi khu mới cắm vào theo khuôn ở `docs/spec/CITY_OPS.md` (registry, luật đổi màu, sự cố gây được, quy tắc responder).
+
 ## Context project
 
 - **Spec gốc:** BA spec v0.8 (bản local của người dùng, không nằm trong repo). Viện dẫn theo mục `§x.y`. Mức ưu tiên: P0 bắt buộc cho bản demo, P1 nếu dư thời gian, P2 không làm.
@@ -57,5 +66,6 @@ Private key chỉ dùng **testnet**, nằm trong `.env*` (không commit). `DEMO_
 - **Chain giả lập (`CHAIN_MODE=sim`):** chưa có Guardian L1 nên Backend chạy luật contract §6 trong bộ nhớ (`chain/sim/`), tx hash gắn `simulated`. Lớp `chain/` là ranh giới duy nhất; khi có L1 thật thì thêm adapter web3 cùng `ChainPort`, API/UI không đổi. Hợp đồng trạng thái chung: `src/guardian/domain/snapshot.py` (chain sinh, `graph/` chỉ đọc).
 - **Thành phố 3D nối dữ liệu thật:** trạng thái 8 tòa suy ra từ dữ liệu Backend (SSE), không chỉ là kịch bản dựng sẵn.
 - **Thành phố là giao diện (người dùng chốt):** trải nghiệm chính ở `/` và `/s/:scene` (`src/stage/**`) chạy cả 5 cảnh trên thành phố 3D, kèm vài thẻ nổi "toy UI" (nền kem, bo tròn mập, ít chữ, font Baloo 2 + Be Vietnam Pro). Tránh kiểu dashboard tối kính mờ, chữ gradient, chip dày đặc, nhãn tiếng Anh/tên hàm trên UI. Các màn 2D cũ nằm ở `/chi-tiet/*`. Hợp đồng stage ↔ 3D: `Frontend/src/stage/contract.ts` (chỉ Opus sửa).
-- **Chưa làm:** smart contract Foundry + genesis Guardian L1 (§6), sẽ tạo ở `contracts/` khi người dùng yêu cầu.
+- **Contract + L1:** contract Foundry ở `contracts/` (interface đã FROZEN trong `docs/spec/CONTRACTS.md`), genesis Guardian L1 + script local ở `contracts/genesis/`, `infra/l1/`. Adapter web3 `chain/l1/` cùng `ChainPort` với `chain/sim/`; bộ conformance (`make conformance`) bắt hai bên chạy giống hệt. Phần Fuji (ví testnet, máy chủ validator) chờ người dùng.
+- **Quy trình PR:** mỗi issue một nhánh `feat/<id>-…` từ `main`, PR có `Closes #N` chỉ khi đạt đủ acceptance criteria (thiếu thì `Refs #N` + tách issue mới). Opus review diff + CI xanh rồi squash-merge. **Không rebase nhánh đã push, không force-push** — xung đột thì `git merge origin/main`. Agent chạy song song dùng worktree (`.claude/` đã gitignore) và ghi PR body vào file riêng trong worktree.
 - Lệnh chạy/test: xem `Makefile`, `Backend/README.md`, `Frontend/README.md`.

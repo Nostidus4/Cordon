@@ -58,7 +58,7 @@ Khoá duy nhất: `(tx_hash, log_index)` (indexer idempotent). Payload dùng **c
 | `Approved` | `id, member` |
 | `Executed`, `Cancelled` | `id` |
 | `EmergencyAction` | `member, action, subject` (theo [CONTRACTS.md](CONTRACTS.md) mục 4) |
-| `AllowListRoleSet` (khi khoá bị `setNone`/`setEnabled` trên Tx AllowList) | `{key, role, by}` (role 0 none, 1 enabled, 2 admin). Trên L1 là log `RoleSet` của precompile; indexer chuẩn hoá về tên này. **Sim và mock chưa phát; sẽ phát trong WEB-002 (#12)** (mục 7) |
+| `AllowListRoleSet` (khi khoá bị `setNone`/`setEnabled` trên Tx AllowList) | `{key, role, by}` (role 0 none, 1 enabled, 2 admin). Trên L1 là log `RoleSet` của precompile; indexer chuẩn hoá về tên này. `chain/sim` phát một event cho mỗi khoá khi khoá/mở khoá khu (`by` = địa chỉ Council); mock frontend chưa phát (mục 7) |
 
 ## 3. PolicySnapshot (chain → graph)
 
@@ -70,10 +70,14 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 
 | Method | Path | Mô tả | Trạng thái |
 |---|---|---|---|
-| GET | `/health` | block L1/C, `indexerLagBlocks`, agent, `demoMode`, `chainMode`, `simulated`; thêm cảnh báo block đứng (issue API-004) | có |
+| GET | `/health` | block L1/C, `indexerLagBlocks`, agent, `demoMode`, `chainMode`, `simulated`, `policyVersion` (thô) và `policyLabel` (số hiển thị, mục 4.1); thêm cảnh báo block đứng (issue API-004) | có |
 | GET | `/org` | công ty, quỹ chính, kho, Council | có |
-| GET | `/graph` | `GraphSnapshot` | có |
+| GET | `/graph` | `GraphSnapshot` (`policyVersion` thô + `policyLabel`, mục 4.1) | có |
 | GET | `/city/states` | trạng thái 8 công trình cho thành phố 3D | có |
+| GET | `/city/buildings`, `/city/buildings/{building_id}` | 8 tòa = 8 module, luật đổi màu, bằng chứng, `recent` ([CITY_OPS](CITY_OPS.md) §2) | có (CITY_OPS) |
+| GET | `/faults` | các kiểu sự cố gây được (F01-F07) | có (CITY_OPS) |
+| POST | `/faults/{fault_id}/inject` | gây sự cố thật qua `ChainPort` / service, chỉ `DEMO_MODE` (CITY_OPS §3) | có (CITY_OPS) |
+| GET | `/incidents?status=open\|all`, `/incidents/{incident_id}` | sự cố do responder xử lý (CITY_OPS §4) | có (CITY_OPS) |
 | POST | `/simulate` | `{compromised[], change?}` → `SimResult` (có `before/after` khi có `change`) | có |
 | GET | `/findings` | findings đang mở (id dạng `R1_MULTI_KEY_NO_SHARED_CAP:minh`) | có |
 | GET | `/districts/{principal_id}` | chi tiết khu | có |
@@ -84,13 +88,21 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 | GET / POST | `/proposals`, `/proposals/{proposal_id}` | danh sách, tạo (demo signer) | có |
 | POST | `/proposals/{proposal_id}/approve` | `{member}` (demo signer) | có |
 | POST | `/actions/lock`, `/actions/pause` | demo signer, `emergencyLock` / `emergencyPause` | có |
-| POST | `/assistant/ask` | `{question, context}` → `AssistantAnswer` (+ `numbersVerified`) | có |
-| GET | `/assistant/logs` | bảng `assistant_logs`, cũ nhất trước | **missing (API-003 (#7))** |
-| POST | `/agent/run-once` | chạy agent một vòng → `AgentRun` | có |
-| GET | `/agent/runs` | bảng `agent_runs`, cũ nhất trước | **missing (API-003 (#7))** |
+| POST | `/assistant/ask` | `{question, context}` → `AssistantAnswer` (+ `numbersVerified`). Câu cố định: mẫu + tool. Câu tự do (`questionId = "free_text"`): chỉ khi LLM bật (LLM, tool chỉ đọc, mọi số được verifier kiểm; sai/lỗi/timeout 15 s → câu mặc định, `numbersVerified=false`); LLM tắt thì 422 `UNKNOWN_QUESTION` | có |
+| GET | `/assistant/logs` | bảng `assistant_logs`, cũ nhất trước, `?limit=` (mặc định 200) | có (CITY_OPS) |
+| POST | `/agent/run-once` | chạy agent một vòng → `AgentRun` (`reasonSource` = `llm` nếu LLM viết câu giải thích đạt kiểm tra, ngược lại `template`; số tiền/token/DEX không bao giờ do LLM chọn) | có |
+| GET | `/agent/runs` | bảng `agent_runs`, cũ nhất trước, `?limit=` (mặc định 200); `AgentRun` thêm `steps`, `untrustedInput`, `injectionIgnored` | có (CITY_OPS) |
 | POST | `/scenario/scene4/run`, `/scenario/scene4/step7` | chạy kịch bản từ server | có |
 | GET | `/scenario/runs`, `/scenario/runs/{run_id}` | các lần chạy (Replay dùng) | có |
-| POST | `/demo/reset`, `/demo/policy-v2` | đặt lại về đầu cảnh 1; áp policy v2 qua đường Council thật | có |
+| POST | `/demo/reset`, `/demo/policy-v2` | đặt lại về đầu cảnh 1 (sim: tua lại chain trong bộ nhớ; l1: nạp lại bộ contract mới mà `make demo-reset` vừa deploy, mục 4.2); áp policy v2 qua đường Council thật | có |
+
+### 4.1 `policyVersion` và `policyLabel`
+
+`policyVersion` là `vault.policyVersion()` nguyên văn. Mỗi proposal được thực thi bump nó một lần, kể cả các proposal seed và bàn giao, nên trên chain thật bộ vừa dựng xong đọc **4** (sim và anvil: 1). `policyLabel = policyVersion - policyBaseline + 1` là số người dùng thấy: v1 ở đầu cảnh 1, v2 sau proposal gom khu. `policyBaseline` là `policyVersion()` ngay sau khi seed + bàn giao xong, do script ghi vào file deployments (`policyBaseline`, mặc định 1 khi file không có). Có trong `GraphSnapshot`, `/health`, `/org`, `/city/states`, SSE `graph_updated` và `reset`. Frontend dùng `policyLabel` (`Frontend/src/lib/policy.ts`, mock không có thì lấy `policyVersion`) cho mọi nhãn và mọi phép thử "đã lên policy v2".
+
+### 4.2 `POST /demo/reset`
+
+Cùng hợp đồng HTTP ở sim và l1: trả `{status, policyVersion, policyLabel, graphVersion, seededProposalId}`. Trên l1, sổ cái không tua lại được (bộ đếm vault theo ngày UTC), nên `make demo-reset` deploy **bộ contract mới** rồi gọi endpoint này. Endpoint nạp lại file deployments không cần restart (`Runtime.reload_deployment`: chain mới, indexer mới từ `deployBlock` mới), xoá `attempts`/`scenario_runs`/`proposals`, **giữ** `event_log` (event của các bộ cũ), seed request #12 trên Council mới (script để bộ đếm Council ở 11 nên id là 12) và phát SSE `reset`. File lỗi hoặc không đọc được: `502 RELOAD_FAILED`, API giữ bộ cũ.
 
 Mọi endpoint ký (`actions`, `agent/run-once`, `demo/*`, `proposals` POST, `scenario/*`) chỉ hoạt động khi `DEMO_MODE` bật, có rate limit và log. `DEMO_MODE` không bao giờ bật trên mạng thật (`core/demo_guard.py`).
 
@@ -104,11 +116,12 @@ Mỗi message: `event: <type>` + `data: <JSON>`.
 |---|---|
 | `event` | `EventOut` (một `ChainEvent` đã bọc tiền) |
 | `attempt` | `AttemptOut` |
-| `graph_updated` | `{graphVersion, policyVersion, block}` |
+| `graph_updated` | `{graphVersion, policyVersion, policyLabel, block}` |
 | `proposal_updated` | `ProposalOut` |
 | `agent_run` | `AgentRunOut` |
 | `city_updated` | `CityStates` |
-| `reset` | `{at, policyVersion, graphVersion, block}` |
+| `reset` | `{at, policyVersion, policyLabel, graphVersion, block}` |
+| `incident_updated` | `IncidentOut` (có (CITY_OPS), mục 4.4 của CITY_OPS) |
 
 Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`SSE_EVENT_TYPES`) và `Frontend/src/types/stream.ts` (`STREAM_TYPES`). Frontend phải bỏ qua type lạ, và tự kết nối lại khi mất kết nối.
 
@@ -125,26 +138,29 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 
 - [ ] Id finding: mock `F-R1-minh`, backend `R1_MULTI_KEY_NO_SHARED_CAP:minh` -> WEB-002 (#12)
 - [ ] Mock chỉ có finding R1; backend có R1–R4 -> WEB-002 (#12)
-- [ ] Mock và `chain/sim` chưa phát `AllowListRoleSet` khi khoá khu bị khoá/mở khoá (L1 thật có log `RoleSet`) -> WEB-002 (#12)
+- [x] `chain/sim` phát `AllowListRoleSet` khi khoá khu bị khoá/mở khoá (CHN-003). Còn lại: mock frontend chưa phát -> WEB-002 (#12)
 - [ ] Đề xuất #11 (gom khu): proposer trên mock khác `lan`, backend dùng `lan` -> WEB-002 (#12)
-- [ ] `GET /agent/runs`, `GET /assistant/logs` chưa có ở backend -> API-003 (#7)
+- [x] `GET /agent/runs`, `GET /assistant/logs` đã có (CITY_OPS)
 - [ ] Chạy trọn luồng trực tiếp (live) Frontend ↔ Backend -> WEB-001 (#17)
 - [ ] Kiểm tương đương (parity) schema/mock/backend tự động -> QA-001 (#21)
 - [ ] `chain/sim` lệch [CONTRACTS.md](CONTRACTS.md) mục 6: `KeyAdded.kind` phát chữ hoa (`HUMAN`) thay vì `human`; `Proposed.subjectPrincipal` là `null` thay vì bytes32 rỗng. Sửa sim khi viết adapter L1 / bộ test conformance
-- [ ] App code vẫn truyền seed id (`key_minh`, `lan`, `tUSDC`) vào ChainPort; `Runtime.sim` lộ nội bộ sim (council, vault). Phải đổi sang địa chỉ hex và đi qua ChainPort trước khi có adapter L1 (`AttemptOut.signer` sẽ đổi, là thay đổi hợp đồng)
+- [x] `Runtime.sim` đã bỏ: app code đi qua `ChainPort` (`proposal_state`...). Còn lại: app code vẫn truyền seed id (`key_minh`, `lan`, `tUSDC`) vào ChainPort (adapter L1 phân giải), đổi sang hex là đổi `AttemptOut.signer` (thay đổi hợp đồng)
 
 ## 8. Tiêu chí đóng băng (`API-001`), đã đạt 2026-11-12
 
 - [x] `Backend/openapi.json` sinh bằng `make openapi` và commit; CI fail nếu lệch
 - [x] Bảng payload event ở mục 2 khớp những gì `chain/sim` đang phát (và `EventOut`)
-- [x] `EventSink` / `EventStore` (indexer ghi, API đọc) định nghĩa ở mục 9, `Backend/src/guardian/services/event_store.py`
+- [x] `EventSink` định nghĩa ở mục 9 (`workers/indexer.py`); `GET /api/events` đọc `ChainPort.events_since`
 - [x] Mục 7 được đóng thành checklist cho các issue sau
 
-## 9. EventSink, EventStore và DemoControls
+## 9. EventSink và DemoControls
 
-`services/event_store.py` (Protocol, có bản `InMemoryEventStore` làm cả hai, `Runtime.events`):
+`EventSink` (Protocol, `Backend/src/guardian/workers/indexer.py`; bản `InMemoryEventSink`) là phía ghi của indexer:
 
-- `EventSink.write(ev) -> bool`: idempotent theo `(tx_hash, log_index)`; `False` nếu đã có. `last_block(source)` / `set_last_block(source, block)` với `source ∈ {"l1", "c"}`.
-- `EventStore.list(since_block=0, limit=200, name=None) -> list[ChainEvent]`: `block > since_block`, cũ nhất trước. `GET /api/events` đọc qua đây (không phân trang, truyền limit rất lớn).
+- `write(event) -> bool`: idempotent theo `(tx_hash, log_index)`; `False` nếu đã có.
+- `last_block() -> int | None` (`meta.last_block_l1`; `None` khi chưa index gì), `set_last_block(block)`.
+- `events_in_range(first, last)` (sắp theo `(block, log_index)`) và `remove(tx_hash, log_index)` cho cửa sổ reorg.
 
-`chain/base.py`: `DemoControls` (chỉ sim: `reset`, `balance`) và `DemoChain(ChainPort, DemoControls)` là kiểu của `Runtime.chain`. `advance_day`, `topup`, `direct_call`, `apply_policy_v2` không do dịch vụ/API gọi nên chưa nằm trong `DemoControls`. `shortcut:` `city_state`, `org_service`, `proposal_service`, `demo_reset` còn đọc nội bộ sim qua `Runtime.sim`; thay bằng truy vấn qua `ChainPort`/snapshot trước khi có adapter L1.
+Không có `EventStore` riêng: `GET /api/events?since=` đọc `ChainPort.events_since(block)` (cả sim lẫn l1, adapter l1 tự đọc log), còn `Runtime.event_log` (deque) là bản ghi để dựng thành phố/sự cố. Khi có Postgres (DB-002), sink DB thay `InMemoryEventSink` mà không đổi ChainPort.
+
+`chain/base.py`: `DemoControls` (chỉ `reset`, chỉ sim; `demo_reset` gọi khi `not rt.is_l1`, l1 nạp bộ contract mới, mục 4.2) và `DemoChain(ChainPort, DemoControls)`. `balance` đã nằm trong `ChainPort`. `advance_day`, `topup`, `direct_call`, `apply_policy_v2` không do dịch vụ/API gọi nên không nằm trong `DemoControls`.

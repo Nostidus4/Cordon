@@ -18,7 +18,9 @@ def test_sse_types_match_doc_backend_and_frontend():
     doc = re.findall(r"^\| `(\w+)` \|", _section(5), re.MULTILINE)
     ts = (ROOT / "Frontend/src/types/stream.ts").read_text()
     body = re.search(r"STREAM_TYPES[^=]*=\s*\[(.*?)\]", ts, re.DOTALL).group(1)  # type: ignore[union-attr]
-    assert doc and doc == list(SSE_EVENT_TYPES) == re.findall(r'"(\w+)"', body)
+    # order is irrelevant (the frontend list is ordered differently)
+    assert doc and set(doc) == set(SSE_EVENT_TYPES) == set(re.findall(r'"(\w+)"', body))
+    assert len(doc) == len(SSE_EVENT_TYPES)
 
 
 def test_every_documented_endpoint_is_in_openapi_or_marked_missing():

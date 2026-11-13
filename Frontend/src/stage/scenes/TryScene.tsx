@@ -59,7 +59,7 @@ export function TryScene() {
   const names = selected.map((id) => WHO.find((w) => w.id === id)?.label ?? id).join(" + ");
   return (
     <>
-      <div className="absolute bottom-12 left-6">
+      <div className="absolute bottom-12 left-6" data-slot="scene-left">
         <ToyCard className="w-[min(480px,calc(100vw-48px))] px-6 pb-6 pt-5" label="Nếu bị chiếm thì mất bao nhiêu">
           <Ribbon scene="try">Cảnh 2 · Thử</Ribbon>
           <div className="toy-eyebrow mb-2 mt-1" style={{ fontSize: 17 }}>Nếu bị chiếm thì sao?</div>
@@ -95,7 +95,7 @@ export function TryScene() {
         </ToyCard>
       </div>
 
-      <div className="absolute right-6 top-24">
+      <div className="absolute right-6 top-24" data-slot="scene-right">
         <ToyCard className="w-[min(350px,calc(100vw-48px))] p-4" label="Trợ lý" delay={0.15}>
           <AssistantBubble questionIds={["huy_too", "why_flag", "how_fix"]} screen="simulate" principalIds={selected} devAskId={import.meta.env.DEV ? new URLSearchParams(window.location.search).get("ask") : null} />
         </ToyCard>

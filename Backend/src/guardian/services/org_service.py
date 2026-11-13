@@ -17,12 +17,13 @@ def org(rt: Runtime) -> dict[str, Any]:
         "name": seed["org"]["name"],
         "fictional": True,
         "policyVersion": snap.policy_version,
+        "policyLabel": snap.policy_label,
         "mainTreasury": {
             "balance": views.mny(snap.main_treasury),
             "label": "Quỹ chính (Safe, C-Chain)",
         },
         "vault": {
-            "address": rt.sim.vault_addr,
+            "address": rt.chain.vault_addr,
             "balance": views.mny(snap.vault_balance),
             "paused": snap.paused,
             "label": "Kho chi tiêu (Guardian L1)",
@@ -35,6 +36,12 @@ def org(rt: Runtime) -> dict[str, Any]:
     }
 
 
+def _indexer_lag(rt: Runtime) -> int:
+    if rt.indexer is None:
+        return 0
+    return rt.indexer.status().lag_blocks or 0
+
+
 def health(rt: Runtime) -> dict[str, Any]:
     snap = rt.snapshot()
     runs = rt.stores.agent_runs
@@ -42,11 +49,12 @@ def health(rt: Runtime) -> dict[str, Any]:
         "status": "ok",
         "chainMode": rt.settings.chain_mode,
         "demoMode": rt.settings.demo_enabled,
-        "simulated": True,
+        "simulated": rt.settings.chain_mode == "sim",
         "l1Block": snap.block,
         "cChainBlock": None,
-        "indexerLagBlocks": 0,
+        "indexerLagBlocks": _indexer_lag(rt),
         "policyVersion": snap.policy_version,
+        "policyLabel": snap.policy_label,
         "graphVersion": rt.graph_version,
         "agent": {
             "status": "idle" if runs else "never_run",

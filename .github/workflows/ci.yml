@@ -46,6 +46,27 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  chain-l1:
+    # L1 adapter + the ChainPort conformance suite against a real EVM: anvil + the Foundry artifacts
+    # (the sim half of the conformance suite also runs in `backend`; the l1 half skips without Foundry)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - run: uv python install 3.12
+      - run: contracts/scripts/install-deps.sh
+      - run: forge build
+        working-directory: contracts
+      - run: uv sync
+        working-directory: Backend
+      - name: L1 adapter tests, conformance (sim vs l1) and API e2e on anvil
+        working-directory: Backend
+        run: uv run pytest tests/chain_l1 tests/conformance -q -rs
+
   contracts:
     runs-on: ubuntu-latest
     steps:
@@ -59,9 +80,11 @@ jobs:
       - name: forge build (warnings are errors)
         run: forge build
         working-directory: contracts
-      - name: forge test
+      - name: forge test (ci profile, deeper fuzz and invariant runs)
         run: forge test -vv
         working-directory: contracts
+        env:
+          FOUNDRY_PROFILE: ci
       - name: ABI copies are up to date
         run: |
           contracts/scripts/export-abis.sh

@@ -11,7 +11,8 @@ export interface HistoryItem {
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 const SUBJECT: Record<string, string> = { minh: "anh Minh", huy: "anh Huy", lan: "chị Lan", agent_data: "Trợ lý Dữ liệu", agent_intl_pay: "Trợ lý Thanh toán quốc tế", agent_rebalance: "Trợ lý Cân đối", svc_payment: "Phần mềm thanh toán" };
 
-export function buildHistory(events: ChainEvent[], members: CouncilMember[]): HistoryItem[] {
+/** `baselineOffset` = raw policy counter minus the label shown (health.policyVersion - policyLabel(health)); 0 in mock mode. */
+export function buildHistory(events: ChainEvent[], members: CouncilMember[], baselineOffset = 0): HistoryItem[] {
   const who = (id: unknown) => members.find((m) => m.id === id)?.label ?? str(id);
   const emergencyTx = new Set(events.filter((e) => e.name === "EmergencyAction").map((e) => e.txHash));
   const titles = new Map<number, string>();
@@ -45,7 +46,7 @@ export function buildHistory(events: ChainEvent[], members: CouncilMember[]): Hi
         out.push({ ...base, kind: "vote", rule: `phiếu ${votes.get(id)}/2`, title: `${who(p.member)} duyệt #${id}`, detail: titles.get(id) });
         break;
       }
-      case "PolicyVersionBumped": policy = Number(p.version); break;
+      case "PolicyVersionBumped": policy = Number(p.version) - baselineOffset; break;
       case "Executed": {
         const id = Number(p.proposalId);
         out.push({ ...base, kind: "loosen", rule: "nới · 2/3", title: `Đề xuất #${id} được thực thi`, detail: titles.get(id), policyVersion: policy });

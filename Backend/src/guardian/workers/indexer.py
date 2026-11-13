@@ -1,1 +1,264 @@
-"""Index L1 + C-Chain events -> DB -> SSE; idempotent by tx_hash+log_index."""
+"""Index Guardian L1 events -> `EventSink` -> SSE; idempotent by (tx_hash, log_index) (IDX-001).
+
+Each cycle re-reads a window of the last `reorg_window` blocks before the saved cursor, so a shallow
+reorg is repaired (stale events removed, moved ones rewritten) and a failed cycle loses nothing:
+the cursor (`meta.last_block_l1`) only advances after the events up to it were written. An empty
+sink is rebuilt by replaying from the deployment block. Only events that were new to the sink are
+published to the SSE bus, so re-reading a block never produces duplicates on the stream.
+
+The L1 adapter polls over HTTP (there is no websocket subscription), so "reconnect" is: any RPC
+error leaves the cursor untouched and the next cycle retries after a back-off.
+
+C-Chain `TopUpRecorded` indexing (`last_block_c`) is not implemented: no chain adapter reads the
+C-Chain yet. `IndexerStatus.last_block_c` stays None until a `LogSource` for it is added.
+"""
+
+from __future__ import annotations
+
+import logging
+import signal
+import threading
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any, Protocol
+
+from guardian.chain.base import ChainEvent
+
+log = logging.getLogger(__name__)
+
+EventKey = tuple[str, int]  # (tx_hash, log_index)
+
+
+class EventSink(Protocol):
+    """Where the indexer writes (API_CONTRACT §8; defined here until API-001 lands it).
+
+    `write` and `last_block` are the two frozen methods; the other three are what the reorg window
+    and the cursor need and map onto one SQL statement each in the Postgres sink (DB-002).
+    """
+
+    def write(self, event: ChainEvent) -> bool:
+        """Insert if (tx_hash, log_index) is unseen; True when inserted, False when a duplicate."""
+        ...
+
+    def last_block(self) -> int | None:
+        """`meta.last_block_l1`; None while nothing was indexed (triggers the backfill)."""
+        ...
+
+    def set_last_block(self, block: int) -> None: ...
+
+    def events_in_range(self, first: int, last: int) -> list[ChainEvent]: ...
+
+    def remove(self, tx_hash: str, log_index: int) -> bool: ...
+
+
+class InMemoryEventSink:
+    """Reference sink for tests and the in-process worker. Reads are ordered by (block, log_index)."""
+
+    def __init__(self) -> None:
+        self._rows: dict[EventKey, ChainEvent] = {}
+        self._last_block: int | None = None
+        self._lock = threading.Lock()
+
+    def write(self, event: ChainEvent) -> bool:
+        key = (event.tx_hash, event.log_index)
+        with self._lock:
+            if key in self._rows:
+                return False
+            self._rows[key] = event
+            return True
+
+    def last_block(self) -> int | None:
+        return self._last_block
+
+    def set_last_block(self, block: int) -> None:
+        self._last_block = block
+
+    def events_in_range(self, first: int, last: int) -> list[ChainEvent]:
+        return [e for e in self.all() if first <= e.block <= last]
+
+    def remove(self, tx_hash: str, log_index: int) -> bool:
+        with self._lock:
+            return self._rows.pop((tx_hash, log_index), None) is not None
+
+    def all(self) -> list[ChainEvent]:
+        with self._lock:
+            return sorted(self._rows.values(), key=lambda e: (e.block, e.log_index))
+
+    def __len__(self) -> int:
+        return len(self._rows)
+
+
+class LogSource(Protocol):
+    """A chain the indexer follows (L1 today)."""
+
+    start_block: int  # first block to index when the sink is empty (deployment block)
+
+    def head(self) -> int: ...
+
+    def events_between(self, first: int, last: int) -> list[ChainEvent]:
+        """Decoded events with first <= block <= last, ordered by (block, log_index)."""
+        ...
+
+
+class L1ChainSource:
+    """`LogSource` over `L1Chain` (uses its public `events_since` and the deployment block)."""
+
+    def __init__(self, chain: Any) -> None:
+        self._chain = chain
+        self.start_block = int(chain.dep.deploy_block)
+
+    def head(self) -> int:
+        return int(self._chain.w3.eth.block_number)
+
+    def events_between(self, first: int, last: int) -> list[ChainEvent]:
+        return [e for e in self._chain.events_since(first - 1) if e.block <= last]
+
+
+@dataclass(frozen=True)
+class IndexerStatus:
+    """What `/api/health` reads: `lag_blocks = head - last_block_l1`."""
+
+    last_block_l1: int | None
+    head_l1: int | None
+    last_block_c: int | None
+    last_error: str | None
+    updated_at: float | None  # time.time() of the last successful cycle
+
+    @property
+    def lag_blocks(self) -> int | None:
+        if self.last_block_l1 is None or self.head_l1 is None:
+            return None
+        return max(self.head_l1 - self.last_block_l1, 0)
+
+
+class Indexer:
+    def __init__(
+        self,
+        source: LogSource,
+        sink: EventSink,
+        *,
+        publish: Callable[[ChainEvent], None] | None = None,
+        poll_interval: float = 2.0,
+        reorg_window: int = 5,
+        confirmations: int = 0,
+        max_backoff: float = 30.0,
+    ) -> None:
+        if reorg_window < 1:
+            raise ValueError("reorg_window must be >= 1")
+        self.source, self.sink = source, sink
+        self._publish = publish
+        self._poll_interval = poll_interval
+        self._window = reorg_window
+        self._confirmations = max(confirmations, 0)
+        self._max_backoff = max_backoff
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._head: int | None = None
+        self._error: str | None = None
+        self._updated: float | None = None
+
+    # ------------------------------------------------------------------ one cycle
+    def sync_once(self) -> list[ChainEvent]:
+        """One poll cycle. Returns the events that were new to the sink, oldest first."""
+        head = self.source.head()
+        self._head = head
+        target = head - self._confirmations
+        saved = self.sink.last_block()
+        start = self.source.start_block
+        if saved is None:
+            first = start  # empty store: rebuild from the deployment block
+        else:
+            first = max(start, min(saved, target) - self._window + 1)
+        new: list[ChainEvent] = []
+        if first <= target:
+            fresh = self.source.events_between(first, target)
+            self._repair_window(first, target, fresh)
+            for ev in fresh:
+                if self.sink.write(ev):
+                    new.append(ev)
+            self.sink.set_last_block(target)
+        self._error, self._updated = None, time.time()
+        for ev in new:  # after the cursor is saved; a failing subscriber must not undo indexing
+            self._emit(ev)
+        return new
+
+    def _repair_window(self, first: int, last: int, fresh: list[ChainEvent]) -> None:
+        """Drop stored events in [first, last] that the chain no longer reports as they were."""
+        keep = {(e.tx_hash, e.log_index): e for e in fresh}
+        for old in self.sink.events_in_range(first, last):
+            key = (old.tx_hash, old.log_index)
+            if keep.get(key) != old:
+                self.sink.remove(*key)
+                log.warning("reorg: dropped %s %s:%s", old.name, old.tx_hash, old.log_index)
+
+    def _emit(self, ev: ChainEvent) -> None:
+        if self._publish is None:
+            return
+        try:
+            self._publish(ev)
+        except Exception:
+            log.exception("indexer publish failed")
+
+    def status(self) -> IndexerStatus:
+        return IndexerStatus(self.sink.last_block(), self._head, None, self._error, self._updated)
+
+    # ------------------------------------------------------------------ loop
+    def run(self, stop: threading.Event | None = None) -> None:
+        """Poll until stopped. RPC errors back off exponentially and never advance the cursor."""
+        stop = stop or self._stop
+        failures = 0
+        while not stop.is_set():
+            try:
+                self.sync_once()
+                failures = 0
+                delay = self._poll_interval
+            except Exception as exc:  # noqa: BLE001 (any RPC or decode error: retry)
+                failures += 1
+                self._error = f"{type(exc).__name__}: {exc}"
+                delay = min(self._poll_interval * 2**failures, self._max_backoff)
+                log.warning("indexer cycle failed (%d): %s", failures, self._error)
+            stop.wait(delay)
+
+    def start(self) -> None:
+        if self._thread and self._thread.is_alive():
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(target=self.run, name="indexer", daemon=True)
+        self._thread.start()
+
+    def stop(self, timeout: float = 10.0) -> None:
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout)
+
+
+def build_indexer(
+    settings: Any,
+    sink: EventSink | None = None,
+    publish: Callable[[ChainEvent], None] | None = None,
+) -> Indexer:
+    """`CHAIN_MODE=l1`: L1Chain from settings + sink (in-memory until DB-002 provides Postgres)."""
+    from guardian.chain.l1 import L1Chain
+
+    if settings.chain_mode != "l1":
+        raise RuntimeError("the indexer follows a real chain: set CHAIN_MODE=l1")
+    return Indexer(
+        L1ChainSource(L1Chain.from_settings(settings)),
+        sink if sink is not None else InMemoryEventSink(),
+        publish=publish,
+        poll_interval=settings.l1_poll_interval_seconds,
+        reorg_window=settings.indexer_reorg_window,
+        confirmations=settings.indexer_confirmations,
+    )
+
+
+def run_indexer(settings: Any, sink: EventSink | None = None) -> None:
+    """Blocking entrypoint with graceful shutdown on SIGINT/SIGTERM (cursor is saved every cycle)."""
+    indexer = build_indexer(settings, sink)
+    stop = threading.Event()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: stop.set())
+    log.info("indexer started (poll %.1fs)", settings.l1_poll_interval_seconds)
+    indexer.run(stop)
+    log.info("indexer stopped at block %s", indexer.sink.last_block())

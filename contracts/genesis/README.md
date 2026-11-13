@@ -72,6 +72,10 @@ Notes from running it:
 
 Addresses: Contract Deployer AllowList `0x0200000000000000000000000000000000000000`, Tx AllowList `0x0200000000000000000000000000000000000002`, as in `docs/spec/CONTRACTS.md`. Functions `setAdmin`, `setEnabled`, `setNone`, `readAllowList` behave as documented. `setManager(address)` exists in v0.8.0 (role value `3`, confirmed by calling it as admin and reading back `3`). Roles: 0 none, 1 enabled, 2 admin, 3 manager. The CLI warns that its printed allowlist table is the genesis one and does not follow later precompile changes; use `readAllowList`.
 
+## Contracts, seed and handover (L1-002)
+
+After `make l1-local-up`, `make l1-local-bootstrap` (or `make deploy-contracts` on an already running local network) deploys the contracts, seeds policy v1 through Council proposals, makes the Council admin of both precompiles, removes the deployer and runs `VerifySeed` and `VerifyHandover`. The roster addresses in this folder are the ones the scripts and the backend use for keys and Council members (`infra/l1/local_env.py` writes the matching seed and `Backend/.env.l1-local`). Details and the real outputs: `docs/modules/guardian-l1/README.md`. On Fuji the same scripts run with `NETWORK=fuji I_UNDERSTAND=fuji make deploy-contracts` after step 5 below and write `Backend/deployments/fuji-l1.json`; that run has not been done.
+
 ## Fuji (remaining, needs a funded testnet key and a host)
 
 Not done here: nothing was sent to Fuji and no key was generated.

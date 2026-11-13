@@ -30,7 +30,10 @@ async def test_seed_v1(client: httpx.AsyncClient) -> None:
     await client.post("/api/demo/reset")
     b = await city(client)
     assert b["B07"]["state"] == "warning" and evidence(b["B07"], "findingId")
-    assert b["B01"]["state"] == "warning" and evidence(b["B01"], "proposalId") == [12]  # open #12
+    assert b["B01"]["state"] == "warning" and evidence(b["B01"], "proposalId") == [
+        12,
+        13,
+    ]  # open #12 and #13
     for k in ("B02", "B03", "B04", "B05", "B06"):
         assert b[k]["state"] == "normal", k
     assert b["B08"]["state"] == "warning" and all(x["reasonVi"] for x in b.values())

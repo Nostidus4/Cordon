@@ -36,6 +36,7 @@ export function routeFor(m: StreamMessage): Route[] {
     case "agent_run": return [{ hops: [{ e: "agent-chain" }, ...up], color: COLOR.agent }];
     case "graph_updated": return [{ hops: [{ e: "web-api", rev: true }], color: COLOR.graph }];
     case "city_updated": return [{ hops: [{ e: "web-api", rev: true }], color: COLOR.city }];
+    case "incident_updated": return [{ hops: [{ e: "web-api", rev: true }], color: COLOR.bad }];
     case "reset": return [];
   }
 }
@@ -59,7 +60,7 @@ interface Feed {
   done: (id: number) => void;
   clear: () => void;
 }
-const zero = (): Record<StreamMessageType, number> => ({ event: 0, attempt: 0, graph_updated: 0, proposal_updated: 0, agent_run: 0, city_updated: 0, reset: 0 });
+const zero = (): Record<StreamMessageType, number> => ({ event: 0, attempt: 0, graph_updated: 0, proposal_updated: 0, agent_run: 0, city_updated: 0, incident_updated: 0, reset: 0 });
 let seq = 0;
 const MAX_PACKETS = 28;
 
@@ -69,8 +70,9 @@ const describe = (m: StreamMessage): string => {
     case "event": return `${m.data.name} @${m.data.block}`;
     case "proposal_updated": return `#${m.data.proposalId} ${m.data.status} (${m.data.approvals}/2)`;
     case "agent_run": return `${m.data.decision.action} · ${m.data.outcome}`;
-    case "graph_updated": return `v${m.data.policyVersion} · block ${m.data.block}`;
+    case "graph_updated": return `v${m.data.policyLabel ?? m.data.policyVersion} · block ${m.data.block}`;
     case "city_updated": return "8 tòa nhà";
+    case "incident_updated": return `sự cố #${m.data.id} · ${m.data.status}`;
     case "reset": return "đặt lại";
   }
 };

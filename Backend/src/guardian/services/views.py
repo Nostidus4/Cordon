@@ -236,6 +236,7 @@ def api_graph(g: dict[str, Any], version: int) -> dict[str, Any]:
     return {
         "version": version,
         "policyVersion": g["policyVersion"],
+        "policyLabel": g["policyLabel"],
         "block": g["block"],
         "nodes": nodes,
         "edges": g["edges"],

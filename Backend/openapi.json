@@ -91,6 +91,17 @@
             "title": "Id",
             "type": "integer"
           },
+          "injectionIgnored": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injectionignored"
+          },
           "outcome": {
             "title": "Outcome",
             "type": "string"
@@ -139,6 +150,20 @@
             ],
             "title": "Reasontext"
           },
+          "steps": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AgentStep"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          },
           "ts": {
             "title": "Ts",
             "type": "integer"
@@ -153,6 +178,17 @@
               }
             ],
             "title": "Txhash"
+          },
+          "untrustedInput": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Untrustedinput"
           }
         },
         "required": [
@@ -197,6 +233,48 @@
           "status"
         ],
         "title": "AgentStatus",
+        "type": "object"
+      },
+      "AgentStep": {
+        "description": "One step of the agent timeline (docs/spec/CITY_OPS.md §2).",
+        "properties": {
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          },
+          "key": {
+            "enum": [
+              "read",
+              "decide",
+              "simulate",
+              "send",
+              "explain"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "labelVi": {
+            "title": "Labelvi",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "blocked",
+              "skipped"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "labelVi",
+          "status",
+          "detail"
+        ],
+        "title": "AgentStep",
         "type": "object"
       },
       "ApproveRequest": {
@@ -324,6 +402,67 @@
           "numbersVerified"
         ],
         "title": "AssistantAnswer",
+        "type": "object"
+      },
+      "AssistantLogOut": {
+        "description": "GET /api/assistant/logs row (issue API-003).",
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "flaggedUntrusted": {
+            "default": false,
+            "title": "Flaggeduntrusted",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "numbersVerified": {
+            "title": "Numbersverified",
+            "type": "boolean"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "questionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionid"
+          },
+          "screen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Screen"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "question",
+          "answer",
+          "numbersVerified"
+        ],
+        "title": "AssistantLogOut",
         "type": "object"
       },
       "AssistantWarning": {
@@ -762,6 +901,150 @@
         "title": "Building",
         "type": "object"
       },
+      "BuildingDetail": {
+        "properties": {
+          "activeRuleId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activeruleid"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "faults": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Faults",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "incidentId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incidentid"
+          },
+          "module": {
+            "title": "Module",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reasonVi": {
+            "title": "Reasonvi",
+            "type": "string"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/RecentItem"
+            },
+            "title": "Recent",
+            "type": "array"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleStatus"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "normal",
+              "warning",
+              "incident",
+              "recovery"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "summaryVi": {
+            "title": "Summaryvi",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "module",
+          "topic",
+          "summaryVi",
+          "rules",
+          "state",
+          "reasonVi",
+          "evidence",
+          "recent",
+          "faults"
+        ],
+        "title": "BuildingDetail",
+        "type": "object"
+      },
+      "BuildingInfo": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "module": {
+            "title": "Module",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleOut"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "summaryVi": {
+            "title": "Summaryvi",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "module",
+          "topic",
+          "summaryVi",
+          "rules"
+        ],
+        "title": "BuildingInfo",
+        "type": "object"
+      },
       "CityStates": {
         "properties": {
           "buildings": {
@@ -773,6 +1056,10 @@
           },
           "graphVersion": {
             "title": "Graphversion",
+            "type": "integer"
+          },
+          "policyLabel": {
+            "title": "Policylabel",
             "type": "integer"
           },
           "policyVersion": {
@@ -788,6 +1075,7 @@
           "buildings",
           "updatedAt",
           "policyVersion",
+          "policyLabel",
           "graphVersion"
         ],
         "title": "CityStates",
@@ -1166,6 +1454,126 @@
         "title": "Evidence",
         "type": "object"
       },
+      "FaultAction": {
+        "properties": {
+          "labelVi": {
+            "title": "Labelvi",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          },
+          "simulated": {
+            "default": true,
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "txHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txhash"
+          }
+        },
+        "required": [
+          "labelVi",
+          "ok"
+        ],
+        "title": "FaultAction",
+        "type": "object"
+      },
+      "FaultDef": {
+        "properties": {
+          "building": {
+            "title": "Building",
+            "type": "string"
+          },
+          "expectVi": {
+            "title": "Expectvi",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "titleVi": {
+            "title": "Titlevi",
+            "type": "string"
+          },
+          "whatVi": {
+            "title": "Whatvi",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "building",
+          "titleVi",
+          "whatVi",
+          "expectVi"
+        ],
+        "title": "FaultDef",
+        "type": "object"
+      },
+      "FaultResult": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/FaultAction"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "at": {
+            "title": "At",
+            "type": "integer"
+          },
+          "building": {
+            "title": "Building",
+            "type": "string"
+          },
+          "faultId": {
+            "title": "Faultid",
+            "type": "string"
+          },
+          "incidentId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incidentid"
+          }
+        },
+        "required": [
+          "faultId",
+          "building",
+          "at",
+          "actions"
+        ],
+        "title": "FaultResult",
+        "type": "object"
+      },
       "FindingOut": {
         "properties": {
           "data": {
@@ -1236,6 +1644,14 @@
             "title": "Keys",
             "type": "array"
           },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
           "locked": {
             "title": "Locked",
             "type": "boolean"
@@ -1250,6 +1666,8 @@
         },
         "required": [
           "principalId",
+          "label",
+          "kind",
           "spentToday",
           "locked",
           "keys"
@@ -1346,6 +1764,10 @@
             "title": "Nodes",
             "type": "array"
           },
+          "policyLabel": {
+            "title": "Policylabel",
+            "type": "integer"
+          },
           "policyVersion": {
             "title": "Policyversion",
             "type": "integer"
@@ -1358,6 +1780,7 @@
         "required": [
           "version",
           "policyVersion",
+          "policyLabel",
           "block",
           "nodes",
           "edges",
@@ -1415,6 +1838,10 @@
             "title": "L1Block",
             "type": "integer"
           },
+          "policyLabel": {
+            "title": "Policylabel",
+            "type": "integer"
+          },
           "policyVersion": {
             "title": "Policyversion",
             "type": "integer"
@@ -1436,6 +1863,7 @@
           "l1Block",
           "indexerLagBlocks",
           "policyVersion",
+          "policyLabel",
           "graphVersion",
           "agent"
         ],
@@ -1460,6 +1888,243 @@
           }
         },
         "title": "Highlights",
+        "type": "object"
+      },
+      "IncidentOut": {
+        "properties": {
+          "building": {
+            "title": "Building",
+            "type": "string"
+          },
+          "faultId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faultid"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "openedAt": {
+            "title": "Openedat",
+            "type": "integer"
+          },
+          "proposalId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposalid"
+          },
+          "resolvedAt": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolvedat"
+          },
+          "status": {
+            "enum": [
+              "detected",
+              "contained",
+              "awaiting_council",
+              "recovering",
+              "resolved"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/IncidentStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/IncidentSubject"
+          },
+          "titleVi": {
+            "title": "Titlevi",
+            "type": "string"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/IncidentTrigger"
+          }
+        },
+        "required": [
+          "id",
+          "building",
+          "titleVi",
+          "status",
+          "openedAt",
+          "subject",
+          "trigger",
+          "steps"
+        ],
+        "title": "IncidentOut",
+        "type": "object"
+      },
+      "IncidentStep": {
+        "properties": {
+          "detailVi": {
+            "default": "",
+            "title": "Detailvi",
+            "type": "string"
+          },
+          "key": {
+            "enum": [
+              "detect",
+              "contain",
+              "propose",
+              "recover",
+              "verify"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "labelVi": {
+            "title": "Labelvi",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "done",
+              "active",
+              "pending",
+              "skipped"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "ts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ts"
+          },
+          "txHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txhash"
+          }
+        },
+        "required": [
+          "key",
+          "labelVi",
+          "status"
+        ],
+        "title": "IncidentStep",
+        "type": "object"
+      },
+      "IncidentSubject": {
+        "properties": {
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "principalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principalid"
+          }
+        },
+        "title": "IncidentSubject",
+        "type": "object"
+      },
+      "IncidentTrigger": {
+        "properties": {
+          "agentRunId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentrunid"
+          },
+          "assistantLogId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assistantlogid"
+          },
+          "attemptIds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Attemptids",
+            "type": "array"
+          },
+          "proposalId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposalid"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          }
+        },
+        "title": "IncidentTrigger",
         "type": "object"
       },
       "LockRequest": {
@@ -1614,6 +2279,10 @@
             "title": "Name",
             "type": "string"
           },
+          "policyLabel": {
+            "title": "Policylabel",
+            "type": "integer"
+          },
           "policyVersion": {
             "title": "Policyversion",
             "type": "integer"
@@ -1633,6 +2302,7 @@
           "name",
           "fictional",
           "policyVersion",
+          "policyLabel",
           "mainTreasury",
           "vault",
           "council",
@@ -1910,6 +2580,120 @@
           "via"
         ],
         "title": "ReachedKey",
+        "type": "object"
+      },
+      "RecentItem": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "attempt",
+              "event",
+              "proposal",
+              "agent_run",
+              "assistant",
+              "incident"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "simulated": {
+            "default": true,
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "summaryVi": {
+            "title": "Summaryvi",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          },
+          "txHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txhash"
+          }
+        },
+        "required": [
+          "ts",
+          "kind",
+          "summaryVi",
+          "ref"
+        ],
+        "title": "RecentItem",
+        "type": "object"
+      },
+      "RuleOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "whenVi": {
+            "title": "Whenvi",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "whenVi"
+        ],
+        "title": "RuleOut",
+        "type": "object"
+      },
+      "RuleStatus": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "whenVi": {
+            "title": "Whenvi",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "whenVi",
+          "active"
+        ],
+        "title": "RuleStatus",
         "type": "object"
       },
       "ScenarioRunOut": {
@@ -2366,6 +3150,55 @@
         ]
       }
     },
+    "/api/agent/runs": {
+      "get": {
+        "description": "Agent runs, oldest first (the last `limit`). Read-only.",
+        "operationId": "list_runs_api_agent_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentRunOut"
+                  },
+                  "title": "Response List Runs Api Agent Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/api/assistant/ask": {
       "post": {
         "operationId": "ask_api_assistant_ask_post",
@@ -2402,6 +3235,55 @@
           }
         },
         "summary": "Ask",
+        "tags": [
+          "assistant"
+        ]
+      }
+    },
+    "/api/assistant/logs": {
+      "get": {
+        "description": "Assistant answers, oldest first (the last `limit`). Read-only.",
+        "operationId": "logs_api_assistant_logs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssistantLogOut"
+                  },
+                  "title": "Response Logs Api Assistant Logs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Logs",
         "tags": [
           "assistant"
         ]
@@ -2497,6 +3379,73 @@
         "summary": "Record Attempt",
         "tags": [
           "attempts"
+        ]
+      }
+    },
+    "/api/city/buildings": {
+      "get": {
+        "operationId": "list_buildings_api_city_buildings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BuildingInfo"
+                  },
+                  "title": "Response List Buildings Api City Buildings Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Buildings",
+        "tags": [
+          "city"
+        ]
+      }
+    },
+    "/api/city/buildings/{building_id}": {
+      "get": {
+        "operationId": "get_building_api_city_buildings__building_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "building_id",
+            "required": true,
+            "schema": {
+              "title": "Building Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildingDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Building",
+        "tags": [
+          "city"
         ]
       }
     },
@@ -2655,6 +3604,73 @@
         ]
       }
     },
+    "/api/faults": {
+      "get": {
+        "operationId": "list_faults_api_faults_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FaultDef"
+                  },
+                  "title": "Response List Faults Api Faults Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Faults",
+        "tags": [
+          "faults"
+        ]
+      }
+    },
+    "/api/faults/{fault_id}/inject": {
+      "post": {
+        "operationId": "inject_api_faults__fault_id__inject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "fault_id",
+            "required": true,
+            "schema": {
+              "title": "Fault Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaultResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inject",
+        "tags": [
+          "faults"
+        ]
+      }
+    },
     "/api/findings": {
       "get": {
         "operationId": "findings_api_findings_get",
@@ -2719,6 +3735,99 @@
         "summary": "Health",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/incidents": {
+      "get": {
+        "operationId": "list_incidents_api_incidents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "open",
+                "all"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/IncidentOut"
+                  },
+                  "title": "Response List Incidents Api Incidents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Incidents",
+        "tags": [
+          "incidents"
+        ]
+      }
+    },
+    "/api/incidents/{incident_id}": {
+      "get": {
+        "operationId": "get_incident_api_incidents__incident_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Incident",
+        "tags": [
+          "incidents"
         ]
       }
     },

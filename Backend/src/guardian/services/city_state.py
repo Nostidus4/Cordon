@@ -5,32 +5,41 @@ State per building in {normal, warning, incident, recovery}, a short VI reason a
 Windows and thresholds are the named constants below; `GET /api/city/states` and the SSE event
 `city_updated` carry the same payload (`city_updated` is published when any building changes).
 
-Rules (precedence inside a building, first match wins):
-  B01 Hội đồng      incident  a conflicted approval was attempted in the last CONFLICT_WINDOW_S
-                    recovery  a proposal executed in the last RECOVERY_WINDOW_S (beats "open"
+Rules (precedence inside a building, first match wins). Rule ids are stable and listed in
+`shared/buildings.py` (docs/spec/CITY_OPS.md §1); `evaluate_buildings` keeps every rule that holds, in this
+order, so the detail endpoint can say which rule decides the colour and which others also hold.
+  B01..B07          incident  `<Bxx>.incident_open`: a responder incident is open here (contained / waiting
+                              for the Council; highest precedence)
+                    recovery  `<Bxx>.incident_recovering`: the incident's fix was executed, verifying
+  B01 Hội đồng duyệt incident  B01.conflict   a conflicted approval was attempted in the last CONFLICT_WINDOW_S
+                    recovery  B01.executed   a proposal executed in the last RECOVERY_WINDOW_S (beats "open"
                               so the seeded request #12 does not hide the recovery)
-                    warning   any open proposal
-  B02 Giáo dục      warning   the last assistant answer had numbers_verified = false
-  B03 Kho tiền      incident  vault paused
-                    warning   some district spent >= DISTRICT_WARN_PCT % of its district cap today
-  B04 Tiêu dùng     latest scenario run, latest non-ok pay/swap attempt within ATTEMPT_WINDOW_S:
-                    incident  offending district not locked yet
-                    recovery  offending district already locked
-  B05 An toàn       incident  an attempt hit DISTRICT_LOCKED / BLOCKED_AT_PROTOCOL in the last
+                    warning   B01.pending    any open proposal
+  B02 Trợ lý AI     warning   B02.unverified the last assistant answer had numbers_verified = false
+  B03 Kho tiền có luật
+                    incident  B03.paused     vault paused
+                    warning   B03.near_cap   some district spent >= DISTRICT_WARN_PCT % of its district cap today
+  B04 Cổng chi trả  latest scenario run, latest non-ok pay/swap attempt within ATTEMPT_WINDOW_S:
+                    incident  B04.blocked_open    offending district not locked yet
+                    recovery  B04.blocked_locked  offending district already locked
+  B05 Trạm soi giao dịch
+                    incident  B05.shield     an attempt hit DISTRICT_LOCKED / BLOCKED_AT_PROTOCOL in the last
                               SHIELD_WINDOW_S (the shield is repelling the attacker right now)
-                    recovery  any district is locked ("đã khoá khu ...")
-  B06 Tăng trưởng   warning   last agent run was blocked / reverted (e.g. CARD_DAILY_CAP)
+                    recovery  B05.locked     any district is locked ("đã khoá khu ...")
+  B06 Agent cân đối warning   B06.blocked    last agent run was blocked / reverted (e.g. CARD_DAILY_CAP)
                     normal    after a successful swap, no run, or no action needed
-  B07 Trách nhiệm   warning   any HIGH finding is open
-  B08 Quảng trường  worst state of the others: incident > warning > recovery > normal
+  B07 Sổ kiểm toán  warning   B07.high       any HIGH finding is open
+  B08 Trung tâm sự cố         B08.worst      worst state of the others: incident > warning > recovery > normal
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from guardian.graph.findings import compute_findings
 from guardian.services import views
+from guardian.shared.buildings import BUILDINGS as BUILDING_DEFS
 from guardian.shared.reason_codes import ReasonCode, reason_text
 
 if TYPE_CHECKING:
@@ -42,106 +51,190 @@ ATTEMPT_WINDOW_S = 600
 SHIELD_WINDOW_S = 120
 DISTRICT_WARN_PCT = 80
 
-BUILDINGS: tuple[tuple[str, str], ...] = (
-    ("B01", "Hội đồng"),
-    ("B02", "Giáo dục"),
-    ("B03", "Kho tiền"),
-    ("B04", "Tiêu dùng"),
-    ("B05", "An toàn"),
-    ("B06", "Tăng trưởng"),
-    ("B07", "Trách nhiệm"),
-    ("B08", "Quảng trường"),
-)
+BUILDINGS: tuple[tuple[str, str], ...] = tuple((b.id, b.name) for b in BUILDING_DEFS)
 _RANK = {"normal": 0, "recovery": 1, "warning": 2, "incident": 3}
 _SHIELD_REASONS = (ReasonCode.DISTRICT_LOCKED.value, ReasonCode.BLOCKED_AT_PROTOCOL.value)
+
+Match = tuple[str, str, str, list[dict[str, Any]]]  # (rule id, state, reason, evidence)
+
+
+@dataclass
+class BuildingEval:
+    """Every rule that holds for a building, in precedence order; the first one decides the colour."""
+
+    matches: list[Match] = field(default_factory=list)
+    normal_reason: str = ""
+    normal_evidence: list[dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def state(self) -> str:
+        return self.matches[0][1] if self.matches else "normal"
+
+    @property
+    def reason(self) -> str:
+        return self.matches[0][2] if self.matches else self.normal_reason
+
+    @property
+    def evidence(self) -> list[dict[str, Any]]:
+        return self.matches[0][3] if self.matches else self.normal_evidence
+
+    @property
+    def rule_id(self) -> str | None:
+        return self.matches[0][0] if self.matches else None
 
 
 def _ev(kind: str, value: Any) -> dict[str, Any]:
     return {"kind": kind, "value": value}
 
 
-def _b(state: str, reason: str, *evidence: dict[str, Any]) -> tuple[str, str, list[dict[str, Any]]]:
-    return state, reason, [e for e in evidence if e["value"] is not None]
+def _present(*evidence: dict[str, Any]) -> list[dict[str, Any]]:
+    return [e for e in evidence if e["value"] is not None]
+
+
+def _m(rule: str, state: str, reason: str, *evidence: dict[str, Any]) -> Match:
+    return rule, state, reason, _present(*evidence)
 
 
 def _lock_tx(rt: Runtime, pid: str) -> str | None:
-    for e in reversed(rt.sim.events):
+    for e in reversed(rt.event_log):
         if e.name == "PrincipalLocked" and e.payload.get("principalId") == pid:
             return e.tx_hash
     return None
 
 
-def compute_city_states(rt: Runtime) -> dict[str, Any]:
+def _incident_matches(rt: Runtime, bid: str) -> list[Match]:
+    """Responder rules of building `bid` (CITY_OPS §4): open beats recovering."""
+    out: list[Match] = []
+    mine = [i for i in rt.stores.incidents if i.building == bid]
+    where = {
+        "detected": "đang phát hiện",
+        "contained": "đã khoanh vùng",
+        "awaiting_council": "đang chờ Hội đồng duyệt",
+    }
+    for inc in reversed(mine):
+        if inc.status in where:
+            out.append(
+                _m(
+                    f"{bid}.incident_open",
+                    "incident",
+                    f"Sự cố: {inc.title_vi} ({where[inc.status]}).",
+                    _ev("incidentId", inc.id),
+                    _ev("reasonCode", inc.trigger.get("reasonCode")),
+                    _ev("principalId", inc.principal_id),
+                    _ev("proposalId", inc.proposal_id),
+                )
+            )
+            break
+    for inc in reversed(mine):
+        if inc.status == "recovering":
+            out.append(
+                _m(
+                    f"{bid}.incident_recovering",
+                    "recovery",
+                    f"Sự cố đang hồi phục: {inc.title_vi}.",
+                    _ev("incidentId", inc.id),
+                    _ev("reasonCode", inc.trigger.get("reasonCode")),
+                    _ev("principalId", inc.principal_id),
+                    _ev("proposalId", inc.proposal_id),
+                )
+            )
+            break
+    return out
+
+
+def evaluate_buildings(rt: Runtime) -> dict[str, BuildingEval]:
     now = rt.now()
     snap = rt.snapshot()
     st = rt.stores
-    result: dict[str, tuple[str, str, list[dict[str, Any]]]] = {}
+    ev: dict[str, BuildingEval] = {bid: BuildingEval() for bid, _ in BUILDINGS}
+    for bid, e in ev.items():
+        if bid != "B08":
+            e.matches.extend(_incident_matches(rt, bid))
 
-    # B01 Hội đồng
+    # B01 Hội đồng duyệt
+    b1 = ev["B01"]
+    b1.normal_reason = "Hội đồng không có việc chờ."
     recent_conf = [c for c in st.conflicts if now - c.ts <= CONFLICT_WINDOW_S]
     executed = [
         p
         for p in st.proposals.values()
         if p.executed_at is not None and now - p.executed_at <= RECOVERY_WINDOW_S
     ]
-    open_ids = [i for i in sorted(st.proposals) if rt.sim.council.proposals[i].status == "open"]
+    open_ids = [i for i in sorted(st.proposals) if rt.chain.proposal_state(i).status == "open"]
     if recent_conf:
         c = recent_conf[-1]
-        result["B01"] = _b(
-            "incident",
-            f"Thành viên {c.member} thử duyệt đề xuất #{c.proposal_id} "
-            "nhưng bị chặn: xung đột lợi ích.",
-            _ev("reasonCode", "CONFLICT_OF_INTEREST"),
-            _ev("proposalId", c.proposal_id),
+        b1.matches.append(
+            _m(
+                "B01.conflict",
+                "incident",
+                f"Thành viên {c.member} thử duyệt đề xuất #{c.proposal_id} "
+                "nhưng bị chặn: xung đột lợi ích.",
+                _ev("reasonCode", "CONFLICT_OF_INTEREST"),
+                _ev("proposalId", c.proposal_id),
+            )
         )
-    elif executed:
+    if executed:
         p = max(executed, key=lambda x: x.executed_at or 0)
-        result["B01"] = _b(
-            "recovery",
-            f"Đề xuất #{p.id} vừa được thực hiện, chính sách v{snap.policy_version}.",
-            _ev("txHash", p.executed_tx_hash),
-            _ev("proposalId", p.id),
+        b1.matches.append(
+            _m(
+                "B01.executed",
+                "recovery",
+                f"Đề xuất #{p.id} vừa được thực hiện, chính sách v{snap.policy_label}.",
+                _ev("txHash", p.executed_tx_hash),
+                _ev("proposalId", p.id),
+            )
         )
-    elif open_ids:
-        result["B01"] = _b(
-            "warning",
-            f"{len(open_ids)} đề xuất đang chờ Hội đồng duyệt.",
-            *[_ev("proposalId", i) for i in open_ids],
+    if open_ids:
+        b1.matches.append(
+            _m(
+                "B01.pending",
+                "warning",
+                f"{len(open_ids)} đề xuất đang chờ Hội đồng duyệt.",
+                *[_ev("proposalId", i) for i in open_ids],
+            )
         )
-    else:
-        result["B01"] = _b("normal", "Hội đồng không có việc chờ.")
 
-    # B02 Giáo dục
+    # B02 Trợ lý AI
+    b2 = ev["B02"]
+    b2.normal_reason = "Trợ lý trả lời với số liệu đã kiểm chứng."
     last_ans = st.assistant_logs[-1] if st.assistant_logs else None
     if last_ans is not None and not last_ans.numbers_verified:
-        result["B02"] = _b(
-            "warning",
-            "Câu trả lời gần nhất của trợ lý chưa kiểm chứng được số liệu.",
-            _ev("question", last_ans.question_id),
+        b2.matches.append(
+            _m(
+                "B02.unverified",
+                "warning",
+                "Câu trả lời gần nhất của trợ lý chưa kiểm chứng được số liệu.",
+                _ev("question", last_ans.question_id),
+            )
         )
-    else:
-        result["B02"] = _b("normal", "Trợ lý trả lời với số liệu đã kiểm chứng.")
 
-    # B03 Kho tiền
+    # B03 Kho tiền có luật
+    b3 = ev["B03"]
+    b3.normal_reason = "Kho tiền hoạt động bình thường."
     hot = [
         p
         for p in snap.principals.values()
         if p.daily_cap > 0 and p.spent_today * 100 >= p.daily_cap * DISTRICT_WARN_PCT
     ]
     if snap.paused:
-        result["B03"] = _b("incident", "Cả kho đang dừng.", _ev("reasonCode", "VAULT_PAUSED"))
-    elif hot:
-        p = max(hot, key=lambda x: x.spent_today * 1000 // x.daily_cap)
-        result["B03"] = _b(
-            "warning",
-            f"Khu {p.label} đã dùng {views.mny(p.spent_today)['display']}/"
-            f"{views.mny(p.daily_cap)['display']} hạn mức chung hôm nay.",
-            _ev("principalId", p.id),
+        b3.matches.append(
+            _m("B03.paused", "incident", "Cả kho đang dừng.", _ev("reasonCode", "VAULT_PAUSED"))
         )
-    else:
-        result["B03"] = _b("normal", "Kho tiền hoạt động bình thường.")
+    if hot:
+        p = max(hot, key=lambda x: x.spent_today * 1000 // x.daily_cap)
+        b3.matches.append(
+            _m(
+                "B03.near_cap",
+                "warning",
+                f"Khu {p.label} đã dùng {views.mny(p.spent_today)['display']}/"
+                f"{views.mny(p.daily_cap)['display']} hạn mức chung hôm nay.",
+                _ev("principalId", p.id),
+            )
+        )
 
-    # B04 Tiêu dùng
+    # B04 Cổng chi trả
+    b4 = ev["B04"]
+    b4.normal_reason = "Chi tiêu bình thường."
     latest_run = next(reversed(st.runs), None) if st.runs else None
     bad = [
         a
@@ -157,97 +250,126 @@ def compute_city_states(rt: Runtime) -> dict[str, Any]:
         offender = snap.principals.get(a.principal_id or "")
         why = reason_text(a.reason_code) if a.reason_code else "bị từ chối"
         if offender is not None and offender.locked:
-            result["B04"] = _b(
-                "recovery",
-                f"Khu {offender.label} đã được khoá sau giao dịch bị chặn.",
-                _ev("reasonCode", a.reason_code),
-                _ev("txHash", a.tx_hash),
+            b4.matches.append(
+                _m(
+                    "B04.blocked_locked",
+                    "recovery",
+                    f"Khu {offender.label} đã được khoá sau giao dịch bị chặn.",
+                    _ev("reasonCode", a.reason_code),
+                    _ev("txHash", a.tx_hash),
+                )
             )
         else:
-            result["B04"] = _b(
-                "incident",
-                f"Giao dịch của {a.signer_label} bị chặn: {why}.",
-                _ev("reasonCode", a.reason_code),
-                _ev("txHash", a.tx_hash),
+            b4.matches.append(
+                _m(
+                    "B04.blocked_open",
+                    "incident",
+                    f"Giao dịch của {a.signer_label} bị chặn: {why}.",
+                    _ev("reasonCode", a.reason_code),
+                    _ev("txHash", a.tx_hash),
+                )
             )
-    else:
-        result["B04"] = _b("normal", "Chi tiêu bình thường.")
 
-    # B05 An toàn
+    # B05 Trạm soi giao dịch
+    b5 = ev["B05"]
+    b5.normal_reason = "Không có khu nào bị khoá."
     locked = [p for p in snap.principals.values() if p.locked]
     shield = [
         a for a in st.attempts if a.reason_code in _SHIELD_REASONS and now - a.ts <= SHIELD_WINDOW_S
     ]
     if shield:
         a = shield[-1]
-        result["B05"] = _b(
-            "incident",
-            f"Lá chắn đang chặn: {a.signer_label} bị chain từ chối.",
-            _ev("reasonCode", a.reason_code),
-            _ev("txHash", a.tx_hash),
+        b5.matches.append(
+            _m(
+                "B05.shield",
+                "incident",
+                f"Lá chắn đang chặn: {a.signer_label} bị chain từ chối.",
+                _ev("reasonCode", a.reason_code),
+                _ev("txHash", a.tx_hash),
+            )
         )
-    elif locked:
+    if locked:
         p = locked[-1]
-        result["B05"] = _b(
-            "recovery",
-            f"Đã khoá khu {p.label}.",
-            _ev("principalId", p.id),
-            _ev("txHash", _lock_tx(rt, p.id)),
+        b5.matches.append(
+            _m(
+                "B05.locked",
+                "recovery",
+                f"Đã khoá khu {p.label}.",
+                _ev("principalId", p.id),
+                _ev("txHash", _lock_tx(rt, p.id)),
+            )
         )
-    else:
-        result["B05"] = _b("normal", "Không có khu nào bị khoá.")
 
-    # B06 Tăng trưởng
+    # B06 Agent cân đối
+    b6 = ev["B06"]
+    b6.normal_reason = "Agent cân đối sẵn sàng."
     last_run = st.agent_runs[-1] if st.agent_runs else None
     if last_run is not None and last_run.outcome in ("blocked", "reverted"):
         why = reason_text(last_run.reason_code) if last_run.reason_code else "bị từ chối"
-        result["B06"] = _b(
-            "warning", f"Agent cân đối bị chặn: {why}.", _ev("reasonCode", last_run.reason_code)
+        b6.matches.append(
+            _m(
+                "B06.blocked",
+                "warning",
+                f"Agent cân đối bị chặn: {why}.",
+                _ev("reasonCode", last_run.reason_code),
+            )
         )
     elif last_run is not None and last_run.outcome == "swapped":
-        result["B06"] = _b(
-            "normal", "Agent vừa cân đối danh mục thành công.", _ev("txHash", last_run.tx_hash)
-        )
-    else:
-        result["B06"] = _b("normal", "Agent cân đối sẵn sàng.")
+        b6.normal_reason = "Agent vừa cân đối danh mục thành công."
+        b6.normal_evidence = _present(_ev("txHash", last_run.tx_hash))
 
-    # B07 Trách nhiệm
+    # B07 Sổ kiểm toán
+    b7 = ev["B07"]
+    b7.normal_reason = "Không có cờ vàng mức cao."
     high = [f for f in compute_findings(snap) if f["severity"] == "HIGH"]
     if high:
-        result["B07"] = _b(
-            "warning",
-            f"{len(high)} cờ vàng mức cao đang mở.",
-            *[_ev("findingId", f["id"]) for f in high],
+        b7.matches.append(
+            _m(
+                "B07.high",
+                "warning",
+                f"{len(high)} cờ vàng mức cao đang mở.",
+                *[_ev("findingId", f["id"]) for f in high],
+            )
         )
-    else:
-        result["B07"] = _b("normal", "Không có cờ vàng mức cao.")
 
-    # B08 Quảng trường: worst of the others
-    worst = max((s for s, _, _ in result.values()), key=lambda s: _RANK[s])
-    culprits = [bid for bid, (s, _, _) in result.items() if s == worst]
+    # B08 Trung tâm sự cố: worst of the others
+    b8 = ev["B08"]
+    others = {bid: e for bid, e in ev.items() if bid != "B08"}
+    worst = max((e.state for e in others.values()), key=lambda s: _RANK[s])
+    culprits = [bid for bid, e in others.items() if e.state == worst]
     names = {bid: n for bid, n in BUILDINGS}
     if worst == "normal":
-        result["B08"] = _b("normal", "Thành phố yên bình.")
+        b8.normal_reason = "Thành phố yên bình."
     else:
         label = {"incident": "sự cố", "warning": "cảnh báo", "recovery": "đang phục hồi"}[worst]
-        result["B08"] = _b(
-            worst,
-            f"Đang có {label} ở: " + ", ".join(names[b] for b in culprits) + ".",
-            *[_ev("building", b) for b in culprits],
+        b8.matches.append(
+            _m(
+                "B08.worst",
+                worst,
+                f"Đang có {label} ở: " + ", ".join(names[b] for b in culprits) + ".",
+                *[_ev("building", b) for b in culprits],
+            )
         )
+    return ev
 
+
+def compute_city_states(rt: Runtime) -> dict[str, Any]:
+    now = rt.now()
+    snap = rt.snapshot()
+    ev = evaluate_buildings(rt)
     return {
         "buildings": [
             {
                 "id": bid,
                 "name": name,
-                "state": result[bid][0],
-                "reasonVi": result[bid][1],
-                "evidence": result[bid][2],
+                "state": ev[bid].state,
+                "reasonVi": ev[bid].reason,
+                "evidence": ev[bid].evidence,
             }
             for bid, name in BUILDINGS
         ],
         "updatedAt": now,
         "policyVersion": snap.policy_version,
+        "policyLabel": snap.policy_label,
         "graphVersion": rt.graph_version,
     }

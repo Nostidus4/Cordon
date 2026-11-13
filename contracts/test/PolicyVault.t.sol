@@ -650,43 +650,353 @@ contract PolicyVaultTest is MayLabsBase {
         assertEq(tUSDC.allowance(address(vault), address(evil)), 0);
     }
 
-    // ---------------------------------------------------- minimal setters (access)
+    // ------------------------------------------------------------ admin (CTR-005)
 
-    function test_adminSettersOnlyCouncilAndEmitEvents() public {
-        address rando = makeAddr("rando");
-        vm.startPrank(rando);
-        vm.expectRevert(IPolicyVault.NotCouncil.selector);
-        vault.setKeyDailyCap(KEY_MINH, 1);
-        vm.expectRevert(IPolicyVault.NotCouncil.selector);
-        vault.setPrincipalDailyCap(MINH, 1);
-        vm.expectRevert(IPolicyVault.NotCouncil.selector);
-        vault.setTokenAllowed(address(tSCAM), true);
-        vm.expectRevert(IPolicyVault.NotCouncil.selector);
-        vault.setProtocolAllowed(address(evilDex), SWAP_SEL, true);
-        vm.expectRevert(IPolicyVault.NotCouncil.selector);
-        vault.setRecipientAllowed(STRANGER_WALLET, true);
+    address internal rando = makeAddr("rando");
+
+    function _adminCalls() internal view returns (bytes[] memory c) {
+        c = new bytes[](13);
+        c[0] = abi.encodeCall(vault.lockPrincipal, (MINH));
+        c[1] = abi.encodeCall(vault.unlockPrincipal, (MINH));
+        c[2] = abi.encodeCall(vault.pauseAll, ());
+        c[3] = abi.encodeCall(vault.unpauseAll, ());
+        c[4] = abi.encodeCall(vault.setKeyDailyCap, (KEY_MINH, 1));
+        c[5] = abi.encodeCall(vault.setPrincipalDailyCap, (MINH, 1));
+        c[6] = abi.encodeCall(vault.setTokenAllowed, (address(tSCAM), true));
+        c[7] = abi.encodeCall(vault.setProtocolAllowed, (address(evilDex), SWAP_SEL, true));
+        c[8] = abi.encodeCall(vault.setRecipientAllowed, (STRANGER_WALLET, true));
+        c[9] = abi.encodeCall(vault.bumpPolicyVersion, ());
+        c[10] = abi.encodeCall(vault.setTopUpOperator, (rando));
+        c[11] = abi.encodeCall(vault.setTopUpOperator, (address(0)));
+        c[12] = abi.encodeCall(vault.lockPrincipal, (bytes32(0)));
+    }
+
+    function test_adminFunctionsOnlyCouncil() public {
+        bytes[] memory calls = _adminCalls();
+        address[4] memory callers = [rando, address(this), topUpOp, KEY_MINH];
+        for (uint256 c; c < callers.length; ++c) {
+            for (uint256 i; i < calls.length; ++i) {
+                vm.prank(callers[c]);
+                (bool ok, bytes memory ret) = address(vault).call(calls[i]);
+                assertFalse(ok);
+                assertEq(bytes4(ret), IPolicyVault.NotCouncil.selector);
+            }
+        }
+        // the Council itself is accepted by every one of them
+        for (uint256 i; i < calls.length; ++i) {
+            vm.prank(council);
+            (bool ok,) = address(vault).call(calls[i]);
+            assertTrue(ok);
+        }
+    }
+
+    function test_T7_lockBlocksEveryKeyOfTheDistrictForPayAndSwap() public {
+        vm.expectEmit(true, false, false, true, address(vault));
+        emit IPolicyVault.PrincipalLocked(MINH, council);
+        vm.prank(council);
+        vault.lockPrincipal(MINH);
+        assertTrue(vault.principalLocked(MINH));
+        for (uint256 i; i < 5; ++i) {
+            vm.startPrank(minhKeys[i]);
+            vm.expectRevert(IPolicyVault.PrincipalIsLocked.selector);
+            vault.pay(address(tUSDC), VENDOR_CLOUD, 1, bytes32(0));
+            vm.expectRevert(IPolicyVault.PrincipalIsLocked.selector);
+            vault.swap(address(dex), SWAP_SEL, address(tUSDC), address(tTKB), 1, 0, bytes32(0));
+            vm.stopPrank();
+        }
+        // other districts are unaffected; the flag does not touch the registry
+        assertFalse(vault.principalLocked(LAN));
+        assertFalse(vault.principalLocked(HUY));
+        _pay(KEY_LAN, address(tUSDC), VENDOR_CLOUD, 1_000e6);
+        (,, bool active,) = registry.keyInfo(KEY_MINH);
+        assertTrue(active);
+    }
+
+    function test_T7_unlockRestoresAndEmitsEvent() public {
+        vm.startPrank(council);
+        vault.lockPrincipal(MINH);
+        vm.expectEmit(true, false, false, false, address(vault));
+        emit IPolicyVault.PrincipalUnlocked(MINH);
+        vault.unlockPrincipal(MINH);
         vm.stopPrank();
-        // even the deployer is not the Council
-        vm.expectRevert(IPolicyVault.NotCouncil.selector);
-        vault.setKeyDailyCap(KEY_MINH, 1);
+        assertFalse(vault.principalLocked(MINH));
+        _pay(KEY_MINH, address(tUSDC), VENDOR_CLOUD, 500e6);
+        assertEq(vault.keySpent(KEY_MINH, _today()), 500e6);
+    }
 
+    function test_lockedDistrictRevertsBeforeTokenAndCapChecks() public {
+        vm.startPrank(council);
+        vault.lockPrincipal(MINH);
+        vault.setTokenAllowed(address(tUSDC), false);
+        vault.setKeyDailyCap(KEY_MINH, 0);
+        vm.stopPrank();
+        vm.prank(KEY_MINH);
+        vm.expectRevert(IPolicyVault.PrincipalIsLocked.selector);
+        vault.pay(address(tUSDC), VENDOR_CLOUD, 1, bytes32(0));
+    }
+
+    function test_T12_pauseBlocksEveryRegisteredKeyAndWinsOverEveryOtherCheck() public {
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.Paused(council);
+        vm.prank(council);
+        vault.pauseAll();
+        assertTrue(vault.paused());
+
+        SeedKey[8] memory ks = seedKeys();
+        for (uint256 i; i < ks.length; ++i) {
+            vm.startPrank(ks[i].key);
+            vm.expectRevert(IPolicyVault.VaultPaused.selector);
+            vault.pay(address(tUSDC), VENDOR_CLOUD, 1, bytes32(0));
+            vm.expectRevert(IPolicyVault.VaultPaused.selector);
+            vault.swap(address(dex), SWAP_SEL, address(tUSDC), address(tTKB), 1, 0, bytes32(0));
+            vm.stopPrank();
+        }
+        // wins even over "key not registered" and "district locked"
+        vm.prank(rando);
+        vm.expectRevert(IPolicyVault.VaultPaused.selector);
+        vault.pay(address(tUSDC), VENDOR_CLOUD, 1, bytes32(0));
+        vm.prank(council);
+        vault.lockPrincipal(MINH);
+        vm.prank(KEY_MINH);
+        vm.expectRevert(IPolicyVault.VaultPaused.selector);
+        vault.pay(address(tUSDC), VENDOR_CLOUD, 1, bytes32(0));
+    }
+
+    function test_T12_unpauseRestoresAndEmitsEvent() public {
+        vm.startPrank(council);
+        vault.pauseAll();
+        vm.expectEmit(false, false, false, false, address(vault));
+        emit IPolicyVault.Unpaused();
+        vault.unpauseAll();
+        vm.stopPrank();
+        assertFalse(vault.paused());
+        _pay(KEY_MINH, address(tUSDC), VENDOR_CLOUD, 500e6);
+        _swap(KEY_AGENT_REBALANCE, address(dex), address(tUSDC), address(tTKB), 500e6, 0);
+    }
+
+    function test_setPrincipalDailyCap_emitsCapChangedKind1FromUnset() public {
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.CapChanged(1, LAN, 0, 30_000e6);
+        vm.prank(council);
+        vault.setPrincipalDailyCap(LAN, 30_000e6);
+        assertEq(vault.principalDailyCap(LAN), 30_000e6);
+    }
+
+    function test_capSettersCarryOldAndNewValues() public {
         vm.startPrank(council);
         vm.expectEmit(false, false, false, true, address(vault));
         emit IPolicyVault.CapChanged(0, bytes32(uint256(uint160(KEY_MINH))), KEY_DAILY_CAP, 5);
         vault.setKeyDailyCap(KEY_MINH, 5);
         vm.expectEmit(false, false, false, true, address(vault));
-        emit IPolicyVault.CapChanged(1, MINH, DISTRICT_CAP, 7);
-        vault.setPrincipalDailyCap(MINH, 7);
+        emit IPolicyVault.CapChanged(0, bytes32(uint256(uint160(KEY_MINH))), 5, 9_000e6);
+        vault.setKeyDailyCap(KEY_MINH, 9_000e6);
         vm.expectEmit(false, false, false, true, address(vault));
-        emit IPolicyVault.AllowChanged(0, bytes32(uint256(uint160(address(tSCAM)))), bytes4(0), true);
-        vault.setTokenAllowed(address(tSCAM), true);
-        vm.expectEmit(false, false, false, true, address(vault));
-        emit IPolicyVault.AllowChanged(1, bytes32(uint256(uint160(address(evilDex)))), SWAP_SEL, true);
-        vault.setProtocolAllowed(address(evilDex), SWAP_SEL, true);
-        vm.expectEmit(false, false, false, true, address(vault));
-        emit IPolicyVault.AllowChanged(2, bytes32(uint256(uint160(STRANGER_WALLET))), bytes4(0), true);
-        vault.setRecipientAllowed(STRANGER_WALLET, true);
+        emit IPolicyVault.CapChanged(1, MINH, DISTRICT_CAP, 0);
+        vault.setPrincipalDailyCap(MINH, 0);
         vm.stopPrank();
+        assertEq(vault.keyDailyCap(KEY_MINH), 9_000e6);
+        assertEq(vault.principalDailyCap(MINH), 0);
+    }
+
+    function test_loweredCapBindsImmediatelyAndKeepsTodaysSpend() public {
+        _pay(KEY_MINH, address(tUSDC), VENDOR_CLOUD, 4_000e6);
+        vm.prank(council);
+        vault.setKeyDailyCap(KEY_MINH, 4_500e6);
+        _pay(KEY_MINH, address(tUSDC), VENDOR_CLOUD, 500e6);
+        vm.prank(KEY_MINH);
+        vm.expectRevert(IPolicyVault.KeyDailyCapExceeded.selector);
+        vault.pay(address(tUSDC), VENDOR_CLOUD, 1, bytes32(0));
+        // cap below what is already spent: spent stays, further spend refused
+        vm.prank(council);
+        vault.setKeyDailyCap(KEY_MINH, 1_000e6);
+        assertEq(vault.keySpent(KEY_MINH, _today()), 4_500e6);
+        vm.prank(KEY_MINH);
+        vm.expectRevert(IPolicyVault.KeyDailyCapExceeded.selector);
+        vault.pay(address(tUSDC), VENDOR_CLOUD, 1, bytes32(0));
+    }
+
+    function test_allowSettersEmitAllowChangedBothDirections() public {
+        bytes32 tokenSubj = bytes32(uint256(uint160(address(tUSDC))));
+        bytes32 dexSubj = bytes32(uint256(uint160(address(dex))));
+        bytes32 rcpSubj = bytes32(uint256(uint160(VENDOR_CLOUD)));
+        vm.startPrank(council);
+
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.AllowChanged(0, tokenSubj, bytes4(0), false);
+        vault.setTokenAllowed(address(tUSDC), false);
+        assertFalse(vault.tokenAllowed(address(tUSDC)));
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.AllowChanged(0, tokenSubj, bytes4(0), true);
+        vault.setTokenAllowed(address(tUSDC), true);
+        assertTrue(vault.tokenAllowed(address(tUSDC)));
+
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.AllowChanged(1, dexSubj, SWAP_SEL, false);
+        vault.setProtocolAllowed(address(dex), SWAP_SEL, false);
+        assertFalse(vault.protocolAllowed(address(dex), SWAP_SEL));
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.AllowChanged(1, dexSubj, SWAP_SEL, true);
+        vault.setProtocolAllowed(address(dex), SWAP_SEL, true);
+        assertTrue(vault.protocolAllowed(address(dex), SWAP_SEL));
+
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.AllowChanged(2, rcpSubj, bytes4(0), false);
+        vault.setRecipientAllowed(VENDOR_CLOUD, false);
+        assertFalse(vault.recipientAllowed(VENDOR_CLOUD));
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.AllowChanged(2, rcpSubj, bytes4(0), true);
+        vault.setRecipientAllowed(VENDOR_CLOUD, true);
+        assertTrue(vault.recipientAllowed(VENDOR_CLOUD));
+        vm.stopPrank();
+    }
+
+    function test_removedAllowEntryTakesEffectAndSelectorsAreIndependent() public {
+        vm.startPrank(council);
+        vault.setRecipientAllowed(VENDOR_CLOUD, false);
+        vault.setProtocolAllowed(address(dex), bytes4(0xdeadbeef), true);
+        vm.stopPrank();
+        vm.prank(KEY_MINH);
+        vm.expectRevert(IPolicyVault.RecipientNotAllowed.selector);
+        vault.pay(address(tUSDC), VENDOR_CLOUD, 1, bytes32(0));
+        _pay(KEY_MINH, address(tUSDC), VENDOR_DATA_API, 1);
+        assertTrue(vault.protocolAllowed(address(dex), SWAP_SEL));
+        assertFalse(vault.protocolAllowed(address(dex), bytes4(0xcafebabe)));
+    }
+
+    function test_bumpPolicyVersionIncrementsByOneAndEmitsNewValue() public {
+        assertEq(vault.policyVersion(), 1);
+        for (uint256 v = 2; v <= 4; ++v) {
+            vm.expectEmit(false, false, false, true, address(vault));
+            emit IPolicyVault.PolicyVersionBumped(v);
+            vm.prank(council);
+            vault.bumpPolicyVersion();
+            assertEq(vault.policyVersion(), v);
+        }
+    }
+
+    function testFuzz_bumpPolicyVersionN(uint8 n) public {
+        vm.startPrank(council);
+        for (uint256 i; i < n; ++i) {
+            vault.bumpPolicyVersion();
+        }
+        vm.stopPrank();
+        assertEq(vault.policyVersion(), 1 + uint256(n));
+    }
+
+    function test_adminCallsDoNotBumpPolicyVersionByThemselves() public {
+        vm.startPrank(council);
+        vault.lockPrincipal(MINH);
+        vault.setKeyDailyCap(KEY_MINH, 1);
+        vault.setTokenAllowed(address(tSCAM), true);
+        vm.stopPrank();
+        assertEq(vault.policyVersion(), 1); // the Council ends each proposal with bumpPolicyVersion()
+    }
+
+    function test_recordTopUp_councilOrOperatorEmitsAndMovesNoFunds() public {
+        bytes32 h = keccak256("c-chain-tx");
+        uint256 before_ = tUSDC.balanceOf(address(vault));
+        vm.expectEmit(true, false, false, true, address(vault));
+        emit IPolicyVault.TopUpRecorded(h, 50_000e6);
+        vm.prank(topUpOp);
+        vault.recordTopUp(h, 50_000e6);
+        vm.expectEmit(true, false, false, true, address(vault));
+        emit IPolicyVault.TopUpRecorded(h, 1);
+        vm.prank(council);
+        vault.recordTopUp(h, 1);
+        assertEq(tUSDC.balanceOf(address(vault)), before_);
+        assertEq(vault.policyVersion(), 1);
+    }
+
+    function test_recordTopUp_othersRevertNotTopUpOperator() public {
+        address[3] memory others = [rando, address(this), KEY_MINH];
+        for (uint256 i; i < others.length; ++i) {
+            vm.prank(others[i]);
+            vm.expectRevert(IPolicyVault.NotTopUpOperator.selector);
+            vault.recordTopUp(bytes32(uint256(1)), 1);
+        }
+    }
+
+    function test_setTopUpOperator_changesRoleAndEmits() public {
+        address newOp = makeAddr("newOp");
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.TopUpOperatorChanged(topUpOp, newOp);
+        vm.prank(council);
+        vault.setTopUpOperator(newOp);
+        assertEq(vault.topUpOperator(), newOp);
+
+        vm.prank(topUpOp);
+        vm.expectRevert(IPolicyVault.NotTopUpOperator.selector);
+        vault.recordTopUp(bytes32(0), 1);
+        vm.prank(newOp);
+        vault.recordTopUp(bytes32(0), 1);
+
+        // address(0) disables the role; the Council can still record
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit IPolicyVault.TopUpOperatorChanged(newOp, address(0));
+        vm.prank(council);
+        vault.setTopUpOperator(address(0));
+        vm.prank(newOp);
+        vm.expectRevert(IPolicyVault.NotTopUpOperator.selector);
+        vault.recordTopUp(bytes32(0), 1);
+        vm.prank(council);
+        vault.recordTopUp(bytes32(0), 1);
+    }
+
+    function test_tightenLoosen_capClassification() public view {
+        bytes32 minhKey = bytes32(uint256(uint160(KEY_MINH)));
+        // principal: lower = tighten; raise, unset (0) = loosen; equal = not tightening
+        assertTrue(vault.isTighteningCap(1, MINH, DISTRICT_CAP - 1));
+        assertFalse(vault.isTighteningCap(1, MINH, DISTRICT_CAP));
+        assertFalse(vault.isTighteningCap(1, MINH, DISTRICT_CAP + 1));
+        assertFalse(vault.isTighteningCap(1, MINH, 0));
+        // principal with no cap: setting any cap is tightening (sim parity), unsetting again is not
+        assertTrue(vault.isTighteningCap(1, LAN, 1));
+        assertFalse(vault.isTighteningCap(1, LAN, 0));
+        // key
+        assertTrue(vault.isTighteningCap(0, minhKey, KEY_DAILY_CAP - 1));
+        assertTrue(vault.isTighteningCap(0, minhKey, 0));
+        assertFalse(vault.isTighteningCap(0, minhKey, KEY_DAILY_CAP));
+        assertFalse(vault.isTighteningCap(0, minhKey, KEY_DAILY_CAP + 1));
+        // unknown kind is never tightening
+        assertFalse(vault.isTighteningCap(2, minhKey, 0));
+    }
+
+    function test_tightenLoosen_keyWithZeroCapRaisingIsLoosening() public {
+        bytes32 k = bytes32(uint256(uint160(KEY_MINH)));
+        vm.prank(council);
+        vault.setKeyDailyCap(KEY_MINH, 0);
+        assertFalse(vault.isTighteningCap(0, k, 1));
+        assertFalse(vault.isTighteningCap(0, k, 0));
+    }
+
+    function test_tightenLoosen_allowClassification() public view {
+        assertTrue(vault.isTighteningAllow(0, bytes32(0), bytes4(0), false));
+        assertFalse(vault.isTighteningAllow(0, bytes32(0), bytes4(0), true));
+        assertTrue(vault.isTighteningAllow(1, bytes32(0), SWAP_SEL, false));
+        assertFalse(vault.isTighteningAllow(2, bytes32(0), bytes4(0), true));
+    }
+
+    function testFuzz_capClassificationMatchesBehaviour(uint256 oldCap, uint256 newCap) public {
+        oldCap = bound(oldCap, 0, type(uint128).max);
+        newCap = bound(newCap, 0, type(uint128).max);
+        vm.startPrank(council);
+        vault.setKeyDailyCap(KEY_MINH, oldCap);
+        vault.setPrincipalDailyCap(MINH, oldCap);
+        vm.stopPrank();
+        assertEq(vault.isTighteningCap(0, bytes32(uint256(uint160(KEY_MINH))), newCap), newCap < oldCap);
+        assertEq(vault.isTighteningCap(1, MINH, newCap), newCap != 0 && (oldCap == 0 || newCap < oldCap));
+    }
+
+    function testFuzz_nonCouncilCannotLockOrPause(address caller, bytes32 id) public {
+        vm.assume(caller != council);
+        vm.startPrank(caller);
+        vm.expectRevert(IPolicyVault.NotCouncil.selector);
+        vault.lockPrincipal(id);
+        vm.expectRevert(IPolicyVault.NotCouncil.selector);
+        vault.pauseAll();
+        vm.stopPrank();
+        assertFalse(vault.paused());
+        assertFalse(vault.principalLocked(id));
     }
 
     // ------------------------------------------------------------------- gas

@@ -66,12 +66,12 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
   },
   evac: {
     id: "evac",
-    button: "Sơ tán Tòa Tiêu Dùng",
-    headline: "Tòa Tiêu Dùng: Kích hoạt sơ tán",
+    button: "Sơ tán Cổng chi trả",
+    headline: "Cổng chi trả: Kích hoạt sơ tán",
     time: "10:24",
     rows: [
       { icon: "⚡", label: "Nguyên nhân", value: "Phát hiện rò điện (giả định)" },
-      { icon: "◎", label: "Vị trí", value: "Tòa Tiêu Dùng" },
+      { icon: "◎", label: "Vị trí", value: "Cổng chi trả" },
     ],
     severity: "Khẩn cấp",
     statusByStep: [
@@ -84,7 +84,7 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
     endStatus: "Đã an toàn, hoạt động bình thường",
     responseTitle: "Quy trình ứng phó của Cordon",
     steps: [
-      { title: "Phát hiện sự cố", desc: "Cảm biến báo rò điện tại Tòa Tiêu Dùng" },
+      { title: "Phát hiện sự cố", desc: "Cảm biến báo rò điện tại Cổng chi trả" },
       { title: "Kích hoạt cảnh báo & thông báo", desc: "Còi báo động và thông báo toàn thành phố" },
       { title: "Sơ tán người dùng", desc: "Di chuyển đến Điểm tập kết (An toàn)" },
       { title: "Kiểm tra & khắc phục", desc: "Xử lý nguồn rò điện" },
@@ -102,7 +102,7 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDef> = {
       { kind: "ok", label: "Các tòa khác", text: "Vẫn hoạt động bình thường" },
       {
         kind: "info",
-        label: "Tòa Tiêu Dùng",
+        label: "Cổng chi trả",
         text: finished ? "Đã mở lại hoạt động" : step >= 3 ? "Đang kiểm tra, chờ mở lại" : "Tạm dừng hoạt động, đảm bảo an toàn",
       },
     ],

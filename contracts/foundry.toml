@@ -11,6 +11,28 @@ optimizer = true
 optimizer_runs = 200
 bytecode_hash = "none"
 deny = "warnings"
+# L1 scripts (script/*.s.sol): read the seed and the deployments, write the deployments (addresses only).
+fs_permissions = [
+  { access = "read", path = "../Backend/seed" },
+  { access = "read", path = "../infra/l1" },
+  { access = "read-write", path = "../Backend/deployments" },
+]
 
 [fuzz]
 runs = 512
+
+# Invariant suite (test/Invariants.t.sol): random call sequences against Registry + Vault + Council.
+# Reverts are legal outcomes of random calls; the handler records what happened, so they do not fail a run.
+[invariant]
+runs = 256
+depth = 64
+fail_on_revert = false
+
+# CI: deeper runs. Selected with FOUNDRY_PROFILE=ci (see .github/workflows/ci.yml).
+[profile.ci.fuzz]
+runs = 1024
+
+[profile.ci.invariant]
+runs = 512
+depth = 128
+fail_on_revert = false

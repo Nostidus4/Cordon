@@ -21,10 +21,11 @@ def create_app(settings: Settings | None = None, runtime: Runtime | None = None)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        rt = runtime or Runtime(settings)  # CHAIN_MODE=l1 raises NotImplementedError here
+        rt = runtime or Runtime(settings)  # CHAIN_MODE=l1: L1StartupError on bad config
         rt.bind_loop(asyncio.get_running_loop())
         app.state.runtime = rt
-        await demo_reset(rt)  # seed request #12 so the app starts at scene 1
+        await demo_reset(rt, startup=True)  # seed request #12 so the app starts at scene 1
+        rt.start_responder_ticker()
         try:
             yield
         finally:

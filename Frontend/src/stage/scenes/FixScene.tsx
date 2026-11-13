@@ -65,7 +65,7 @@ export function FixScene() {
 
   const approvedCount = approved.size;
   return (
-    <div className="absolute bottom-12 left-6">
+    <div className="absolute bottom-12 left-6" data-slot="scene-left">
       <ToyCard className="relative w-[min(540px,calc(100vw-48px))] px-6 pb-6 pt-5" label="Đề xuất gom thẻ">
         <Confetti burst={burst} />
         <Ribbon scene="fix">Cảnh 3 · Sửa</Ribbon>

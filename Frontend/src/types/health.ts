@@ -8,6 +8,8 @@ export interface Health {
   demoMode: boolean;
   chainMode: "sim" | "live";
   policyVersion: number;
+  /** See `GraphSnapshot.policyLabel`. */
+  policyLabel?: number;
   /** Seconds since the backend process started (additive; optional so older backends still type-check). */
   uptimeSec?: number;
 }

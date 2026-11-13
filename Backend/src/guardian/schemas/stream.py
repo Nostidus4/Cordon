@@ -2,11 +2,12 @@
 
 event          -> EventOut            (a chain event: Paid, Swapped, PrincipalLocked, ...)
 attempt        -> AttemptOut
-graph_updated  -> {graphVersion, policyVersion, block}
+graph_updated  -> {graphVersion, policyVersion, policyLabel, block}
 proposal_updated -> ProposalOut
 agent_run      -> AgentRunOut
 city_updated   -> CityStates
-reset          -> {at, policyVersion, graphVersion, block}
+incident_updated -> IncidentOut  (CITY_OPS §4.4)
+reset          -> {at, policyVersion, policyLabel, graphVersion, block}
 """
 
 from __future__ import annotations
@@ -21,4 +22,5 @@ SSE_EVENT_TYPES: Final = (
     "agent_run",
     "city_updated",
     "reset",
+    "incident_updated",
 )

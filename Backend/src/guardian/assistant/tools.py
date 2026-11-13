@@ -33,6 +33,7 @@ class AssistantTools:
         findings = self._rt.findings()
         return {
             "policyVersion": g["policyVersion"],
+            "policyLabel": g["policyLabel"],
             "districts": [
                 {
                     **d,

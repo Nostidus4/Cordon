@@ -11,6 +11,7 @@ import { ToyButton } from "../../../stage/ui";
 import type { ProposedChange, RuleId, SimResult } from "../../../types";
 import { REFERENCE, matchReference, presetsFrom } from "../sim.logic";
 import { ACCENT, Empty, JsonView, Section, Stat } from "../ui";
+import { policyLabel } from "../../../lib/policy";
 
 const RULES: { id: RuleId; short: string; name: string; cond: string; sev: "HIGH" | "MEDIUM"; fix: string }[] = [
   { id: "R1_MULTI_KEY_NO_SHARED_CAP", short: "R1", name: "Nhiều thẻ, không có trần chung", cond: "Một người điều khiển từ 2 thẻ ở các khu khác nhau, hoặc khu có từ 2 thẻ mà chưa có trần chung.", sev: "HIGH", fix: "Gom về một khu, trần chung = trần thẻ lớn nhất × 1,5." },
@@ -168,7 +169,7 @@ function Rules() {
 function Reference() {
   const { graph, run, data, change } = useRunnerCtx();
   const touched = (graph?.districts ?? []).some((d) => run.ids.includes(d.principalId) && (d.locked || BigInt(d.spentToday.raw) > 0n));
-  const ctx = { policyVersion: graph?.policyVersion ?? 0, compromised: run.ids, change, pristine: !touched };
+  const ctx = { policyVersion: policyLabel(graph) ?? 0, compromised: run.ids, change, pristine: !touched };
   const ms = REFERENCE.map((r) => matchReference(r, ctx, data));
   const any = ms.includes("match"), bad = ms.includes("mismatch");
   return (

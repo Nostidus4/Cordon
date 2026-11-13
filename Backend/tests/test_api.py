@@ -70,6 +70,9 @@ async def test_full_flow(client: httpx.AsyncClient) -> None:
     assert g["policyVersion"] == 2
     dist = next(x for x in g["districts"] if x["principalId"] == "minh")
     assert len(dist["keys"]) == 5 and disp(dist["dailyCap"]) == "30.000"
+    assert (
+        dist["label"] == "Anh Minh" and dist["kind"] == "HUMAN"
+    )  # Frontend District needs both (fence label)
 
     # --- scene 4: agent, attacker 1-5, lock, step 7
     a = await post(c, "/api/agent/run-once")
@@ -218,14 +221,15 @@ async def test_scenario_background_with_delay_and_running_guard(client: httpx.As
     assert cur["status"] == "waiting_lock" and len(cur["attempts"]) == 5
 
 
-async def test_l1_mode_not_implemented() -> None:
+async def test_l1_mode_without_deployments_fails_with_a_clear_message() -> None:
     import pytest
 
+    from guardian.chain.l1.startup import L1StartupError
     from guardian.core.config import Settings
     from guardian.services.runtime import Runtime
 
-    with pytest.raises(NotImplementedError, match="CHAIN_MODE=l1"):
-        Runtime(Settings(chain_mode="l1"))
+    with pytest.raises(L1StartupError, match="DEPLOYMENTS_FILE"):
+        Runtime(Settings(chain_mode="l1", deployments_file="/nonexistent/none.json"))
 
 
 async def test_sse_smoke(app: FastAPI, client: httpx.AsyncClient) -> None:

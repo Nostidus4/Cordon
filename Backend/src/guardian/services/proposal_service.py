@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from guardian.chain.errors import ChainRevert
@@ -11,6 +12,7 @@ from guardian.domain.snapshot import PolicySnapshot
 from guardian.graph import changes as chg
 from guardian.graph.findings import compute_findings
 from guardian.graph.risk_report import build_risk_report, risk_report_hash
+from guardian.graph.simulate import simulate_compromise
 from guardian.services import views
 from guardian.services.runtime import ProposalRec, Runtime
 
@@ -174,6 +176,63 @@ def propose(
     return proposal_out(rt, pid)
 
 
+def propose_calls(
+    rt: Runtime,
+    member: str,
+    title: str,
+    subject: str | None,
+    calls: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Propose raw symbolic Council calls (graph vocabulary, see `views.chain_calls`) that no `ProposedChange`
+    expresses, e.g. the responder's fix (`deactivateKey`, `unlockPrincipal`, `unpauseAll`, `setKeyDailyCap`).
+
+    The risk report is the compromise simulation of the subject district on the current state (before == after:
+    the fix restores a state, it does not change the exposure model). Returns the `ProposalOut` dict."""
+    snap = rt.snapshot()
+    require_member(snap, member)
+    sim = simulate_compromise(snap, [subject] if subject else [])
+    conflicted = sorted(set(conflicted_members(snap, subject)))
+    findings = compute_findings(snap)
+    report = {
+        "before": sim["totals"],
+        "after": sim["totals"],
+        "findingsBefore": findings,
+        "findingsAfter": findings,
+        "conflictOfInterest": bool(conflicted),
+        "conflictedMembers": conflicted,
+        "subjectPrincipal": subject,
+        "generatedAt": datetime.now(UTC).isoformat(timespec="seconds"),
+        "graphVersion": snap.policy_version,
+    }
+    h = risk_report_hash(report)
+    res = rt.chain.propose(member, title, subject, views.chain_calls(calls), h)
+    if res.proposal_id is None:
+        raise ChainRevert(res.error_raw or "reverted", res.reason_code)
+    pid = res.proposal_id
+    rt.stores.proposals[pid] = ProposalRec(
+        id=pid,
+        title=title,
+        subject_principal=subject,
+        change=None,
+        calls=calls,
+        description_vi=chg.describe_vi(calls, snap),
+        risk_report=report,
+        risk_report_hash=h,
+        proposer=member,
+        created_at=rt.now(),
+    )
+    rt.notify_state_changed((pid,), graph=False)
+    return proposal_out(rt, pid)
+
+
+def record_conflict(rt: Runtime, member: str, proposal_id: int) -> None:
+    """A conflicted approval was refused by the chain: remember it (B01 rule + responder trigger)."""
+    from guardian.services.runtime import ConflictRec
+
+    rt.stores.conflicts.append(ConflictRec(rt.now(), member, proposal_id))
+    rt.notify_state_changed(graph=False)
+
+
 def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
     snap = rt.snapshot()
     require_member(snap, member)
@@ -183,12 +242,9 @@ def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
     res = rt.chain.approve(member, proposal_id)
     if res.status != "ok":
         if res.error_raw == "ConflictOfInterest":
-            from guardian.services.runtime import ConflictRec
-
-            rt.stores.conflicts.append(ConflictRec(rt.now(), member, proposal_id))
-            rt.notify_state_changed(graph=False)
+            record_conflict(rt, member, proposal_id)
         raise ChainRevert(res.error_raw or "reverted", res.reason_code)
-    cp = rt.sim.council.proposals[proposal_id]
+    cp = rt.chain.proposal_state(proposal_id)
     if cp.executed and rec.executed_at is None:
         rec.executed_at = rt.now()
         rec.executed_tx_hash = res.tx_hash
@@ -198,7 +254,7 @@ def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
 
 def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
     rec = rt.stores.proposals[proposal_id]
-    cp = rt.sim.council.proposals[proposal_id]
+    cp = rt.chain.proposal_state(proposal_id)
     snap = rt.snapshot()
     by_addr = {m.address: m.id for m in snap.council}
     approved = sorted(by_addr[a] for a in cp.approved_by)

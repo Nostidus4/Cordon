@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { toast } from "../store/uiStore";
-import type { Attempt, CityStates, StreamListener, StreamMessage, StreamMessageType } from "../types";
+import type { Attempt, CityStates, Incident, StreamListener, StreamMessage, StreamMessageType } from "../types";
 import { qk } from "./queryKeys";
 
 /** Custom subscription; optionally filter by message type. */
@@ -38,11 +38,23 @@ export function useStreamBridge() {
         if (m.data.status === "executed") toast.success(`Đề xuất #${m.data.proposalId} đã thực thi`, "Bản đồ được vẽ lại theo chính sách mới.", { label: "Xem trên Map", onClick: () => navRef.current("/map") });
         break;
       case "agent_run":
-        qc.invalidateQueries({ queryKey: qk.health }); qc.invalidateQueries({ queryKey: qk.org });
+        qc.invalidateQueries({ queryKey: qk.health }); qc.invalidateQueries({ queryKey: qk.org }); qc.invalidateQueries({ queryKey: qk.agentRuns });
         break;
       case "city_updated":
         qc.setQueryData<CityStates>(qk.city, m.data);
+        qc.invalidateQueries({ queryKey: ["building"] });
         break;
+      case "incident_updated": {
+        const inc: Incident = m.data;
+        for (const status of ["open", "all"] as const) {
+          qc.setQueryData<Incident[]>(qk.incidents(status), (old) => {
+            const rest = (old ?? []).filter((x) => x.id !== inc.id);
+            return status === "open" && inc.status === "resolved" ? rest : [inc, ...rest].sort((a, b) => b.id - a.id);
+          });
+        }
+        qc.invalidateQueries({ queryKey: ["building"] });
+        break;
+      }
       case "reset":
         qc.invalidateQueries();
         break;

@@ -21,6 +21,7 @@ import { useDevAutoplay } from "./devAutoplay";
 import { deriveView } from "./incidentView";
 import { leftStateAtStep, leftStepFromAttempts } from "./leftSimulation";
 import { pickReplayRun, useReplayPlayer } from "./replay";
+import { policyLabel } from "../../lib/policy";
 
 export default function IncidentPage() {
   useDevAutoplay();
@@ -57,7 +58,7 @@ export default function IncidentPage() {
   const attempts = replay ? player.attempts : liveAttempts;
   const view = useMemo(() => deriveView(attempts, replay ? false : !!district?.locked), [attempts, replay, district?.locked]);
   const left = useMemo(() => leftStateAtStep(leftStepFromAttempts(view.attempts)), [view.attempts]);
-  const policyActive = (health?.policyVersion ?? 1) >= 2;
+  const policyActive = (policyLabel(health) ?? 1) >= 2;
   useEffect(() => { if (view.attackDone || attempts.length === 0) setAttacking(false); }, [view.attackDone, attempts.length]);
 
   const done = { agent: view.maxStep >= 0 || !!agentRun, attack: view.attackDone, lock: view.locked, step7: !!view.step7 };

@@ -98,3 +98,11 @@ class PolicySnapshot:
     recipients: list[Recipient]
     protocols: list[Protocol]
     tokens: list[Token]
+    # vault.policyVersion() of the freshly seeded set (deployments file `policyBaseline`). Every executed
+    # proposal bumps the contract's counter, so a real deployment starts above 1; the label hides that.
+    policy_baseline: int = 1
+
+    @property
+    def policy_label(self) -> int:
+        """The version people see: v1 at the start of scene 1, v2 after the merge proposal."""
+        return self.policy_version - self.policy_baseline + 1

@@ -6,6 +6,8 @@ import { Skeleton, Tooltip, cn } from "../../components/ui";
 import { useEvents } from "../../hooks/useEvents";
 import { useOrg } from "../../hooks/useOrg";
 import { fmtTime, shortHash } from "../../lib/format";
+import { useHealth } from "../../hooks/useHealth";
+import { policyLabel } from "../../lib/policy";
 import { buildHistory, type HistoryItem, type HistoryKind } from "./councilHistory";
 
 const LOOK: Record<HistoryKind, { icon: typeof Lock; ring: string; chip: string }> = {
@@ -40,7 +42,9 @@ function Item({ it, last }: { it: HistoryItem; last: boolean }) {
 export function ActionHistory() {
   const { data: events, isLoading } = useEvents();
   const { data: org } = useOrg();
-  const items = useMemo(() => buildHistory(events ?? [], org?.council.members ?? []), [events, org]);
+  const { data: health } = useHealth();
+  const offset = health ? health.policyVersion - (policyLabel(health) ?? health.policyVersion) : 0;
+  const items = useMemo(() => buildHistory(events ?? [], org?.council.members ?? [], offset), [events, org, offset]);
   return (
     <section aria-labelledby="hist-title" className="glass flex min-h-0 flex-1 flex-col rounded-[var(--radius-lg)] p-4" data-tour="council-history">
       <div className="mb-3 flex items-center justify-between">

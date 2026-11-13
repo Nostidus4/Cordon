@@ -39,6 +39,23 @@ class TxResult:
         return self.status == "ok"
 
 
+@dataclass
+class ProposalState:
+    """Council proposal as read back from the chain (sim and L1 give the same shape)."""
+
+    id: int
+    proposer: str
+    subject_principal: str | None
+    approvals: int
+    approved_by: list[str]  # member addresses
+    executed: bool = False
+    cancelled: bool = False
+
+    @property
+    def status(self) -> Literal["open", "executed", "cancelled"]:
+        return "executed" if self.executed else "cancelled" if self.cancelled else "open"
+
+
 class ChainPort(Protocol):
     """Chain boundary. Contract (API-001): signer/member/key/to are hex addresses only.
 
@@ -101,16 +118,24 @@ class ChainPort(Protocol):
     def cancel(self, member: str, proposal_id: int) -> TxResult: ...
 
     # --- read / stream ---
+    @property
+    def vault_addr(self) -> str: ...
+
+    def balance(self, holder: str, token: str) -> int: ...
+    def proposal_state(self, proposal_id: int) -> ProposalState:
+        """Raises KeyError for an id that was never proposed."""
+        ...
+
     def snapshot(self) -> PolicySnapshot: ...
     def events_since(self, block: int) -> list[ChainEvent]: ...
     def subscribe(self, callback: Callable[[ChainEvent], None]) -> Callable[[], None]: ...
 
 
 class DemoControls(Protocol):
-    """Sim-only extras that app code uses (never part of an L1 adapter)."""
+    """Sim-only extra that app code calls (`demo_reset`, guarded by `not rt.is_l1`; L1 reloads a fresh
+    deployment instead). `balance` is already on ChainPort and implemented by both."""
 
     def reset(self) -> None: ...
-    def balance(self, holder: str, token: str) -> int: ...
 
 
 class DemoChain(ChainPort, DemoControls, Protocol):
