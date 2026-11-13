@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     llm_enabled: bool | None = None
     llm_model: str = "claude-opus-5-5"
     llm_timeout_seconds: float = 8.0  # hard budget for ALL LLM calls of one request
+    # the agent reason is written on the event loop (it sits between chain writes), so it gets a short budget:
+    # past it the template sentence is used and the SSE stream is never held for long
+    llm_reason_timeout_seconds: float = 3.0
     llm_max_tool_calls: int = 4
     anthropic_api_key: SecretStr | None = None  # also read from the process env by the SDK
 

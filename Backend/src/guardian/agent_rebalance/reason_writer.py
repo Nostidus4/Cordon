@@ -95,7 +95,7 @@ def _llm_reason(rt: Any, d: Decision, untrusted_input: str | None) -> str:
     prompt = decision_block(d)
     if untrusted_input:  # F06: foreign text reaches the prompt, but only as data
         prompt += "\n" + untrusted_block("agent_input", untrusted_input)
-    turn = open_session(rt).complete(
+    turn = open_session(rt, rt.settings.llm_reason_timeout_seconds).complete(
         system=REASON_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
         schema=REASON_SCHEMA,

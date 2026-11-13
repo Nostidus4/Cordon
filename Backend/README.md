@@ -35,6 +35,7 @@ Mặc định không gọi LLM: câu cố định và lý do của agent dùng m
 | `LLM_ENABLED` | `true`/`false`. Bỏ trống = bật khi có khóa, tắt khi không có. |
 | `LLM_MODEL` | Mặc định `claude-opus-5-5`. |
 | `LLM_TIMEOUT_SECONDS` | Ngân sách cứng cho mọi lần gọi của một request, mặc định `8`. |
+| `LLM_REASON_TIMEOUT_SECONDS` | Ngân sách cho câu lý do của agent cân đối, mặc định `3` (chạy giữa các lần ghi chain nên phải ngắn; quá hạn thì dùng câu mẫu). |
 | `LLM_MAX_TOOL_CALLS` | Số lần gọi tool tối đa mỗi câu hỏi, mặc định `4`. |
 
 - Bật LLM thì `POST /api/assistant/ask` nhận câu tự do: mọi số trong câu trả lời phải qua `verifier.verify`, nếu không trả câu mặc định với `numbersVerified=false`. Lỗi, timeout, từ chối đều rơi về mẫu. Tắt LLM thì câu ngoài danh sách cố định vẫn trả 422.

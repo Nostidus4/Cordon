@@ -176,3 +176,17 @@ async def test_f02_goes_through_the_real_llm_path_when_enabled() -> None:
     assert len(fake.requests) == 1  # a real assistant call, nothing forced
     assert logs[-1]["numbersVerified"] is False and "999.999" not in logs[-1]["answer"]
     assert b02["state"] == "warning"
+
+
+def test_reason_has_its_own_short_budget() -> None:
+    """The reason is written on the event loop between chain writes: a slow provider is cut at
+    LLM_REASON_TIMEOUT_SECONDS (not the 8 s assistant budget) and the template is used."""
+    import time
+
+    from guardian.core.config import Settings
+
+    rt = _Rt(ScriptedLlm(reason_turn(GOOD), delay=2.0))
+    rt.settings = Settings(_env_file=None, llm_enabled=True, llm_reason_timeout_seconds=0.3)  # type: ignore[call-arg]
+    t = time.monotonic()
+    assert write_reason(D5, rt) == (template_reason(D5), "template")
+    assert time.monotonic() - t < 1.5

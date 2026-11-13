@@ -155,9 +155,13 @@ class LlmSession:
 
     _pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="llm")
 
-    def __init__(self, client: LlmClient, settings: Settings) -> None:
+    def __init__(
+        self, client: LlmClient, settings: Settings, budget_s: float | None = None
+    ) -> None:
         self._client = client
-        self._deadline = time.monotonic() + settings.llm_timeout_seconds
+        self._deadline = time.monotonic() + (
+            settings.llm_timeout_seconds if budget_s is None else budget_s
+        )
         self.max_tool_calls = settings.llm_max_tool_calls
 
     def complete(
@@ -197,7 +201,7 @@ class LlmSession:
             raise LlmUnavailable(f"adapter error {type(e).__name__}") from e
 
 
-def open_session(rt: Any) -> LlmSession:
+def open_session(rt: Any, budget_s: float | None = None) -> LlmSession:
     """A session on the runtime's LLM client, or `LlmUnavailable` when the LLM is off (callers use templates)."""
     settings: Settings = rt.settings
     if not llm_enabled(settings):
@@ -209,4 +213,4 @@ def open_session(rt: Any) -> LlmSession:
         except Exception as e:
             raise LlmUnavailable(f"client init {type(e).__name__}") from e
         rt.llm_client = client
-    return LlmSession(client, settings)
+    return LlmSession(client, settings, budget_s)

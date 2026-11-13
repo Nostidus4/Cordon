@@ -230,3 +230,22 @@ async def test_fixed_questions_10_runs_each_pass_number_check() -> None:
                 assert all(
                     t in {n["value"] for n in a["numbers"]} for t in NUMBER_RE.findall(a["answer"])
                 )
+
+
+async def test_free_text_does_not_block_the_event_loop() -> None:
+    """While the assistant waits on a slow LLM, other requests (and so the SSE stream) are still served."""
+    import asyncio
+    import time
+
+    fake = ScriptedLlm(final_turn("Không rõ."), delay=1.5)
+    async with llm_app(fake) as (_, _rt, c):
+        ask = asyncio.create_task(
+            c.post("/api/assistant/ask", json={"question": "Kho còn bao nhiêu?"})
+        )
+        # the clock starts before yielding: if the ask blocked the loop, this sleep itself would end ~1.5 s later
+        t = time.monotonic()
+        await asyncio.sleep(0.2)
+        health = await c.get("/api/health")
+        assert health.status_code == 200 and time.monotonic() - t < 1.0
+        assert not ask.done()  # health was served while the LLM call was still pending
+        assert (await ask).status_code == 200

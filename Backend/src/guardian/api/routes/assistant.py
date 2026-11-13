@@ -1,6 +1,7 @@
 """POST /api/assistant/ask: fixed questions from templates; free text only through the verified LLM path."""
 
 from fastapi import APIRouter, Query
+from starlette.concurrency import run_in_threadpool
 
 from guardian.api.deps import RuntimeDep
 from guardian.assistant import service
@@ -12,7 +13,9 @@ router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 @router.post("/ask", response_model=AssistantAnswer)
 async def ask(body: AskRequest, rt: RuntimeDep):  # type: ignore[no-untyped-def]
     ctx = body.context.model_dump() if body.context else None
-    return service.ask(rt, body.question, ctx)
+    # off the event loop: a free-text answer can wait on the LLM for up to LLM_TIMEOUT_SECONDS, and this path only reads
+    # chain state and appends a log row, so it is safe beside the loop (SSE keeps flowing meanwhile)
+    return await run_in_threadpool(service.ask, rt, body.question, ctx)
 
 
 @router.get("/logs", response_model=list[AssistantLogOut])
