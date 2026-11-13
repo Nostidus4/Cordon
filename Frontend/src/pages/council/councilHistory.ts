@@ -1,5 +1,5 @@
 // Council history built from indexed chain events (spec §10.6): emergency lock / pause (siết, 1 người), proposals executed (nới, 2/3).
-import { eventKey, isoOfSec } from "../../lib/dto";
+import { eventKey, isoOfSec, memberOf } from "../../lib/dto";
 import type { ChainEvent, CouncilMember } from "../../types";
 
 export type HistoryKind = "tighten" | "loosen" | "propose" | "vote";
@@ -14,7 +14,7 @@ const SUBJECT: Record<string, string> = { minh: "anh Minh", huy: "anh Huy", lan:
 
 /** `baselineOffset` = raw policy counter minus the label shown (health.policyVersion - policyLabel(health)); 0 in mock mode. */
 export function buildHistory(events: ChainEvent[], members: CouncilMember[], baselineOffset = 0): HistoryItem[] {
-  const who = (id: unknown) => members.find((m) => m.id === id)?.label ?? str(id);
+  const who = (v: unknown) => memberOf(members, v)?.label ?? str(v);
   const emergencyTx = new Set(events.filter((e) => e.name === "EmergencyAction").map((e) => e.txHash));
   const titles = new Map<number, string>();
   const votes = new Map<number, number>();
@@ -38,18 +38,18 @@ export function buildHistory(events: ChainEvent[], members: CouncilMember[], bas
         if (!emergencyTx.has(e.txHash)) out.push({ ...base, kind: "tighten", rule: "siết · 1 người", title: `${who(p.by)} khoá khu ${SUBJECT[str(p.principalId)] ?? str(p.principalId)}` });
         break;
       case "Proposed": {
-        const id = Number(p.proposalId); titles.set(id, str(p.title));
+        const id = Number(p.id); titles.set(id, str(p.title));
         out.push({ ...base, kind: "propose", rule: "đề xuất", title: `${who(p.proposer)} đề xuất #${id}`, detail: str(p.title) });
         break;
       }
       case "Approved": {
-        const id = Number(p.proposalId); votes.set(id, (votes.get(id) ?? 0) + 1);
+        const id = Number(p.id); votes.set(id, (votes.get(id) ?? 0) + 1);
         out.push({ ...base, kind: "vote", rule: `phiếu ${votes.get(id)}/2`, title: `${who(p.member)} duyệt #${id}`, detail: titles.get(id) });
         break;
       }
       case "PolicyVersionBumped": policy = Number(p.version) - baselineOffset; break;
       case "Executed": {
-        const id = Number(p.proposalId);
+        const id = Number(p.id);
         out.push({ ...base, kind: "loosen", rule: "nới · 2/3", title: `Đề xuất #${id} được thực thi`, detail: titles.get(id), policyVersion: policy });
         break;
       }

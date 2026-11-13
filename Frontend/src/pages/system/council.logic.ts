@@ -1,5 +1,5 @@
 // Pure helpers of the Council section (spec §6.5): symbolic calls, approval maths, conflict-of-interest reasons, emergency log.
-import { eventKey, isoOfSec } from "../../lib/dto";
+import { eventKey, isoOfSec, memberOf } from "../../lib/dto";
 import type { Call, ChainEvent, CouncilMember, Proposal } from "../../types";
 
 /** `PolicyVault.setPrincipalDailyCap(minh, 30000000000)`: raw argument values, positional, exactly what the chain would receive. */
@@ -36,11 +36,11 @@ export function emergencyLabel(action: string, subject: string | null): string {
   }
 }
 /** `EmergencyAction` events (siết: one member is enough), newest first. */
-export function emergencyActions(events: ChainEvent[]): EmergencyEntry[] {
+export function emergencyActions(events: ChainEvent[], members: CouncilMember[] = []): EmergencyEntry[] {
   return events.filter((e) => e.name === "EmergencyAction")
     .map((e) => {
       const action = str(e.payload.action) ?? "?", subject = str(e.payload.subject);
-      return { id: eventKey(e), at: isoOfSec(e.ts), member: str(e.payload.member) ?? "?", action, subject, label: emergencyLabel(action, subject), txHash: e.txHash, simulated: e.simulated };
+      return { id: eventKey(e), at: isoOfSec(e.ts), member: memberOf(members, e.payload.member)?.id ?? str(e.payload.member) ?? "?", action, subject, label: emergencyLabel(action, subject), txHash: e.txHash, simulated: e.simulated };
     })
     .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 }

@@ -27,10 +27,10 @@ export const contractOf = (name: string): ContractId => OF[name] ?? "other";
 const FIELDS: Record<string, string[]> = {
   Paid: ["key", "principalId", "to", "amount", "keySpentAfter", "principalSpentAfter"],
   Swapped: ["key", "principalId", "dex", "amount", "keySpentAfter", "principalSpentAfter"],
-  PrincipalLocked: ["principalId", "by", "keysRemoved"], PrincipalUnlocked: ["principalId"], Paused: ["by"], Unpaused: [],
+  PrincipalLocked: ["principalId", "by"], PrincipalUnlocked: ["principalId"], Paused: ["by"], Unpaused: [],
   CapChanged: ["kind", "subject", "oldCap", "newCap"], AllowChanged: ["kind", "subject", "selector", "allowed"], PolicyVersionBumped: ["version"],
   PrincipalCreated: ["id", "label"], KeyAdded: ["id", "key", "kind"], KeyMoved: ["key", "fromId", "toId"], KeyDeactivated: ["key"],
-  Proposed: ["proposalId", "proposer", "subjectPrincipal"], Approved: ["proposalId", "member"], Executed: ["proposalId"], Cancelled: ["proposalId"],
+  Proposed: ["id", "proposer", "subjectPrincipal", "title"], Approved: ["id", "member"], Executed: ["id"], Cancelled: ["id"],
   EmergencyAction: ["member", "action", "subject"], AllowListRoleSet: ["key", "role", "by"],
 };
 

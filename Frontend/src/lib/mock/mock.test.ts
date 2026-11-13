@@ -83,7 +83,7 @@ describe("scene 4 (spec §4.3 table)", () => {
     const d = await mockApi.getDistrict("minh");
     expect(d.locked).toBe(true);
     expect(d.keys.every((k) => !k.active)).toBe(true);
-    const s7 = await mockApi.runScene4Step7();
+    const s7 = (await mockApi.runScene4Step7()).attempts.find((x) => x.step === 7)!;
     expect(s7.outcome).toBe("blocked_at_protocol");
     expect(s7.txHash).toBeNull();
     expect(s7.reasonCode).toBe("BLOCKED_AT_PROTOCOL");

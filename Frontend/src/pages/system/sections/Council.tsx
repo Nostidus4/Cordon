@@ -66,7 +66,7 @@ function Voters({ p, members }: { p: Proposal; members: CouncilMember[] }) {
 }
 
 function ProposalCard({ p, members, events }: { p: Proposal; members: CouncilMember[]; events: ChainEvent[] }) {
-  const executedEv = events.find((e) => e.name === "Executed" && e.payload.proposalId === p.id);
+  const executedEv = events.find((e) => e.name === "Executed" && e.payload.id === p.id);
   const proposer = members.find((m) => m.id === p.proposer)?.label ?? p.proposer;
   return (
     <article style={{ ...card, borderTop: `6px solid ${p.status === "executed" ? "#22c55e" : ACCENT.council}` }}>
@@ -103,7 +103,7 @@ function ProposalCard({ p, members, events }: { p: Proposal; members: CouncilMem
 }
 
 function EmergencyLog({ events, members }: { events: ChainEvent[]; members: CouncilMember[] }) {
-  const list = emergencyActions(events);
+  const list = emergencyActions(events, members);
   return (
     <div className="mt-5">
       <div style={label}>Hành động khẩn của Hội đồng</div>

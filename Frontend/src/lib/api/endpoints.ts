@@ -30,7 +30,7 @@ export interface Api {
   askAssistant(req: AskRequest): Promise<AssistantAnswer>;
   runAgentOnce(): Promise<AgentRun>;
   runScene4(): Promise<ScenarioRun>;
-  runScene4Step7(): Promise<Attempt>;
+  runScene4Step7(): Promise<ScenarioRun>;
   applyPolicyV2(): Promise<ActionResult>;
   resetDemo(): Promise<ActionResult>;
   getCityStates(): Promise<CityStates>;

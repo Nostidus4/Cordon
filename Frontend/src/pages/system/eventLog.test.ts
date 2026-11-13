@@ -16,8 +16,8 @@ describe("eventLog", () => {
     expect(contractOf("Weird")).toBe("other");
   });
   it("summarises payload with Money display and counts arrays", () => {
-    const e = ev("1", "PrincipalLocked", 5, { principalId: "p1", by: "lan", keysRemoved: ["a", "b", "c", "d"] });
-    expect(summarize(e)).toEqual([["principalId", "p1"], ["by", "lan"], ["keysRemoved", "4 mục"]]);
+    const e = ev("1", "PrincipalLocked", 5, { principalId: "p1", by: "lan" });
+    expect(summarize(e)).toEqual([["principalId", "p1"], ["by", "lan"]]);
     const p = ev("2", "Paid", 6, { key: "key_x", amount: { raw: "1", display: "30.000" }, principalSpentAfter: { raw: "2", display: "5.000" } });
     expect(summarize(p).map(([k, v]) => `${k}=${v}`)).toEqual(["key=key_x", "amount=30.000", "principalSpentAfter=5.000"]);
   });

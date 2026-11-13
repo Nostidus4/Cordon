@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { approvalSummary, callSymbol, conflictCheck, emergencyActions } from "./council.logic";
-import type { ChainEvent } from "../../types";
+import type { ChainEvent, CouncilMember } from "../../types";
 
 describe("callSymbol", () => {
   it("renders raw positional args", () => {
@@ -40,5 +40,10 @@ describe("emergencyActions", () => {
     ]);
     expect(r.map((x) => x.id)).toEqual(["0xc:0", "0xa:0"]);
     expect(r.map((x) => x.label)).toEqual(["Dừng cả kho", "Khoá khu minh"]);
+  });
+  it("maps the live member address (API_CONTRACT §2) to the member id", () => {
+    const members: CouncilMember[] = [{ id: "lan", label: "Chị Lan", address: "0xB3A84cD8AA6FAF7F24C3BE62E4c2A8bbec0438F4", principalId: "lan" }];
+    const r = emergencyActions([ev("a", 1, "EmergencyAction", { member: "0xb3a84cd8aa6faf7f24c3be62e4c2a8bbec0438f4", action: "lockPrincipal", subject: "minh" })], members);
+    expect(r[0].member).toBe("lan");
   });
 });

@@ -4,6 +4,9 @@ import type { Attempt, ChainEvent } from "../types";
 /** Stable key of an indexed event (the backend has no event id). */
 export const eventKey = (e: Pick<ChainEvent, "txHash" | "logIndex">): string => `${e.txHash}:${e.logIndex}`;
 
+/** Council member for an event payload value: live events carry the member's address, the mock/tests may carry the id. */
+export const memberOf = <M extends { id: string; address: string }>(members: readonly M[], v: unknown): M | undefined =>
+  typeof v === "string" ? members.find((m) => m.id === v || m.address.toLowerCase() === v.toLowerCase()) : undefined;
 export const isoOfSec = (sec: number): string => new Date(sec * 1000).toISOString();
 
 /** Scene-4 step of an attempt. The agent's morning swap (run-once) is the backend's `step: null, source: "agent"` row = step 0. */

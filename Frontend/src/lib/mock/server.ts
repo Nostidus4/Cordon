@@ -66,6 +66,7 @@ function graphUpdated() {
   emit({ type: "graph_updated", data: { version: S.graphVersion, policyVersion: S.policyVersion, block: currentBlock() } });
 }
 const COUNCIL_ADDRESS = fakeAddress("guardian_council");
+const addrOf = (m: MemberId): string => S.members.find((x) => x.id === m)?.address ?? m;
 function pushEvent(name: string, payload: Record<string, unknown>, txHash?: string): ChainEvent {
   const e: ChainEvent = { block: currentBlock(), txHash: txHash ?? fakeTxHash(`ev${counter}`), simulated: true, logIndex: 0, name, payload, ts: nowSec() };
   events.push(e); emit({ type: "event", data: e });
@@ -246,7 +247,7 @@ function addProposal(change: ProposedChange, proposer: MemberId, id?: number, fi
   const p = toProposal(d, id ?? nextProposalId(), proposer);
   if (title) p.title = title;
   S.proposals.push(p);
-  pushEvent("Proposed", { proposalId: p.id, proposer, title: p.title, subjectPrincipal: p.subjectPrincipal });
+  pushEvent("Proposed", { id: p.id, proposer: addrOf(proposer), subjectPrincipal: p.subjectPrincipal, title: p.title, riskReportHash: p.riskReportHash });
   emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: 0 } });
   emitCity();
   return p;
@@ -271,7 +272,7 @@ function executeProposal(p: Proposal) {
     if (c.fn === "createPrincipal") pushEvent("PrincipalCreated", { id: a.principalId });
   }
   pushEvent("PolicyVersionBumped", { version: S.policyVersion });
-  pushEvent("Executed", { proposalId: p.id });
+  pushEvent("Executed", { id: p.id });
   emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
   graphUpdated();
   if (firstConsolidate && !S.requestsSeeded) seedRequests();
@@ -286,7 +287,7 @@ function approve(id: number, member: MemberId): Proposal {
     throw new ApiError("CONFLICT_OF_INTEREST", `Xung đột lợi ích: ${S.members.find((m) => m.id === member)!.label} là chủ khu bị ảnh hưởng, không được duyệt.`, 403);
   if (p.approvals.includes(member)) throw new ApiError("ALREADY_APPROVED", "Đã duyệt rồi");
   p.approvals.push(member);
-  pushEvent("Approved", { proposalId: id, member });
+  pushEvent("Approved", { id, member: addrOf(member) });
   if (p.approvals.length >= p.threshold) executeProposal(p);
   else emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
   emitCity();
@@ -533,7 +534,7 @@ function startIncident(plan: IncidentPlan): Incident {
       proposalIncident.set(p.id, i.id);
       incidentRecovery.set(i.id, { proposalId: p.id, recover: plan.proposal.recover });
       i.proposalId = p.id;
-      pushEvent("Proposed", { proposalId: p.id, proposer: "lan", title: p.title, subjectPrincipal: p.subjectPrincipal });
+      pushEvent("Proposed", { id: p.id, proposer: addrOf("lan"), subjectPrincipal: p.subjectPrincipal, title: p.title, riskReportHash: p.riskReportHash });
       emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: 0 } });
       patchStep(i, "propose", "active", `Đề xuất #${p.id}: ${plan.proposal.detailVi}`, null);
       setStatus(i, "awaiting_council");
@@ -549,7 +550,7 @@ function executeIncidentProposal(p: Proposal) {
   const i = incidents.find((x) => x.id === iid)!;
   incidentRecovery.get(iid)?.recover();
   p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = fakeTxHash(`exec${p.id}`);
-  pushEvent("Executed", { proposalId: p.id });
+  pushEvent("Executed", { id: p.id });
   emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
   graphUpdated();
   patchStep(i, "propose", "done", `Hội đồng đã duyệt đề xuất #${p.id}`);
@@ -714,9 +715,9 @@ function lockPrincipal(req: LockRequest): ActionResult {
     p.locked = true; for (const k of keysOf(S, p.id)) k.active = false;
     S.graphVersion++;
     const tx = fakeTxHash(`lock${++counter}`);
-    pushEvent("PrincipalLocked", { principalId: p.id, by: req.member, keysRemoved: keysOf(S, p.id).map((k) => k.id) }, tx);
+    pushEvent("PrincipalLocked", { principalId: p.id, by: addrOf(req.member) }, tx);
     for (const k of keysOf(S, p.id)) pushEvent("AllowListRoleSet", { key: k.address, role: 0, by: COUNCIL_ADDRESS }, tx);
-    pushEvent("EmergencyAction", { member: req.member, action: "lockPrincipal", subject: p.id }, tx);
+    pushEvent("EmergencyAction", { member: addrOf(req.member), action: "lockPrincipal", subject: p.id }, tx);
     if (currentRunId) {
       const at: Attempt = { id: nextSeq(), scenarioRunId: currentRunId, step: 6, ts: nowSec(), displayTime: "14:04", signer: req.member, signerLabel: signerLabel(req.member), principalId: p.id,
         action: "lock", outcome: "ok", reasonCode: null, reasonTextVi: null, reasonTextEn: null, txHash: tx, simulated: true, errorRaw: null, block: currentBlock(), token: null, to: null, toLabel: null, amount: null,
@@ -775,17 +776,18 @@ export const mockApi = {
     await lat(); memberOf(req.member);
     if (S.paused) throw new ApiError("ALREADY_PAUSED", "Kho đã dừng", 409);
     S.paused = true; const tx = fakeTxHash(`pause${++counter}`);
-    pushEvent("EmergencyAction", { member: req.member, action: "pauseAll" }, tx); pushEvent("Paused", { by: req.member }, tx);
+    pushEvent("EmergencyAction", { member: addrOf(req.member), action: "pauseAll" }, tx); pushEvent("Paused", { by: addrOf(req.member) }, tx);
     graphUpdated(); emitCity(); return ok(tx, req.member);
   },
   async askAssistant(req: AskRequest): Promise<AssistantAnswer> { await sleep(mockConfig.latencyMs > 0 ? 600 : 0); return logAssistant(req.question, answerFor(req), req.context?.screen); },
   async runAgentOnce(): Promise<AgentRun> { await lat(); return agentRunOnceSync(); },
   async runScene4(): Promise<ScenarioRun> { await lat(); return runScene4(); },
-  async runScene4Step7(): Promise<Attempt> {
+  async runScene4Step7(): Promise<ScenarioRun> {
     await lat();
-    ensureRun();
+    const id = ensureRun();
     const st = SCENE4_STEPS[7];
-    return recordAttempt(7, { signer: st.signer, kind: "approve", token: st.token }, st.label, st.time);
+    recordAttempt(7, { signer: st.signer, kind: "approve", token: st.token }, st.label, st.time);
+    return structuredClone(runs.find((r) => r.id === id)!);
   },
   async applyPolicyV2(): Promise<ActionResult> {
     await lat();
