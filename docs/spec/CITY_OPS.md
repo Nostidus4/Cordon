@@ -8,20 +8,38 @@ Mục tiêu: người xem kỹ thuật bấm vào một tòa là biết tòa đ�
 
 Nguồn chung: `Backend/src/guardian/shared/buildings.py` ↔ `Frontend/src/shared/buildings.ts` (đồng bộ hai phía như `reason_codes`).
 
-| Mã | Tên (UI) | Module thật | Đề UniHack | Luật đổi màu (đợt 1, giữ nguyên luật hiện có của `city_state.py`) |
-|---|---|---|---|---|
-| B01 | Hội đồng duyệt | `GuardianCouncil` (multisig 2/3), `proposal_service` | #12 (đổi luật), #21 (multisig) | incident: vừa có lần duyệt bị chặn vì xung đột lợi ích · recovery: đề xuất vừa thực thi · warning: có đề xuất chờ duyệt |
-| B02 | Trợ lý AI | `assistant/` (read tools + `verifier`) | #13 DeFi Copilot | warning: câu trả lời gần nhất có số liệu chưa kiểm chứng (`numbersVerified=false`) |
-| B03 | Kho tiền có luật | `PolicyVault` (hạn mức, whitelist, dừng khẩn cấp) | #12 PolicyModule | incident: kho đang dừng · warning: giao dịch bị luật kho chặn gần đây |
-| B04 | Cổng chi trả | `vault.pay` / `vault.swap` (attempts) | #21 (đợt 2: quỹ lương) | theo lần thử pay/swap không ok gần nhất |
-| B05 | Trạm soi giao dịch | Tx AllowList precompile + chặn ở tầng giao thức | #14 Tx Guardian (đợt 2: soi trước khi ký) | incident: lệnh bị chặn `DISTRICT_LOCKED` / `BLOCKED_AT_PROTOCOL` gần đây |
-| B06 | Agent cân đối | `agent_rebalance/` (rule engine + LLM chỉ viết lý do) | #12 agent | warning: lần chạy gần nhất bị chặn / revert |
-| B07 | Sổ kiểm toán | `graph/findings` (cờ rủi ro), audit log | #12 bonus (bảng vi phạm) | warning: còn cờ HIGH đang mở |
-| B08 | Trung tâm sự cố | `responder` (mục 4) | — | trạng thái xấu nhất của 7 tòa kia |
+| Mã | Tên (UI) | Module thật | Đề UniHack |
+|---|---|---|---|
+| B01 | Hội đồng duyệt | `GuardianCouncil` (multisig 2/3), `proposal_service` | #12 (đổi luật), #21 (multisig) |
+| B02 | Trợ lý AI | `assistant/` (read tools + `verifier`) | #13 DeFi Copilot |
+| B03 | Kho tiền có luật | `PolicyVault` (hạn mức, whitelist, dừng khẩn cấp) | #12 PolicyModule |
+| B04 | Cổng chi trả | `vault.pay` / `vault.swap` (attempts) | #21 (đợt 2: quỹ lương) |
+| B05 | Trạm soi giao dịch | Tx AllowList precompile + khoá khu | #14 Tx Guardian (đợt 2: soi trước khi ký) |
+| B06 | Agent cân đối | `agent_rebalance/` (rule engine + LLM chỉ viết lý do) | #12 agent |
+| B07 | Sổ kiểm toán | `graph/findings` (cờ rủi ro), audit log | #12 bonus (bảng vi phạm) |
+| B08 | Trung tâm sự cố | `responder` (mục 4) | — |
 
-Thêm luật mới (mục 4.4): tòa có **sự cố đang mở** thì ít nhất `incident` khi đang khoanh vùng / chờ duyệt, `recovery` khi đang hồi phục.
+Luật đổi màu giữ nguyên luật hiện có trong docstring của `services/city_state.py` (thứ tự ưu tiên, luật đầu tiên khớp thắng). Id luật ổn định, dùng chung hai phía:
 
-`shared/buildings` cho mỗi tòa: `id, name, module, topic, summaryVi, rules[]` với `rule = {id, state, whenVi}` (`whenVi`: câu mô tả điều kiện, ví dụ "Có đề xuất chờ duyệt"). `rules[].id` là chuỗi ổn định, dạng `B01.conflict`, `B01.executed`, `B01.pending`, …
+| Id | Trạng thái | Điều kiện (`whenVi` gợi ý) |
+|---|---|---|
+| `<Bxx>.incident_open` | incident | Có sự cố đang mở ở tòa này, đang khoanh vùng hoặc chờ Hội đồng (mục 4; **ưu tiên cao nhất**, mọi tòa B01–B07) |
+| `<Bxx>.incident_recovering` | recovery | Sự cố của tòa đang hồi phục (mục 4) |
+| `B01.conflict` | incident | Vừa có lần duyệt bị chặn vì xung đột lợi ích |
+| `B01.executed` | recovery | Một đề xuất vừa được thực thi |
+| `B01.pending` | warning | Có đề xuất chờ Hội đồng duyệt |
+| `B02.unverified` | warning | Câu trả lời gần nhất có số liệu chưa kiểm chứng |
+| `B03.paused` | incident | Cả kho đang dừng |
+| `B03.near_cap` | warning | Một khu đã dùng ≥ 80% hạn mức chung hôm nay |
+| `B04.blocked_open` | incident | Giao dịch vừa bị chặn, khu chưa được khoá |
+| `B04.blocked_locked` | recovery | Giao dịch vừa bị chặn, khu đã được khoá |
+| `B05.shield` | incident | Chain vừa từ chối giao dịch của khu bị khoá / thẻ bị gạch |
+| `B05.locked` | recovery | Có khu đang bị khoá |
+| `B06.blocked` | warning | Lần chạy gần nhất của agent bị chặn / revert |
+| `B07.high` | warning | Còn cờ rủi ro mức cao đang mở |
+| `B08.worst` | (xấu nhất) | Trạng thái xấu nhất của 7 tòa kia |
+
+`shared/buildings` cho mỗi tòa: `id, name, module, topic, summaryVi, rules[]` với `rule = {id, state, whenVi}` (`whenVi`: câu mô tả điều kiện, ví dụ "Có đề xuất chờ duyệt"). `rules[].id` theo bảng dưới.
 
 UI tiếng Việt, không hiện tên hàm hay tiếng Anh. Tên module/contract chỉ hiện ở dòng nhỏ "Bên trong" (mục 2), vì đó là thông tin người xem kỹ thuật cần.
 
@@ -39,7 +57,7 @@ UI tiếng Việt, không hiện tên hàm hay tiếng Anh. Tên module/contract
   "summaryVi": "…",
   "state": "warning", "reasonVi": "…", "evidence": [{ "kind": "reasonCode", "value": "RECIPIENT_NOT_ALLOWED" }],
   "rules": [{ "id": "B03.paused", "state": "incident", "whenVi": "Cả kho đang dừng", "active": false }, …],
-  "activeRuleId": "B03.blocked",           // luật đang quyết định màu, null khi normal
+  "activeRuleId": "B03.near_cap",           // luật đang quyết định màu, null khi normal
   "recent": [                                // tối đa 10, mới nhất trước
     { "ts": 0, "kind": "attempt|event|proposal|agent_run|assistant|incident",
       "summaryVi": "…", "txHash": null, "simulated": true, "reasonCode": null, "ref": "attempt:12" }
