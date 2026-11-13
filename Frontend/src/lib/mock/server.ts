@@ -3,11 +3,12 @@ import type {
   ActionResult, AgentRun, AgentRunInputs, AskRequest, AssistantAnswer, AssistantLog, AssistantToolCall, Attempt, ChainEvent, CityStates, CityBuildingId, CityBuildingState,
   CreateProposalRequest, DistrictDetail, DraftProposalRequest, Finding, GraphSnapshot, Health, LockRequest, MemberId, Org,
   PauseRequest, Proposal, ProposalDraft, ProposedChange, RiskReport, ScenarioRun, SimResult, SimulateRequest, StreamListener, StreamMessage,
-  BuildingDetail, BuildingEvidence, BuildingId, BuildingInfo, BuildingRecent, Call, FaultAction, FaultDef, FaultResult, Incident, IncidentStatus,
+  PreparedTxInput, BuildingDetail, BuildingEvidence, BuildingId, BuildingInfo, BuildingRecent, Call, FaultAction, FaultDef, FaultResult, Incident, IncidentStatus,
 } from "../../types";
 import { BUILDING_BY_ID, BUILDING_REGISTRY } from "../../shared/buildings";
 import { MOCK_FAULTS, buildAgentSteps, newIncidentSteps, ruleForState } from "./ops";
 import { faultsOfBuilding } from "../ops";
+import { TxGuardError, checkTx, getTxCheck, listTxChecks, rejectTx, resetTxGuardMock, sendTx, type MockWorld } from "./txguard";
 import { keccak256 } from "js-sha3";
 import { SCENE4_STEPS } from "../../shared/scenario4";
 import { REASONS, type ReasonCode } from "../../shared/reasonCodes";
@@ -645,8 +646,25 @@ function recentOf(id: BuildingId): BuildingRecent[] {
 }
 const INCIDENT_STATUS_VI: Record<IncidentStatus, string> = { detected: "vừa phát hiện", contained: "đã khoanh vùng", awaiting_council: "chờ Hội đồng", recovering: "đang hồi phục", resolved: "đã xong" };
 
+/** B05 Tx Guardian (CITY-003): the pure mock in ./txguard against the mock world, errors as the usual ApiError. */
+function txGuardWorld(): MockWorld {
+  return {
+    keys: Object.fromEntries(Object.values(S.keys).map((k) => [k.id, { address: k.address, label: k.label, principalId: k.principalId }])),
+    recipients: S.recipients, protocols: S.protocols, vaultUsdc: S.vaultUsdc,
+  };
+}
+async function tg<T>(f: () => T): Promise<T> {
+  await lat();
+  try { return f(); } catch (e) { if (e instanceof TxGuardError) throw new ApiError(e.code, e.message, e.status); throw e; }
+}
+
 function opsApi() {
   return {
+    checkTx: (p: PreparedTxInput) => tg(() => checkTx(txGuardWorld(), p, Math.floor(Date.now() / 1000))),
+    getTxChecks: (limit = 50) => tg(() => listTxChecks(limit)),
+    getTxCheck: (id: number) => tg(() => getTxCheck(id)),
+    sendTx: (id: number) => tg(() => sendTx(id)),
+    rejectTx: (id: number) => tg(() => rejectTx(id)),
     async getBuildings(): Promise<BuildingInfo[]> { await lat(); return structuredClone(BUILDING_REGISTRY); },
     async getBuilding(id: string): Promise<BuildingDetail> { await lat(); return buildingDetail(id); },
     async getFaults(): Promise<FaultDef[]> { await lat(); return structuredClone(MOCK_FAULTS); },
@@ -751,7 +769,7 @@ export const mockApi = {
   async getScenarioRuns(): Promise<ScenarioRun[]> { await lat(); return [recordedRun(), ...runs.map((r) => ({ ...r }))]; },
   async resetDemo(): Promise<ActionResult> {
     await lat();
-    epoch++; runActive = false; S = seedState(); events = []; attempts = []; runs = []; agentRuns = []; assistantLogs = []; currentRunId = null; lastAgentBlocked = false; lastCityJson = ""; incidents = []; incidentRecovery.clear(); proposalIncident.clear();
+    epoch++; runActive = false; S = seedState(); events = []; attempts = []; runs = []; agentRuns = []; assistantLogs = []; currentRunId = null; lastAgentBlocked = false; lastCityJson = ""; incidents = []; incidentRecovery.clear(); proposalIncident.clear(); resetTxGuardMock();
     emit({ type: "reset", data: { at: nowIso() } }); graphUpdated(); emitCity(true);
     return ok(null);
   },

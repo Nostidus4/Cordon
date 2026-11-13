@@ -2376,6 +2376,106 @@
         "title": "PerDistrict",
         "type": "object"
       },
+      "PreparedTx": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "kind": {
+            "enum": [
+              "pay",
+              "swap",
+              "approve",
+              "raw"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "memo": {
+            "default": "",
+            "title": "Memo",
+            "type": "string"
+          },
+          "minOut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minout"
+          },
+          "signer": {
+            "title": "Signer",
+            "type": "string"
+          },
+          "source": {
+            "default": "paste",
+            "enum": [
+              "paste",
+              "city",
+              "copilot",
+              "attacker"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "tokenOut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenout"
+          }
+        },
+        "required": [
+          "kind",
+          "signer",
+          "to"
+        ],
+        "title": "PreparedTx",
+        "type": "object"
+      },
       "ProposalOut": {
         "properties": {
           "approvalCount": {
@@ -2608,6 +2708,22 @@
         "title": "ReachedKey",
         "type": "object"
       },
+      "ReasonCode": {
+        "enum": [
+          "VAULT_PAUSED",
+          "KEY_NOT_REGISTERED",
+          "DISTRICT_LOCKED",
+          "TOKEN_NOT_ALLOWED",
+          "PROTOCOL_NOT_ALLOWED",
+          "RECIPIENT_NOT_ALLOWED",
+          "CARD_DAILY_CAP",
+          "DISTRICT_DAILY_CAP",
+          "SLIPPAGE",
+          "BLOCKED_AT_PROTOCOL"
+        ],
+        "title": "ReasonCode",
+        "type": "string"
+      },
       "RecentItem": {
         "properties": {
           "kind": {
@@ -2802,6 +2918,46 @@
         "title": "Scene4Body",
         "type": "object"
       },
+      "SentTx": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "txHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txhash"
+          }
+        },
+        "required": [
+          "simulated",
+          "ok"
+        ],
+        "title": "SentTx",
+        "type": "object"
+      },
       "SimResult": {
         "properties": {
           "findings": {
@@ -2992,6 +3148,85 @@
         "title": "SseLatency",
         "type": "object"
       },
+      "StateDiff": {
+        "properties": {
+          "approvals": {
+            "items": {
+              "$ref": "#/components/schemas/TxApproval"
+            },
+            "title": "Approvals",
+            "type": "array"
+          },
+          "chainReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReasonCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inflows": {
+            "items": {
+              "$ref": "#/components/schemas/TxFlow"
+            },
+            "title": "Inflows",
+            "type": "array"
+          },
+          "outflows": {
+            "items": {
+              "$ref": "#/components/schemas/TxFlow"
+            },
+            "title": "Outflows",
+            "type": "array"
+          },
+          "principalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principalid"
+          },
+          "recipient": {
+            "title": "Recipient",
+            "type": "string"
+          },
+          "recipientKnown": {
+            "title": "Recipientknown",
+            "type": "boolean"
+          },
+          "recipientLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipientlabel"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "outflows",
+          "inflows",
+          "approvals",
+          "recipient",
+          "recipientKnown",
+          "simulated"
+        ],
+        "title": "StateDiff",
+        "type": "object"
+      },
       "Suggestion": {
         "properties": {
           "change": {
@@ -3038,6 +3273,191 @@
           "percentOfMainTreasury"
         ],
         "title": "Totals",
+        "type": "object"
+      },
+      "TxApproval": {
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "spender": {
+            "title": "Spender",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "unlimited": {
+            "title": "Unlimited",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "token",
+          "spender",
+          "amount",
+          "unlimited"
+        ],
+        "title": "TxApproval",
+        "type": "object"
+      },
+      "TxCheckOut": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "integer"
+          },
+          "diff": {
+            "$ref": "#/components/schemas/StateDiff"
+          },
+          "explanationSource": {
+            "enum": [
+              "template",
+              "llm"
+            ],
+            "title": "Explanationsource",
+            "type": "string"
+          },
+          "explanationVi": {
+            "title": "Explanationvi",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/TxFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "level": {
+            "enum": [
+              "safe",
+              "caution",
+              "danger"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "numbers": {
+            "items": {
+              "$ref": "#/components/schemas/TxNumber"
+            },
+            "title": "Numbers",
+            "type": "array"
+          },
+          "numbersVerified": {
+            "title": "Numbersverified",
+            "type": "boolean"
+          },
+          "prepared": {
+            "$ref": "#/components/schemas/PreparedTx"
+          },
+          "sentTx": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SentTx"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "sent",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "prepared",
+          "diff",
+          "findings",
+          "level",
+          "explanationVi",
+          "explanationSource",
+          "numbers",
+          "numbersVerified",
+          "status"
+        ],
+        "title": "TxCheckOut",
+        "type": "object"
+      },
+      "TxFinding": {
+        "properties": {
+          "detailVi": {
+            "title": "Detailvi",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "caution",
+              "danger"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "ruleId": {
+            "title": "Ruleid",
+            "type": "string"
+          },
+          "titleVi": {
+            "title": "Titlevi",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ruleId",
+          "level",
+          "titleVi",
+          "detailVi"
+        ],
+        "title": "TxFinding",
+        "type": "object"
+      },
+      "TxFlow": {
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "amount"
+        ],
+        "title": "TxFlow",
+        "type": "object"
+      },
+      "TxNumber": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "TxNumber",
         "type": "object"
       },
       "ValidationError": {
@@ -4332,6 +4752,220 @@
         "summary": "Stream",
         "tags": [
           "stream"
+        ]
+      }
+    },
+    "/api/txguard/check": {
+      "post": {
+        "operationId": "check_api_txguard_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreparedTx"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check",
+        "tags": [
+          "txguard"
+        ]
+      }
+    },
+    "/api/txguard/checks": {
+      "get": {
+        "operationId": "list_checks_api_txguard_checks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TxCheckOut"
+                  },
+                  "title": "Response List Checks Api Txguard Checks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Checks",
+        "tags": [
+          "txguard"
+        ]
+      }
+    },
+    "/api/txguard/checks/{check_id}": {
+      "get": {
+        "operationId": "get_check_api_txguard_checks__check_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "check_id",
+            "required": true,
+            "schema": {
+              "title": "Check Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Check",
+        "tags": [
+          "txguard"
+        ]
+      }
+    },
+    "/api/txguard/checks/{check_id}/reject": {
+      "post": {
+        "operationId": "reject_api_txguard_checks__check_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "check_id",
+            "required": true,
+            "schema": {
+              "title": "Check Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject",
+        "tags": [
+          "txguard"
+        ]
+      }
+    },
+    "/api/txguard/checks/{check_id}/send": {
+      "post": {
+        "operationId": "send_api_txguard_checks__check_id__send_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "check_id",
+            "required": true,
+            "schema": {
+              "title": "Check Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send",
+        "tags": [
+          "txguard"
         ]
       }
     }

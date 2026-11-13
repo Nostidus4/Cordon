@@ -33,7 +33,14 @@ def run_out(rt: Runtime, run: ScenarioRunRec) -> dict[str, Any]:
 
 def _step_attempt(rt: Runtime, run: ScenarioRunRec, s: Scenario4Step) -> AttemptRec:
     rec = att.run_spend(
-        rt, s.signer, s.action, s.params, run_id=run.id, step=s.step, display_time=s.display_time
+        rt,
+        s.signer,
+        s.action,
+        s.params,
+        run_id=run.id,
+        step=s.step,
+        display_time=s.display_time,
+        guard_source="attacker",
     )
     rt.notify_state_changed()
     return rec
