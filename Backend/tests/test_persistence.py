@@ -16,8 +16,8 @@ from guardian.chain.base import ChainEvent
 from guardian.chain.sim import SimChain
 from guardian.db.bridge import DbBridge
 from guardian.main import create_app
-from guardian.repositories.pg import PgEventSink
-from guardian.services.runtime import Runtime
+from guardian.repositories.pg import PgEventSink, PgScenarioRunStore
+from guardian.services.runtime import Runtime, ScenarioRunRec
 from guardian.workers.indexer import InMemoryEventSink
 from tests.conftest import T0, TEST_DB, make_settings, truncate_pg
 
@@ -153,3 +153,25 @@ async def test_demo_reset_clears_attempts_and_runs_keeps_events(pg_schema: None)
         assert counts == [0, 0, 5]
     finally:
         bridge.close()
+
+
+@needs_pg
+async def test_run_left_running_by_a_killed_process_is_failed_on_load(pg_schema: None) -> None:
+    await truncate_pg()
+    bridge = DbBridge(TEST_DB)
+    try:  # what a process killed mid scene 4 leaves behind
+        PgScenarioRunStore(bridge).save(
+            ScenarioRunRec(id="run-1", status="running", delay=0, started_at=T0, policy_version=1)
+        )
+    finally:
+        bridge.close()
+    async with running(database_url=TEST_DB) as a, http(a) as c:
+        runs = (await c.get("/api/scenario/runs")).json()
+        assert [(r["id"], r["status"], r["error"]) for r in runs] == [
+            ("run-1", "failed", "interrupted")
+        ]
+        new = await c.post("/api/scenario/scene4/run?delay=0&wait=true")
+        assert new.status_code == 200 and new.json()["id"] == "run-2"
+    async with running(database_url=TEST_DB) as b, http(b) as c:  # the fix was written back
+        runs = (await c.get("/api/scenario/runs")).json()
+        assert runs[0]["status"] == "failed" and runs[0]["error"] == "interrupted"

@@ -42,6 +42,9 @@ class PgScenarioRunStore(InMemoryScenarioRunStore):
         for r in sorted(
             bridge.run(self._repo.runs()), key=lambda r: int(r.id.removeprefix("run-"))
         ):
+            if r.status == "running":  # its task died with the old process (killed, no shutdown)
+                r.status, r.error = "failed", "interrupted"
+                self._bridge.run(self._repo.save_run(r))
             self._items[r.id] = r
 
     def save(self, run: ScenarioRunRec) -> None:
