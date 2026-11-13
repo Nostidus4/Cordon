@@ -117,6 +117,8 @@ class AgentRunRec:
     steps: list[dict[str, Any]] = field(default_factory=list)  # AgentStep dicts (CITY_OPS §2)
     untrusted_input: str | None = None
     injection_ignored: bool | None = None
+    # CITY-005: the LLM sentence that failed the guardrail (we stored the template instead)
+    rejected_reason_text: str | None = None
 
 
 @dataclass
@@ -172,6 +174,9 @@ class Stores:
         self.assistant_logs: list[AssistantLogRec] = []
         self.conflicts: list[ConflictRec] = []
         self.incidents: list[IncidentRec] = []
+        self.fault_attempts: dict[
+            int, str
+        ] = {}  # attempt id -> fault id (CITY-005 violations board)
         self._ids = 0
         self._incident_ids = 0
 

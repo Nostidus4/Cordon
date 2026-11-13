@@ -41,4 +41,10 @@ export interface AgentRun {
   /** Foreign text fed to the agent (fault F06); the rule engine never reads it. */
   untrustedInput?: string | null;
   injectionIgnored?: boolean;
+  /** CITY-005: reasonHash as the chain event recorded it; null when no swap was sent. */
+  reasonHashOnChain: string | null;
+  /** keccak(reasonText) === reasonHashOnChain; null when there is nothing on chain to compare. */
+  reasonHashVerified: boolean | null;
+  /** The LLM sentence that failed verification (reasonText is then the template). */
+  rejectedReasonText: string | null;
 }

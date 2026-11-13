@@ -21,6 +21,7 @@ from guardian.api.routes import (
     scenario,
     simulate,
     stream,
+    violations,
 )
 
 api_router = APIRouter()
@@ -42,3 +43,4 @@ api_router.include_router(demo.router)
 api_router.include_router(buildings.router)
 api_router.include_router(faults.router)
 api_router.include_router(incidents.router)
+api_router.include_router(violations.router)

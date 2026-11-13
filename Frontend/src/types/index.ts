@@ -14,4 +14,5 @@ export * from "./org";
 export * from "./city";
 export * from "./ops";
 export * from "./stream";
+export * from "./violation";
 export * from "./api";

@@ -5,7 +5,7 @@ import type {
   ActionResult, AgentRun, AskRequest, AssistantAnswer, AssistantLog, Attempt, ChainEvent, CityStates, CreateProposalRequest, DistrictDetail,
   DraftProposalRequest, Finding, GraphSnapshot, Health, LockRequest, MemberId, Org, PauseRequest, Proposal, ProposalDraft,
   ScenarioRun, SimResult, SimulateRequest, StreamListener,
-  BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident,
+  BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident, Violation,
 } from "../../types";
 import { connectSse } from "../sse";
 import { http } from "./client";
@@ -45,6 +45,8 @@ export interface Api {
   injectFault(id: string): Promise<FaultResult>;
   getIncidents(status?: "open" | "all"): Promise<Incident[]>;
   getIncident(id: number): Promise<Incident>;
+  /** CITY-005: every refused call, newest first (derived from attempts). */
+  getViolations(limit?: number): Promise<Violation[]>;
   /** Stream subscription (SSE /api/stream in live mode, in-process bus in mock mode). Returns unsubscribe. */
   subscribe(listener: StreamListener): () => void;
 }
@@ -80,6 +82,7 @@ const liveApi: Api = {
   injectFault: (id) => http("POST", `/faults/${encodeURIComponent(id)}/inject`),
   getIncidents: (status = "all") => http("GET", `/incidents?status=${status}`),
   getIncident: (id) => http("GET", `/incidents/${id}`),
+  getViolations: (limit = 50) => http("GET", `/violations?limit=${limit}`),
   subscribe: (l) => connectSse(l),
 };
 

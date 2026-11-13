@@ -28,7 +28,7 @@ export function useStreamBridge() {
         break;
       case "attempt":
         qc.setQueryData<Attempt[]>(qk.attempts(), (old) => (old?.some((a) => a.id === m.data.id) ? old : [...(old ?? []), m.data]));
-        qc.invalidateQueries({ queryKey: ["district"] }); qc.invalidateQueries({ queryKey: qk.graph });
+        qc.invalidateQueries({ queryKey: ["district"] }); qc.invalidateQueries({ queryKey: qk.graph }); qc.invalidateQueries({ queryKey: ["violations"] });
         break;
       case "graph_updated":
         for (const k of [qk.graph, qk.findings, qk.proposals, qk.health, qk.org, ["district"], ["simulate"]]) qc.invalidateQueries({ queryKey: k });

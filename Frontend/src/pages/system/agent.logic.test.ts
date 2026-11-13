@@ -9,7 +9,7 @@ const inputs = (p: Partial<Record<"s" | "k" | "d" | "x", number>> = {}): AgentRu
 });
 const run = (o: Partial<AgentRun>): AgentRun => ({
   id: "r", decision: { action: "swap", tokenIn: "tUSDC", tokenOut: "tTKB", amountIn: m(5000), tTKBShareBefore: 0, targetShare: 20 }, reasonText: "", reasonSource: "template", reasonHash: null, txHash: null, simulated: true,
-  outcome: "ok", reasonCode: null, createdAt: "", inputs: inputs(), ...o,
+  outcome: "ok", reasonCode: null, createdAt: "", inputs: inputs(), reasonHashOnChain: null, reasonHashVerified: null, rejectedReasonText: null, ...o,
 });
 
 describe("computeAmountIn", () => {

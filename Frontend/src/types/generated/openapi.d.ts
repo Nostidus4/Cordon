@@ -563,6 +563,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/violations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Violations
+         * @description Every refused call (reason code as the chain returned it), newest first. Read-only.
+         */
+        get: operations["list_violations_api_violations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -604,10 +624,16 @@ export interface components {
             reasonCode?: string | null;
             /** Reasonhash */
             reasonHash?: string | null;
+            /** Reasonhashonchain */
+            reasonHashOnChain?: string | null;
+            /** Reasonhashverified */
+            reasonHashVerified?: boolean | null;
             /** Reasonsource */
             reasonSource?: string | null;
             /** Reasontext */
             reasonText?: string | null;
+            /** Rejectedreasontext */
+            rejectedReasonText?: string | null;
             /** Steps */
             steps?: components["schemas"]["AgentStep"][] | null;
             /** Ts */
@@ -1549,6 +1575,39 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * ViolationOut
+         * @description One call the vault policy refused (docs/spec/CITY_OPS.md §9). Derived from the recorded attempts.
+         */
+        ViolationOut: {
+            /** Action */
+            action: string;
+            /** District */
+            district?: string | null;
+            /** Id */
+            id: number;
+            /** Key */
+            key: string;
+            /** Keylabel */
+            keyLabel: string;
+            /** Principalid */
+            principalId?: string | null;
+            /** Reasoncode */
+            reasonCode: string;
+            /** Ref */
+            ref: string;
+            /** Simulated */
+            simulated: boolean;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "agent" | "attacker" | "fault" | "copilot" | "other";
+            /** Ts */
+            ts: number;
+            /** Txhash */
+            txHash?: string | null;
+        };
         /** WarningOut */
         WarningOut: {
             /** Code */
@@ -2486,6 +2545,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_violations_api_violations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViolationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

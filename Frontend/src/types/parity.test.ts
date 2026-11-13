@@ -121,6 +121,8 @@ expectTypeOf<DiffQ<S["DraftRequest"], T.DraftProposalRequest>>().toEqualTypeOf<K
 // ProposeRequest <-> CreateProposalRequest
 expectTypeOf<DiffQ<S["ProposeRequest"], T.CreateProposalRequest>>().toEqualTypeOf<Known<"title" | "member", "proposer", never>>();
 
+// ViolationOut <-> Violation (CITY-005)
+expectTypeOf<DiffR<S["ViolationOut"], T.Violation>>().toEqualTypeOf<Known<never, never, never>>();
 // SSE type list must match Backend schemas/stream.py SSE_EVENT_TYPES (API_CONTRACT §5).
 expectTypeOf<T.StreamMessageType>().toEqualTypeOf<
   "event" | "attempt" | "graph_updated" | "proposal_updated" | "agent_run" | "city_updated" | "incident_updated" | "reset"
