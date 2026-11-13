@@ -35,7 +35,7 @@ describe("simulateCompromise (spec §8.4 table)", () => {
     expect(p12.riskReport.before.enforced.display).toBe("30.000");
     expect(p12.riskReport.after.enforced.display).toBe("130.000");
     expect(p12.riskReport.after.percentOfMainTreasury).toBe(6.5);
-    const sim = await mockApi.simulate({ compromised: ["minh"], change: p12.change });
+    const sim = await mockApi.simulate({ compromised: ["minh"], change: p12.change! });
     expect([sim.totals.enforced.display, sim.totals.estimated.display]).toEqual(["130.000", "130.000"]);
   });
 });
@@ -43,7 +43,7 @@ describe("simulateCompromise (spec §8.4 table)", () => {
 describe("proposals", () => {
   it("R1 draft goes 100.000 -> 30.000; 2/3 approvals execute; huy blocked on conflict", async () => {
     const f = (await mockApi.getFindings())[0];
-    const p = await mockApi.createProposal({ findingId: f.id, proposer: "trang" });
+    const p = await mockApi.createProposal({ findingId: f.id, member: "trang" });
     expect(p.riskReport.before.estimated.display).toBe("100.000");
     expect(p.riskReport.after.estimated.display).toBe("30.000");
     await mockApi.approveProposal(p.id, "lan");
@@ -124,7 +124,8 @@ describe("findings parity with the backend", () => {
     expect(f.map((x) => x.severity)).toEqual(["HIGH", "MEDIUM"]);
     expect((f[0].data!.suggestedDistrictCap as { display: string }).display).toBe("30.000");
     expect(f[0].data!.keys).toHaveLength(5);
-    expect(f[1].suggestedChange).toMatchObject({ kind: "consolidate", into: "minh", keys: ["key_svc_payment"], sharedCapRaw: U(30000) });
+    expect(f[1].proposal).toMatchObject({ kind: "merge_district", into: "minh", districtCap: { raw: U(30000).toString(), display: "30.000" } });
+    expect((f[1].proposal as { keys: string[] }).keys).toHaveLength(1);
   });
   it("R2 fires per live agent/service key only when no recipient is allow-listed", () => {
     const s = seedState();

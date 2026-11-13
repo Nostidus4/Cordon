@@ -10,9 +10,9 @@ const report = (b: [number, number], a: [number, number]): RiskReport => ({
   before: totals(...b), after: totals(...a), findingsBefore: [], findingsAfter: [], conflictOfInterest: false, generatedAt: "2026-01-01T00:00:00Z", graphVersion: 1,
 });
 const prop = (over: Partial<Proposal> = {}): Proposal => ({
-  id: 13, title: "t", subjectPrincipal: "huy", change: { kind: "move_key", key: "key_agent_rebalance", toPrincipal: "huy" }, calls: [], describe: [],
+  id: 13, title: "t", subjectPrincipal: "huy", change: { kind: "move_key", key: "key_agent_rebalance", to: "huy" }, calls: [], descriptionVi: [], findingId: null, approvalCount: 0, members: [], reportBasis: "live", executedTxHash: null,
   riskReport: report([40000, 40000], [60000, 60000]), riskReportHash: "0x00", conflictedMembers: [], warnings: [], proposer: "trang", approvals: [], threshold: 2, status: "open",
-  createdAt: "", executedAt: null, resultingPolicyVersion: null, ...over,
+  createdAt: 0, executedAt: null, ...over,
 });
 
 describe("before/after formatting", () => {
@@ -71,7 +71,7 @@ describe("approval slots & conflict of interest", () => {
     expect(slots.filter((s) => s.member !== "huy").every((s) => s.canApprove)).toBe(true);
   });
   it("already approved members cannot approve twice", () => {
-    const slots = approvalSlots(prop({ approvals: [{ member: "lan", at: "x" }] }));
+    const slots = approvalSlots(prop({ approvals: ["lan"] }));
     expect(slots.find((s) => s.member === "lan")).toMatchObject({ state: "approved", canApprove: false });
     expect(slots.find((s) => s.member === "trang")!.canApprove).toBe(true);
   });

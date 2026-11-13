@@ -3,7 +3,7 @@ import type { ProposedChange } from "./simulate";
 
 export interface AskRequest {
   question: string;
-  context: { screen: "simulate" | "requests" | "map" | "incident"; principalIds?: string[]; proposalId?: number };
+  context?: { screen: "simulate" | "requests" | "map" | "incident"; principalIds?: string[]; proposalId?: number };
 }
 
 export interface AssistantAnswer {

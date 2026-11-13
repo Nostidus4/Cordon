@@ -10,7 +10,7 @@ const SEV: Record<Finding["severity"], { status: "bad" | "warn" | "info"; text: 
 export function FindingsMini({ findings, drafting, onDraft, onFocus, collapsed: forceCollapsed, className }: {
   collapsed?: boolean; findings: Finding[]; drafting: string | null; onDraft: (f: Finding) => void; onFocus: (f: Finding) => void; className?: string;
 }) {
-  const open = findings.filter((f) => f.resolvedByProposal == null);
+  const open = findings;
   const [manual, setCollapsed] = useState(false);
   const collapsed = manual || !!forceCollapsed;
   return (

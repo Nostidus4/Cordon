@@ -1,7 +1,7 @@
 // In-browser mock backend: same operations as the §8.6 API + a stream bus shaped like the live SSE.
 import type {
   ActionResult, AgentRun, AgentRunInputs, AskRequest, AssistantAnswer, AssistantLog, AssistantToolCall, Attempt, ChainEvent, CityStates, CityBuildingId, CityBuildingState,
-  CreateProposalRequest, DistrictDetail, DraftProposalRequest, Finding, GraphSnapshot, Health, LockRequest, MemberId, Org,
+  CreateProposalRequest, DistrictDetail, DraftProposalRequest, Finding, GraphSnapshot, Health, LockRequest, MemberId, Money, Org,
   PauseRequest, Proposal, ProposalDraft, ProposedChange, RiskReport, ScenarioRun, SimResult, SimulateRequest, StreamListener, StreamMessage,
   BuildingDetail, BuildingEvidence, BuildingId, BuildingInfo, BuildingRecent, Call, FaultAction, FaultDef, FaultResult, Incident, IncidentStatus,
 } from "../../types";
@@ -14,7 +14,7 @@ import { REASONS, type ReasonCode } from "../../shared/reasonCodes";
 import { fmtDisplay, fmtPercent, money, percentOf } from "../format";
 import { verifyAnswer } from "./assistantVerify";
 import {
-  MAIN_TREASURY, U, applyCalls, applySpend, buildDistrictDetail, buildDistricts, buildGraph, changeToCalls, computeFindings, evaluate,
+  MAIN_TREASURY, U, applyCalls, applySpend, buildDistrictDetail, buildDistricts, buildGraph, planChange, computeFindings, evaluate,
   fakeAddress, fakeHex, fakeTxHash, keyRemaining, keysOf, remainingOf, seedState, simulate, spentOf, subjectOf, titleOf, type Action, type State,
 } from "./core";
 
@@ -178,9 +178,9 @@ export function canonicalJson(v: unknown): string {
 }
 /** keccak256 (spec §6.5) of the canonical riskReport. */
 export function hashRiskReport(r: RiskReport): string { return `0x${keccak256(canonicalJson(r))}`; }
-function buildDraft(change: ProposedChange): ProposalDraft {
+function buildDraft(change: ProposedChange, findingId: string | null = null): ProposalDraft {
   const subject = subjectOf(change);
-  const calls = changeToCalls(S, change);
+  const { calls, descriptionVi } = planChange(S, change);
   const clone = structuredClone(S); applyCalls(clone, calls);
   const sim = (st: State) => simulate(st, [subject]);
   const conflicted = S.members.filter((m) => m.principalId && m.principalId === subject).map((m) => m.id as MemberId);
@@ -192,32 +192,45 @@ function buildDraft(change: ProposedChange): ProposalDraft {
     warnings.push({ code: "CONFLICT_OF_INTEREST", text: `${m.label} đang ngồi Hội đồng và là chủ khu nhận thêm quyền, không được duyệt đề xuất này.` });
     warnings.push({ code: "CONCENTRATION", text: `Khu ${subject} sẽ lên ${after.totals.enforced.display}/ngày (từ ${before.totals.enforced.display}) kèm một phiếu duyệt. Nên lập khu do Hội đồng sở hữu.` });
     findingsAfter.push({ id: `R4_COUNCIL_CONCENTRATION:${subject}`, ruleId: "R4_COUNCIL_CONCENTRATION", severity: "HIGH", principalId: subject,
-      title: `${m.label} vừa giữ phiếu duyệt vừa nhận thêm quyền`, detail: "Dồn quyền chi tiêu và quyền duyệt vào cùng một người.", createdAt: nowIso(), resolvedByProposal: null });
+      title: `${m.label} vừa giữ phiếu duyệt vừa nhận thêm quyền`, data: {}, proposal: null });
   }
   const declaredTouch = S.declared.some((e) => subject === e.from);
   if (declaredTouch) warnings.push({ code: "DATA_DECLARED", text: "Một phần ước tính dựa trên quan hệ tự khai, chưa kiểm chứng." });
   const riskReport: RiskReport = { before: before.totals, after: after.totals, findingsBefore: computeFindings(S), findingsAfter, conflictOfInterest: conflicted.length > 0, generatedAt: nowIso(), graphVersion: S.graphVersion };
   return {
-    title: titleOf(S, change), subjectPrincipal: subject, change, calls, describe: calls.map((c) => c.describe),
+    title: titleOf(S, change), findingId, subjectPrincipal: subject, change, calls, descriptionVi,
     riskReport, riskReportHash: hashRiskReport(riskReport),
+    classification: isTighten(change) ? "tighten" : "loosen", requiresCouncil: !isTighten(change), sent: false,
     conflictedMembers: conflicted, warnings,
   };
 }
+/** Backend rule (changes.classify): only a lower non-zero district cap tightens. */
+const isTighten = (c: ProposedChange) => {
+  if (c.kind !== "set_district_cap") return false;
+  const cur = S.principals[c.principalId]?.dailyCap ?? 0n, next = BigInt(c.cap.raw);
+  return next > 0n && (cur === 0n || next < cur);
+};
 function resolveChange(req: DraftProposalRequest): ProposedChange {
   if (req.change) return req.change;
   if (req.findingId) {
     const f = computeFindings(S, true).find((x) => x.id === req.findingId);
-    if (!f?.suggestedChange) throw new ApiError("FINDING_NOT_FOUND", "Không tìm thấy finding hoặc không có đề xuất tự sinh", 404);
-    return f.suggestedChange;
+    if (!f?.proposal) throw new ApiError("FINDING_NOT_FOUND", "Không tìm thấy finding hoặc không có đề xuất tự sinh", 404);
+    return f.proposal;
   }
   throw new ApiError("BAD_REQUEST", "Cần findingId hoặc change");
 }
 function nextProposalId(): number { let n = 11; while (S.proposals.some((p) => p.id === n) || (n === 12 || n === 13)) n++; return n; }
-function addProposal(change: ProposedChange, proposer: MemberId, id?: number): Proposal {
+/** Draft -> stored proposal (backend ProposalOut shape; `members`/`approvalCount` are filled live by `liveProposal`). */
+function toProposal(d: ProposalDraft, id: number, proposer: MemberId): Proposal {
+  const { classification: _c, requiresCouncil: _r, sent: _s, ...body } = d;
+  return { ...body, id, proposer, approvals: [], approvalCount: 0, members: [], threshold: 2, status: "open", reportBasis: "live", createdAt: nowSec(), executedAt: null, executedTxHash: null };
+}
+function addProposal(change: ProposedChange, proposer: MemberId, id?: number, findingId: string | null = null, title?: string): Proposal {
   const existing = S.proposals.find((p) => p.status === "open" && JSON.stringify(p.change) === JSON.stringify(change));
   if (existing) return existing;
-  const d = buildDraft(change);
-  const p: Proposal = { ...d, id: id ?? nextProposalId(), proposer, approvals: [], threshold: 2, status: "open", createdAt: nowIso(), executedAt: null, resultingPolicyVersion: null };
+  const d = buildDraft(change, findingId);
+  const p = toProposal(d, id ?? nextProposalId(), proposer);
+  if (title) p.title = title;
   S.proposals.push(p);
   pushEvent("Proposed", { proposalId: p.id, proposer, title: p.title, subjectPrincipal: p.subjectPrincipal });
   emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: 0 } });
@@ -227,20 +240,21 @@ function addProposal(change: ProposedChange, proposer: MemberId, id?: number): P
 function seedRequests() {
   S.requestsSeeded = true;
   const minhCap = S.principals.minh.dailyCap ?? U(30000);
-  addProposal({ kind: "raise_cap", principalId: "minh", newCapRaw: U(130000).toString() }, "trang", 12);
-  addProposal({ kind: "move_key", key: "key_agent_rebalance", toPrincipal: "huy" }, "trang", 13);
+  addProposal({ kind: "set_district_cap", principalId: "minh", cap: money(U(130000)) }, "trang", 12);
+  addProposal({ kind: "move_key", key: S.keys.key_agent_rebalance.address, to: "huy" }, "trang", 13);
   void minhCap;
 }
 function executeProposal(p: Proposal) {
   if (proposalIncident.has(p.id)) { executeIncidentProposal(p); return; }
   const calls = p.calls;
-  const firstConsolidate = p.change.kind === "consolidate";
+  const firstConsolidate = p.change?.kind === "merge_district";
   applyCalls(S, calls);
-  p.status = "executed"; p.executedAt = nowIso(); p.resultingPolicyVersion = S.policyVersion;
+  p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = fakeTxHash(`exec${p.id}`);
   for (const c of calls) {
-    if (c.fn === "moveKey") pushEvent("KeyMoved", { key: c.args.key, toId: c.args.toId });
-    if (c.fn === "setPrincipalDailyCap") pushEvent("CapChanged", { kind: "principal", subject: c.args.id, newCap: money(BigInt(c.args.cap)) });
-    if (c.fn === "createPrincipal") pushEvent("PrincipalCreated", { id: c.args.id });
+    const a = c.args as Record<string, any>;
+    if (c.fn === "moveKey") pushEvent("KeyMoved", { key: a.key, toId: a.toId });
+    if (c.fn === "setPrincipalDailyCap") pushEvent("CapChanged", { kind: "principal", subject: a.principalId, newCap: a.cap });
+    if (c.fn === "createPrincipal") pushEvent("PrincipalCreated", { id: a.principalId });
   }
   pushEvent("PolicyVersionBumped", { version: S.policyVersion });
   pushEvent("Executed", { proposalId: p.id });
@@ -253,11 +267,11 @@ function approve(id: number, member: MemberId): Proposal {
   if (!p) throw new ApiError("PROPOSAL_NOT_FOUND", `Không có đề xuất #${id}`, 404);
   if (p.status !== "open") throw new ApiError("PROPOSAL_NOT_OPEN", "Đề xuất đã đóng");
   if (!S.members.some((m) => m.id === member)) throw new ApiError("NOT_COUNCIL_MEMBER", "Không thuộc Hội đồng", 403);
-  const fresh = buildDraft(p.change);
-  if (fresh.conflictedMembers.includes(member))
+  const fresh = p.change ? buildDraft(p.change) : null; // responder (incident) proposals carry no change
+  if (fresh?.conflictedMembers.includes(member))
     throw new ApiError("CONFLICT_OF_INTEREST", `Xung đột lợi ích: ${S.members.find((m) => m.id === member)!.label} là chủ khu bị ảnh hưởng, không được duyệt.`, 403);
-  if (p.approvals.some((a) => a.member === member)) throw new ApiError("ALREADY_APPROVED", "Đã duyệt rồi");
-  p.approvals.push({ member, at: nowIso() });
+  if (p.approvals.includes(member)) throw new ApiError("ALREADY_APPROVED", "Đã duyệt rồi");
+  p.approvals.push(member);
   pushEvent("Approved", { proposalId: id, member });
   if (p.approvals.length >= p.threshold) executeProposal(p);
   else emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
@@ -265,7 +279,16 @@ function approve(id: number, member: MemberId): Proposal {
   return liveProposal(p);
 }
 /** Spec §6.5: calls, riskReport and riskReportHash are recorded at `propose` and stay FROZEN (the hash is on-chain); only status/approvals are live. */
-function liveProposal(p: Proposal): Proposal { return structuredClone(p); }
+function liveProposal(p: Proposal): Proposal {
+  const c = structuredClone(p);
+  c.approvalCount = c.approvals.length;
+  c.members = S.members.map((m) => {
+    const approved = c.approvals.includes(m.id), conflicted = c.conflictedMembers.includes(m.id);
+    const disabledReason = c.status !== "open" ? "Đề xuất không còn mở." : approved ? "Đã duyệt." : conflicted ? "Xung đột lợi ích." : null;
+    return { id: m.id, label: m.label, principalId: m.principalId ?? null, approved, conflicted, canApprove: disabledReason === null, disabledReason };
+  });
+  return c;
+}
 
 // ---------- city ----------
 const RANK: Record<CityBuildingState, number> = { normal: 0, recovery: 1, warning: 2, incident: 3 };
@@ -350,32 +373,32 @@ function answerFor(req: AskRequest): AssistantAnswer {
   }
   if (q === "Sửa thế nào?") {
     const f = computeFindings(S)[0];
-    if (!f?.suggestedChange) return { answer: "Hiện không có phát hiện rủi ro nào đang mở để sửa.", numbers: [], highlight: { nodeIds: [], edgeIds: [] } };
-    const d = buildDraft(f.suggestedChange);
+    if (!f?.proposal) return { answer: "Hiện không có phát hiện rủi ro nào đang mở để sửa.", numbers: [], highlight: { nodeIds: [], edgeIds: [] } };
+    const d = buildDraft(f.proposal!);
     return {
-      answer: `Gom các thẻ về một khu và đặt trần chung ${fmtDisplay(BigInt((f.suggestedChange as { sharedCapRaw: string }).sharedCapRaw))}/ngày. Mức mất tối đa mỗi ngày giảm từ ${d.riskReport.before.estimated.display} xuống ${d.riskReport.after.estimated.display}.`,
+      answer: `Gom các thẻ về một khu và đặt trần chung ${fmtDisplay(BigInt((f.proposal as { districtCap: Money }).districtCap.raw))}/ngày. Mức mất tối đa mỗi ngày giảm từ ${d.riskReport.before.estimated.display} xuống ${d.riskReport.after.estimated.display}.`,
       numbers: [
         { label: "Ước tính trước", value: d.riskReport.before.estimated.display, source: "proposal", path: "riskReport.before.estimated.display" },
         { label: "Ước tính sau", value: d.riskReport.after.estimated.display, source: "proposal", path: "riskReport.after.estimated.display" },
-        { label: "Trần chung đề xuất", value: fmtDisplay(BigInt((f.suggestedChange as { sharedCapRaw: string }).sharedCapRaw)), source: "proposal", path: "calls[setPrincipalDailyCap].cap" },
+        { label: "Trần chung đề xuất", value: fmtDisplay(BigInt((f.proposal as { districtCap: Money }).districtCap.raw)), source: "proposal", path: "calls[setPrincipalDailyCap].args.cap" },
       ],
       highlight: simulate(S, [f.principalId]).highlights,
-      suggestions: [{ title: d.title, change: f.suggestedChange }],
+      suggestions: [{ title: d.title, change: f.proposal! }],
     };
   }
   if (q === "Có nên giao trợ lý Cân đối cho anh Huy?") {
-    const d = buildDraft({ kind: "move_key", key: "key_agent_rebalance", toPrincipal: "huy" });
+    const d = buildDraft({ kind: "move_key", key: S.keys.key_agent_rebalance.address, to: "huy" });
     const b = d.riskReport.before.enforced.display, a = d.riskReport.after.enforced.display;
     return {
       answer: `Không nên. Anh Huy đang ngồi Hội đồng; khu anh sẽ lên ${a}/ngày (từ ${b}) kèm một phiếu duyệt. Nên lập khu do Hội đồng sở hữu, hạn mức ${fmtDisplay(U(100000))}/ngày, chỉ sàn đã duyệt.`,
       numbers: [
         { label: "Khu anh Huy trước", value: b, source: "proposal", path: "riskReport.before.enforced.display" },
         { label: "Khu anh Huy sau", value: a, source: "proposal", path: "riskReport.after.enforced.display" },
-        { label: "Hạn mức khu Hội đồng", value: fmtDisplay(U(100000)), source: "proposal", path: "suggestions[0].change.capRaw" },
+        { label: "Hạn mức khu Hội đồng", value: fmtDisplay(U(100000)), source: "proposal", path: "suggestions[0].change.districtCap" },
       ],
       highlight: { nodeIds: ["p:huy", "k:key_agent_rebalance", "m:huy"], edgeIds: [] },
       warnings: d.warnings.filter((w) => w.code !== "DATA_DECLARED"),
-      suggestions: [{ title: "Lập khu do Hội đồng sở hữu, hạn mức 100.000/ngày", change: { kind: "council_district", id: "council_ops", keys: ["key_agent_rebalance"], capRaw: U(100000).toString() } }],
+      suggestions: [{ title: "Lập khu do Hội đồng sở hữu, hạn mức 100.000/ngày", change: { kind: "create_district", principalId: "council_ops", label: "Khu do Hội đồng sở hữu", owner: "council", keys: [S.keys.key_agent_rebalance.address], districtCap: money(U(100000)) } }],
     };
   }
   return { answer: "Mình chỉ trả lời 4 câu hỏi có sẵn ở bản demo này. Hãy bấm một trong các nút câu hỏi.", numbers: [], highlight: { nodeIds: [], edgeIds: [] } };
@@ -393,12 +416,12 @@ function assistantTools(q: string, answer: AssistantAnswer): { toolCalls: Assist
   }
   if (q === "Sửa thế nào?") {
     const f = computeFindings(S)[0];
-    if (!f?.suggestedChange) return { toolCalls: [call("list_findings", {}, "0 phát hiện đang mở")], roots: {} };
-    const d = buildDraft(f.suggestedChange);
-    return { toolCalls: [call("list_findings", {}, `${computeFindings(S).length} phát hiện · ${f.ruleId}`), call("simulate_compromise", { principals: [f.principalId], change: f.suggestedChange }, `trước ${d.riskReport.before.estimated.display} → sau ${d.riskReport.after.estimated.display}`)], roots: { proposal: { ...d, suggestions: answer.suggestions } } };
+    if (!f?.proposal) return { toolCalls: [call("list_findings", {}, "0 phát hiện đang mở")], roots: {} };
+    const d = buildDraft(f.proposal!);
+    return { toolCalls: [call("list_findings", {}, `${computeFindings(S).length} phát hiện · ${f.ruleId}`), call("simulate_compromise", { principals: [f.principalId], change: f.proposal! }, `trước ${d.riskReport.before.estimated.display} → sau ${d.riskReport.after.estimated.display}`)], roots: { proposal: { ...d, suggestions: answer.suggestions } } };
   }
   if (q === "Có nên giao trợ lý Cân đối cho anh Huy?") {
-    const d = buildDraft({ kind: "move_key", key: "key_agent_rebalance", toPrincipal: "huy" });
+    const d = buildDraft({ kind: "move_key", key: S.keys.key_agent_rebalance.address, to: "huy" });
     return { toolCalls: [call("get_proposal", { id: 13 }, `conflictedMembers ${d.conflictedMembers.join(",") || "không"} · sau ${d.riskReport.after.enforced.display}`)], roots: { proposal: { ...d, suggestions: answer.suggestions } } };
   }
   return { toolCalls: [], roots: {} };
@@ -457,7 +480,7 @@ interface IncidentPlan {
   /** responder tightens on its own (spec §4.1); null = nothing to contain */
   contain: (() => { detailVi: string; txHash: string | null }) | null;
   /** loosening only ever goes through the Council: the responder drafts a proposal, never approves it */
-  proposal: { title: string; calls: Call[]; detailVi: string; recover: () => void } | null;
+  proposal: { title: string; calls: (Call & { describe: string })[]; detailVi: string; recover: () => void } | null;
   /** closing note when there is nothing for the Council to do */
   closeVi: string;
 }
@@ -483,10 +506,10 @@ function startIncident(plan: IncidentPlan): Incident {
         patchStep(i, "propose", "skipped"); patchStep(i, "recover", "skipped"); patchStep(i, "verify", "done", plan.closeVi);
         setStatus(i, "resolved"); emitIncident(i); return;
       }
-      const base = buildDraft({ kind: "raise_cap", principalId: "minh", newCapRaw: (S.principals.minh?.dailyCap ?? 0n).toString() });
+      const base = buildDraft({ kind: "set_district_cap", principalId: "minh", cap: money(S.principals.minh?.dailyCap ?? 0n) });
       const p: Proposal = {
-        ...base, title: plan.proposal.title, calls: plan.proposal.calls, describe: plan.proposal.calls.map((c) => c.describe), conflictedMembers: [], warnings: [],
-        id: nextProposalId(), proposer: "lan", approvals: [], threshold: 2, status: "open", createdAt: nowIso(), executedAt: null, resultingPolicyVersion: null,
+        ...toProposal(base, nextProposalId(), "lan"), title: plan.proposal.title, change: null, findingId: null,
+        calls: plan.proposal.calls.map(({ describe: _d, ...c }) => c), descriptionVi: plan.proposal.calls.map((c) => c.describe), conflictedMembers: [], warnings: [],
       };
       S.proposals.push(p);
       proposalIncident.set(p.id, i.id);
@@ -507,7 +530,7 @@ function executeIncidentProposal(p: Proposal) {
   const iid = proposalIncident.get(p.id)!;
   const i = incidents.find((x) => x.id === iid)!;
   incidentRecovery.get(iid)?.recover();
-  p.status = "executed"; p.executedAt = nowIso(); p.resultingPolicyVersion = S.policyVersion;
+  p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = fakeTxHash(`exec${p.id}`);
   pushEvent("Executed", { proposalId: p.id });
   emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
   graphUpdated();
@@ -638,14 +661,14 @@ function recentOf(id: BuildingId): BuildingRecent[] {
       r(isoSec(a.ts), "attempt", `${a.signerLabel}: ${a.action.label}${a.outcome === "ok" ? "" : ` · bị chặn (${a.reasonCode ? REASONS[a.reasonCode].vi : "không rõ"})`}`, { txHash: a.txHash, simulated: a.simulated, reasonCode: a.reasonCode, ref: `attempt:${a.id}` });
     }
   }
-  if (id === "B01") for (const p of S.proposals.slice(-10)) r(isoSec(p.createdAt), "proposal", `Đề xuất #${p.id}: ${p.title} (${p.status === "open" ? `${p.approvals.length}/${p.threshold} phiếu` : p.status === "executed" ? "đã thực thi" : "đã huỷ"})`, { ref: `proposal:${p.id}` });
+  if (id === "B01") for (const p of S.proposals.slice(-10)) r(p.createdAt, "proposal", `Đề xuất #${p.id}: ${p.title} (${p.status === "open" ? `${p.approvals.length}/${p.threshold} phiếu` : p.status === "executed" ? "đã thực thi" : "đã huỷ"})`, { ref: `proposal:${p.id}` });
   if (id === "B03") {
     const VI: Record<string, string> = { Paid: "Đã chi tiền", Swapped: "Đã đổi tiền", Paused: "Cả kho bị dừng", PrincipalLocked: "Một khu bị khoá" };
     for (const e of events.filter((x) => VI[x.name]).slice(-10)) r(isoSec(e.ts), "event", VI[e.name], { txHash: e.txHash, simulated: e.simulated, ref: `event:${e.id}` });
   }
   if (id === "B06") for (const a of agentRuns.slice(-10)) r(isoSec(a.createdAt), "agent_run", a.reasonText, { txHash: a.txHash, simulated: a.simulated, reasonCode: a.reasonCode, ref: `agent_run:${a.id}` });
   if (id === "B02") for (const l of assistantLogs.slice(-10)) r(isoSec(l.createdAt), "assistant", `${l.question}${l.numbersVerified ? "" : " · số liệu chưa kiểm chứng"}`, { ref: `assistant:${l.id}` });
-  if (id === "B07") for (const f of computeFindings(S).slice(0, 10)) r(isoSec(f.createdAt), "event", f.title, { ref: `finding:${f.id}` });
+  if (id === "B07") for (const f of computeFindings(S).slice(0, 10)) r(0, "event", f.title, { ref: `finding:${f.id}` });
   for (const i of incidents) if (i.building === id || id === "B08") r(i.openedAt, "incident", `${i.titleVi} · ${INCIDENT_STATUS_VI[i.status]}`, { ref: `incident:${i.id}` });
   return out.sort((a, b) => b.ts - a.ts).slice(0, 10);
 }
@@ -683,12 +706,12 @@ function lockPrincipal(req: LockRequest): ActionResult {
       emit({ type: "attempt", data: at });
     }
     graphUpdated(); emitCity();
-    return ok(tx);
+    return ok(tx, req.member, p.id);
 }
 
 // ---------- API surface ----------
 const memberOf = (id: MemberId) => { if (!S.members.some((m) => m.id === id)) throw new ApiError("NOT_COUNCIL_MEMBER", "Không thuộc Hội đồng", 403); };
-const ok = (txHash: string | null): ActionResult => ({ ok: true, txHash, simulated: true, policyVersion: S.policyVersion });
+const ok = (txHash: string | null, member = "", principalId: string | null = null): ActionResult => ({ status: "ok", txHash, block: null, simulated: true, member, principalId });
 
 export const mockApi = {
   async getHealth(): Promise<Health> {
@@ -721,8 +744,8 @@ export const mockApi = {
     if (run === RECORDED_ID) return recordedAttempts();
     return attempts.filter((a) => (run ? a.runId === run : a.runId === currentRunId));
   },
-  async draftProposal(req: DraftProposalRequest): Promise<ProposalDraft> { await lat(); return buildDraft(resolveChange(req)); },
-  async createProposal(req: CreateProposalRequest): Promise<Proposal> { await lat(); memberOf(req.proposer); return liveProposal(addProposal(resolveChange(req), req.proposer)); },
+  async draftProposal(req: DraftProposalRequest): Promise<ProposalDraft> { await lat(); return buildDraft(resolveChange(req), req.findingId ?? null); },
+  async createProposal(req: CreateProposalRequest): Promise<Proposal> { await lat(); memberOf(req.member); return liveProposal(addProposal(resolveChange(req), req.member, undefined, req.findingId ?? null, req.title)); },
   async approveProposal(id: number, member: MemberId): Promise<Proposal> { await lat(); return approve(id, member); },
   async getProposals(): Promise<Proposal[]> { await lat(); return S.proposals.map(liveProposal).sort((a, b) => b.id - a.id); },
   async lockDistrict(req: LockRequest): Promise<ActionResult> {
@@ -734,7 +757,7 @@ export const mockApi = {
     if (S.paused) throw new ApiError("ALREADY_PAUSED", "Kho đã dừng", 409);
     S.paused = true; const tx = fakeTxHash(`pause${++counter}`);
     pushEvent("EmergencyAction", { member: req.member, action: "pauseAll" }, tx); pushEvent("Paused", { by: req.member }, tx);
-    graphUpdated(); emitCity(); return ok(tx);
+    graphUpdated(); emitCity(); return ok(tx, req.member);
   },
   async askAssistant(req: AskRequest): Promise<AssistantAnswer> { await sleep(mockConfig.latencyMs > 0 ? 600 : 0); const a = answerFor(req); logAssistant(req.question, a); return a; },
   async runAgentOnce(): Promise<AgentRun> { await lat(); return agentRunOnceSync(); },
@@ -748,8 +771,8 @@ export const mockApi = {
   async applyPolicyV2(): Promise<ActionResult> {
     await lat();
     const f = computeFindings(S)[0];
-    if (!f?.suggestedChange) return ok(null);
-    const p = addProposal(f.suggestedChange, "lan");
+    if (!f?.proposal) return ok(null);
+    const p = addProposal(f.proposal!, "lan");
     for (const m of ["lan", "trang"] as MemberId[]) if (p.status === "open") approve(p.id, m);
     return ok(null);
   },

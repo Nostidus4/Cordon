@@ -1,14 +1,19 @@
-// GET /api/districts/:id (spec §8.6).
+// GET /api/districts/:id (spec §8.6), backend shape.
 import type { KeyKind, Money } from "./common";
+import type { Finding } from "./finding";
 
 export interface DistrictKey {
-  key: string;
   address: string;
+  /** Seed id, e.g. `key_minh`. */
+  seedId: string;
   kind: KeyKind;
   label: string;
-  active: boolean; // on Tx AllowList
+  active: boolean;
+  /** On the Tx AllowList. */
+  allowListed: boolean;
   dailyCap: Money;
   spentToday: Money;
+  remaining: Money;
 }
 
 export interface DistrictDetail {
@@ -18,8 +23,11 @@ export interface DistrictDetail {
   dailyCap: Money | null;
   spentToday: Money;
   remaining: Money;
+  youThink: Money;
   locked: boolean;
   keys: DistrictKey[];
   /** Declared (self-reported, unverified) relations touching this district */
-  declared: { from: string; to: string; relation: "CONTROLS" | "ADMINS"; note: string }[];
+  declaredEdges: { id: string; from: string; to: string; relation: "CONTROLS" | "ADMINS"; source: string; note: string }[];
+  council: string[];
+  findings: Finding[];
 }
