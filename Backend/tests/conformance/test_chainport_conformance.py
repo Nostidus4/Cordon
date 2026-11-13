@@ -14,7 +14,6 @@ from typing import Any
 
 import pytest
 
-from guardian.chain.errors import ChainRevert
 from guardian.shared.reason_codes import ReasonCode as R
 from guardian.shared.scenario4 import SCENARIO4_DISTRICT, SCENARIO4_STEPS, Scenario4Step
 from tests.conformance.harness import SEL, Net, norm, u, view
@@ -100,10 +99,17 @@ def test_seed_snapshot_policy_v1(net: Net) -> None:
     assert len(v["declared_edges"]) == 4
 
 
+def _propose(c: Any, *args: Any) -> int:
+    r = c.propose(*args)
+    assert r.ok and r.proposal_id is not None, r.error_raw
+    return r.proposal_id
+
+
 # ----------------------------------------------------- 2. scene 4 (spec 4.3)
 def test_scene4_policy_v2_through_the_council(net: Net) -> None:
     c = net.chain
-    pid = c.propose(
+    pid = _propose(
+        c,
         "lan",
         net.seed["policy_v2"]["title"],
         "minh",
@@ -384,7 +390,7 @@ def test_loosen_needs_two_of_three_and_bumps_the_version_once(net: Net) -> None:
     calls = [
         {"target": "vault", "fn": "setKeyDailyCap", "args": {"key": "key_minh", "cap": u(50_000)}}
     ]
-    pid = c.propose("trang", "raise", "minh", calls, "0x" + "01" * 32)
+    pid = _propose(c, "trang", "raise", "minh", calls, "0x" + "01" * 32)
     st = c.proposal_state(pid)
     assert (st.status, st.approvals, st.approved_by) == ("open", 0, [])
     r1 = c.approve("trang", pid)
@@ -413,8 +419,8 @@ def test_loosen_needs_two_of_three_and_bumps_the_version_once(net: Net) -> None:
 def test_unpause_is_a_loosening_and_needs_two_of_three(net: Net) -> None:
     c = net.chain
     assert c.emergency_pause("huy").ok
-    pid = c.propose(
-        "trang", "unpause", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x"
+    pid = _propose(
+        c, "trang", "unpause", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x"
     )
     assert c.approve("trang", pid).ok and net.snap().paused
     assert c.approve("lan", pid).ok and not net.snap().paused
@@ -424,10 +430,10 @@ def test_unpause_is_a_loosening_and_needs_two_of_three(net: Net) -> None:
 def test_conflict_of_interest_and_the_suggested_alternative(net: Net) -> None:
     c = net.chain
     req = net.seed["request_12"]
-    pid = c.propose("trang", req["title"], "minh", req["calls"], "0x" + "02" * 32)
+    pid = _propose(c, "trang", req["title"], "minh", req["calls"], "0x" + "02" * 32)
     assert c.approve("lan", pid).ok  # no member bound to minh
     sug = req["suggestion"]["calls"]
-    pid2 = c.propose("trang", "move agent to huy", "huy", sug, "0x" + "03" * 32)
+    pid2 = _propose(c, "trang", "move agent to huy", "huy", sug, "0x" + "03" * 32)
     r = c.approve("huy", pid2)  # Huy is the district that would receive the key
     assert r.status == "reverted" and r.error_raw == "ConflictOfInterest" and r.events == []
     assert c.proposal_state(pid2).approvals == 0
@@ -439,14 +445,14 @@ def test_conflict_of_interest_is_derived_from_the_calls(net: Net) -> None:
     """The declared subject is minh, but the call also moves a key out of huy's district."""
     c = net.chain
     move = [{"target": "registry", "fn": "moveKey", "args": {"key": "key_huy_1", "to": "minh"}}]
-    pid = c.propose("trang", "huy key to minh", "minh", move, "0x" + "04" * 32)
+    pid = _propose(c, "trang", "huy key to minh", "minh", move, "0x" + "04" * 32)
     r = c.approve("huy", pid)
     assert r.error_raw == "ConflictOfInterest" and r.events == []
     assert c.approve("lan", pid).ok and c.approve("trang", pid).ok
     assert net.snap().keys[net.addr("key_huy_1")].principal_id == "minh"
 
 
-def test_propose_errors_raise_the_same_revert(net: Net) -> None:
+def test_propose_errors_return_the_same_revert(net: Net) -> None:
     c = net.chain
     bad: list[tuple[str, str | None, list[dict[str, Any]], str, str]] = [
         ("trang", None, [{"target": "token", "fn": "mint", "args": {}}], "TargetNotAllowed", "x"),
@@ -473,18 +479,18 @@ def test_propose_errors_raise_the_same_revert(net: Net) -> None:
         ),
     ]
     for member, subject, calls, name, _ in bad:
-        with pytest.raises(ChainRevert) as e:
-            c.propose(member, "x", subject, calls, "0x")
-        assert e.value.name == name, name
-    with pytest.raises(ChainRevert):
-        c.propose("trang", "empty", None, [], "0x")
+        r = c.propose(member, "x", subject, calls, "0x")
+        assert r.status == "reverted" and r.proposal_id is None, name
+        assert r.error_raw == name, name
+    r = c.propose("trang", "empty", None, [], "0x")
+    assert r.status == "reverted" and r.proposal_id is None
     assert net.snap().policy_version == 1
 
 
 def test_cancel_by_proposer_only_and_unknown_proposal(net: Net) -> None:
     c = net.chain
     calls = [{"target": "vault", "fn": "unpauseAll", "args": {}}]
-    pid = c.propose("trang", "unpause", None, calls, "0x")
+    pid = _propose(c, "trang", "unpause", None, calls, "0x")
     r = c.cancel("lan", pid)
     assert r.status == "reverted" and r.error_raw == "NotProposer"
     assert c.cancel("trang", pid).ok and c.proposal_state(pid).status == "cancelled"
@@ -604,15 +610,16 @@ def test_event_payload_shapes_and_values(net: Net) -> None:
     keep(c.deactivate_key("huy", "key_huy_2"))
     keep(c.emergency_pause("trang"))
     keep(c.emergency_lock("lan", "minh"))
-    pid_move = c.propose(
+    pid_move = _propose(
+        c,
         "trang",
         "move",
         "huy",
         [{"target": "registry", "fn": "moveKey", "args": {"key": "key_lan", "to": "huy"}}],
         "0x" + "05" * 32,
     )
-    pid_unpause = c.propose(
-        "trang", "unpause", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x"
+    pid_unpause = _propose(
+        c, "trang", "unpause", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x"
     )
     for ev in c.events_since(0):  # `propose` returns the id, so read its event from the log
         if ev.name == "Proposed":

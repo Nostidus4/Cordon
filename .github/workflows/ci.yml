@@ -23,6 +23,10 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
+      - name: OpenAPI drift check
+        run: |
+          uv run python -m guardian.tools.export_openapi
+          git diff --exit-code openapi.json
 
   frontend:
     runs-on: ubuntu-latest

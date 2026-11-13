@@ -1,26 +1,32 @@
-# API_CONTRACT — ChainPort, ChainEvent, REST và SSE (bản nháp đóng băng)
+# API_CONTRACT — ChainPort, ChainEvent, REST và SSE
 
-Trạng thái: **DRAFT**, sẽ được đóng băng bởi issue `API-001`. Đây là hợp đồng giữa: (1) lớp ứng dụng và mọi chain (`chain/sim`, `chain/l1`); (2) Backend và Frontend. Sau khi đóng băng, đổi hợp đồng cần PR riêng cập nhật cùng lúc: tài liệu này, `Backend/src/guardian/schemas`, `Frontend/src/types`, và `openapi.json` đã commit.
+Trạng thái: **FROZEN — 2026-11-12** (issue `API-001`). Đây là hợp đồng giữa: (1) lớp ứng dụng và mọi chain (`chain/sim`, `chain/l1`); (2) Backend và Frontend. Sau khi đóng băng, đổi hợp đồng cần PR riêng cập nhật cùng lúc: tài liệu này, `Backend/src/guardian/schemas`, `Frontend/src/types`, và `openapi.json` đã commit.
 
-Nguồn mã hiện tại: `Backend/src/guardian/chain/base.py`, `Backend/src/guardian/domain/snapshot.py`, `Backend/src/guardian/schemas/*`, `Backend/src/guardian/api/routes/*`, `Frontend/src/types/*`, `Frontend/src/lib/api/endpoints.ts`.
+Nguồn mã: `Backend/src/guardian/chain/base.py`, `Backend/src/guardian/domain/snapshot.py`, `Backend/src/guardian/schemas/*`, `Backend/src/guardian/api/routes/*`, `Frontend/src/types/*`, `Frontend/src/lib/api/endpoints.ts`.
 
 ## 1. ChainPort
 
 `ChainPort` (Protocol, `chain/base.py`) là ranh giới duy nhất giữa ứng dụng và chain. Hai bản cài đặt phải **không thể phân biệt** từ phía gọi (cùng kết quả cho cùng chuỗi lệnh, trừ trường `simulated`, tx hash và block).
+
+**Địa chỉ.** Hợp đồng: `signer`, `member`, `key`, `to` là **địa chỉ hex**. `shortcut:` lớp dịch vụ và attacker hiện còn truyền seed id (`key_minh`, `tUSDC`, `vendor_cloud`, member `lan`...) và sim tự phân giải; chuyển hết sang hex (dùng `shared/addresses.py: derive_address`, trùng địa chỉ trong `seed/may_labs.json`) đụng hơn 10 chỗ gọi (`attempt_service`, `agent_service`, `action_service`, `proposal_service`, `attacker/steps`, `attacker/cli`, scenario4 dùng chung với Frontend) và đổi `signer` trong `AttemptOut`, nên để lại; làm trước khi có adapter L1.
+
+**Đồng bộ.** `ChainPort` là hàm đồng bộ. Adapter L1 phải chạy lệnh web3 ngoài event loop (threadpool) sau **một lock** tuần tự hoá mọi thao tác chain, khớp quy tắc "không `await` giữa chừng một thao tác chain" của sim (`services/runtime.py`). `shortcut:` port async là hướng nâng cấp nếu cần thông lượng.
 
 | Nhóm | Hàm | Ghi chú |
 |---|---|---|
 | Chi tiêu (khoá gọi) | `pay`, `swap`, `raw_call` | trả `TxResult` |
 | Dry-run | `simulate_pay`, `simulate_swap` | trả `ReasonCode \| None`, không gửi tx |
 | Council siết (1 người) | `emergency_lock`, `emergency_pause`, `lower_key_cap`, `lower_district_cap`, `revoke_allow`, `deactivate_key` | |
-| Council nới (2/3) | `propose` (trả id), `approve`, `cancel` | tự execute khi đủ 2 phiếu |
+| Council nới (2/3) | `propose` (trả `TxResult`, id ở `proposal_id`), `approve`, `cancel` | tự execute khi đủ 2 phiếu |
 | Đọc / stream | `snapshot() -> PolicySnapshot`, `events_since(block)`, `subscribe(cb) -> unsubscribe` | |
 
 `TxResult.status ∈ {ok, reverted, blocked_at_protocol}`:
 
-- `ok`: có `tx_hash`, `block`, `events`.
+- `ok`: có `tx_hash`, `block`, `events`; với `propose` có thêm `proposal_id: int`.
 - `reverted`: có `reason_code` (từ custom error), thường có `tx_hash` (tx bị revert vẫn được gửi để có hash trên explorer), `error_raw`.
 - `blocked_at_protocol`: `reason_code = BLOCKED_AT_PROTOCOL`, **không có `tx_hash`**, `error_raw` là lỗi RPC rút gọn.
+
+`propose` không ném lỗi khi revert: trả `TxResult` `reverted` / `blocked_at_protocol` với `proposal_id = None`.
 
 Hành vi ChainPort cần đảm bảo (bộ test conformance chạy trên cả hai bản cài đặt): thứ tự kiểm tra bảng 4.3 của [README.md](README.md) · bộ đếm theo ngày UTC · tight 1 / loosen 2/3 / xung đột lợi ích · `emergency_lock` khiến mọi khoá của khu `allow_listed = false` · `snapshot()` phản ánh đúng sau mỗi lệnh.
 
@@ -30,7 +36,7 @@ Hành vi ChainPort cần đảm bảo (bộ test conformance chạy trên cả h
 ChainEvent { name, block, tx_hash, log_index, payload: dict, ts, simulated }
 ```
 
-Khoá duy nhất: `(tx_hash, log_index)` (indexer idempotent). Payload dùng **camelCase**, số tiền là chuỗi/số nguyên base unit trong ChainPort và được bọc thành `{raw, display}` ở tầng API (`services/views.py: api_event`).
+Khoá duy nhất: `(tx_hash, log_index)` (indexer idempotent). Payload dùng **camelCase**. Số tiền trong payload là `int` Python (base unit); tầng API bọc thành `{raw: string, display}` (`schemas/common.py`, `services/views.py: api_event`). `principalId`/`id` là chuỗi **ASCII** (ví dụ `"minh"`): adapter/indexer đổi từ `bytes32` trước khi tạo `ChainEvent` (xem [CONTRACTS.md](CONTRACTS.md) mục 6).
 
 | `name` | Payload (khớp event trong [CONTRACTS.md](CONTRACTS.md)) |
 |---|---|
@@ -44,9 +50,15 @@ Khoá duy nhất: `(tx_hash, log_index)` (indexer idempotent). Payload dùng **c
 | `PolicyVersionBumped` | `version` |
 | `TopUpRecorded` | `cChainTxHash, amount` |
 | `TopUpOperatorChanged` | `oldOperator, newOperator` (sim chưa phát) |
-| `PrincipalCreated`, `KeyAdded`, `KeyMoved`, `KeyDeactivated` | theo [CONTRACTS.md](CONTRACTS.md) mục 2 |
-| `Proposed`, `Approved`, `Executed`, `Cancelled`, `EmergencyAction` | theo [CONTRACTS.md](CONTRACTS.md) mục 4 |
-| `AllowListRoleSet` (khi khoá bị `setNone`/`setEnabled` trên Tx AllowList) | `key, role` (0 none, 1 enabled, 2 admin), `by`. Trên L1 là log `RoleSet` của precompile; indexer chuẩn hoá về tên này. `chain/sim` phát một event cho mỗi khoá khi khoá/mở khoá khu (`by` = địa chỉ Council); mock frontend hiện chưa phát (xem mục 7) |
+| `PrincipalCreated` | `id, label` |
+| `KeyAdded` | `id, key, kind, label` |
+| `KeyMoved` | `key, fromId, toId` |
+| `KeyDeactivated` | `key` |
+| `Proposed` | `id, proposer, subjectPrincipal (ASCII hoặc null), title, riskReportHash` |
+| `Approved` | `id, member` |
+| `Executed`, `Cancelled` | `id` |
+| `EmergencyAction` | `member, action, subject` (theo [CONTRACTS.md](CONTRACTS.md) mục 4) |
+| `AllowListRoleSet` (khi khoá bị `setNone`/`setEnabled` trên Tx AllowList) | `{key, role, by}` (role 0 none, 1 enabled, 2 admin). Trên L1 là log `RoleSet` của precompile; indexer chuẩn hoá về tên này. `chain/sim` phát một event cho mỗi khoá khi khoá/mở khoá khu (`by` = địa chỉ Council); mock frontend chưa phát (mục 7) |
 
 ## 3. PolicySnapshot (chain → graph)
 
@@ -62,26 +74,26 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 | GET | `/org` | công ty, quỹ chính, kho, Council | có |
 | GET | `/graph` | `GraphSnapshot` (`policyVersion` thô + `policyLabel`, mục 4.1) | có |
 | GET | `/city/states` | trạng thái 8 công trình cho thành phố 3D | có |
-| GET | `/city/buildings`, `/city/buildings/{id}` | 8 tòa = 8 module, luật đổi màu, bằng chứng, `recent` ([CITY_OPS](CITY_OPS.md) §2) | có (CITY_OPS) |
+| GET | `/city/buildings`, `/city/buildings/{building_id}` | 8 tòa = 8 module, luật đổi màu, bằng chứng, `recent` ([CITY_OPS](CITY_OPS.md) §2) | có (CITY_OPS) |
 | GET | `/faults` | các kiểu sự cố gây được (F01-F07) | có (CITY_OPS) |
-| POST | `/faults/{id}/inject` | gây sự cố thật qua `ChainPort` / service, chỉ `DEMO_MODE` (CITY_OPS §3) | có (CITY_OPS) |
-| GET | `/incidents?status=open\|all`, `/incidents/{id}` | sự cố do responder xử lý (CITY_OPS §4) | có (CITY_OPS) |
+| POST | `/faults/{fault_id}/inject` | gây sự cố thật qua `ChainPort` / service, chỉ `DEMO_MODE` (CITY_OPS §3) | có (CITY_OPS) |
+| GET | `/incidents?status=open\|all`, `/incidents/{incident_id}` | sự cố do responder xử lý (CITY_OPS §4) | có (CITY_OPS) |
 | POST | `/simulate` | `{compromised[], change?}` → `SimResult` (có `before/after` khi có `change`) | có |
 | GET | `/findings` | findings đang mở (id dạng `R1_MULTI_KEY_NO_SHARED_CAP:minh`) | có |
-| GET | `/districts/{id}` | chi tiết khu | có |
+| GET | `/districts/{principal_id}` | chi tiết khu | có |
 | GET | `/events?since=` | event đã index | có |
 | GET | `/stream` | SSE (mục 5) | có |
 | GET / POST | `/attempts?run=` / `/attempts` | các lần thử; POST do attacker CLI ngoài báo | có |
 | POST | `/proposals/draft` | từ `findingId` hoặc `change` → `calls` + `riskReport` (chưa gửi chain) | có |
-| GET / POST | `/proposals`, `/proposals/{id}` | danh sách, tạo (demo signer) | có |
-| POST | `/proposals/{id}/approve` | `{member}` (demo signer) | có |
+| GET / POST | `/proposals`, `/proposals/{proposal_id}` | danh sách, tạo (demo signer) | có |
+| POST | `/proposals/{proposal_id}/approve` | `{member}` (demo signer) | có |
 | POST | `/actions/lock`, `/actions/pause` | demo signer, `emergencyLock` / `emergencyPause` | có |
 | POST | `/assistant/ask` | `{question, context}` → `AssistantAnswer` (+ `numbersVerified`). Câu cố định: mẫu + tool. Câu tự do (`questionId = "free_text"`): chỉ khi LLM bật (LLM, tool chỉ đọc, mọi số được verifier kiểm; sai/lỗi/timeout 15 s → câu mặc định, `numbersVerified=false`); LLM tắt thì 422 `UNKNOWN_QUESTION` | có |
 | GET | `/assistant/logs` | bảng `assistant_logs`, cũ nhất trước, `?limit=` (mặc định 200) | có (CITY_OPS) |
 | POST | `/agent/run-once` | chạy agent một vòng → `AgentRun` (`reasonSource` = `llm` nếu LLM viết câu giải thích đạt kiểm tra, ngược lại `template`; số tiền/token/DEX không bao giờ do LLM chọn) | có |
 | GET | `/agent/runs` | bảng `agent_runs`, cũ nhất trước, `?limit=` (mặc định 200); `AgentRun` thêm `steps`, `untrustedInput`, `injectionIgnored` | có (CITY_OPS) |
 | POST | `/scenario/scene4/run`, `/scenario/scene4/step7` | chạy kịch bản từ server | có |
-| GET | `/scenario/runs`, `/scenario/runs/{id}` | các lần chạy (Replay dùng) | có |
+| GET | `/scenario/runs`, `/scenario/runs/{run_id}` | các lần chạy (Replay dùng) | có |
 | POST | `/demo/reset`, `/demo/policy-v2` | đặt lại về đầu cảnh 1 (sim: tua lại chain trong bộ nhớ; l1: nạp lại bộ contract mới mà `make demo-reset` vừa deploy, mục 4.2); áp policy v2 qua đường Council thật | có |
 
 ### 4.1 `policyVersion` và `policyLabel`
@@ -94,7 +106,7 @@ Cùng hợp đồng HTTP ở sim và l1: trả `{status, policyVersion, policyLa
 
 Mọi endpoint ký (`actions`, `agent/run-once`, `demo/*`, `proposals` POST, `scenario/*`) chỉ hoạt động khi `DEMO_MODE` bật, có rate limit và log. `DEMO_MODE` không bao giờ bật trên mạng thật (`core/demo_guard.py`).
 
-Hợp đồng giữa Backend và Frontend được kiểm tự động: OpenAPI do FastAPI sinh được commit ở `Backend/openapi.json` (issue API-001) và test `API-002` đối chiếu từng schema với `Frontend/src/types`.
+Hợp đồng giữa Backend và Frontend được kiểm tự động: OpenAPI do FastAPI sinh được commit ở `Backend/openapi.json` (issue API-001) và test `API-002` (#6) đối chiếu từng schema với `Frontend/src/types`.
 
 ## 5. SSE `/api/stream`
 
@@ -122,17 +134,33 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 | `shared/scenario4.py` | `Frontend/src/shared/scenario4.ts` |
 | `schemas/stream.py` | `Frontend/src/types/stream.ts` |
 
-## 7. Chênh lệch đã biết giữa mock và backend (cần xử lý ở `WEB-001`, `WEB-002`, `QA-001`)
+## 7. Chênh lệch đã biết giữa mock và backend (checklist theo issue)
 
-- Id finding: mock `F-R1-minh`, backend `R1_MULTI_KEY_NO_SHARED_CAP:minh`.
-- Mock chỉ có finding R1; backend có R1–R4.
-- Mock frontend chưa phát event `AllowListRoleSet` khi khoá khu bị khoá/mở khoá (`chain/sim` đã phát từ CHN-003, như log `RoleSet` của precompile trên L1).
-- Đề xuất #11 (gom khu) trên mock có proposer khác `lan`; backend dùng `lan`.
-- Hai endpoint `GET /agent/runs`, `GET /assistant/logs` chưa có ở backend.
+- [ ] Id finding: mock `F-R1-minh`, backend `R1_MULTI_KEY_NO_SHARED_CAP:minh` -> WEB-002 (#12)
+- [ ] Mock chỉ có finding R1; backend có R1–R4 -> WEB-002 (#12)
+- [x] `chain/sim` phát `AllowListRoleSet` khi khoá khu bị khoá/mở khoá (CHN-003). Còn lại: mock frontend chưa phát -> WEB-002 (#12)
+- [ ] Đề xuất #11 (gom khu): proposer trên mock khác `lan`, backend dùng `lan` -> WEB-002 (#12)
+- [x] `GET /agent/runs`, `GET /assistant/logs` đã có (CITY_OPS)
+- [ ] Chạy trọn luồng trực tiếp (live) Frontend ↔ Backend -> WEB-001 (#17)
+- [ ] Kiểm tương đương (parity) schema/mock/backend tự động -> QA-001 (#21)
+- [ ] `chain/sim` lệch [CONTRACTS.md](CONTRACTS.md) mục 6: `KeyAdded.kind` phát chữ hoa (`HUMAN`) thay vì `human`; `Proposed.subjectPrincipal` là `null` thay vì bytes32 rỗng. Sửa sim khi viết adapter L1 / bộ test conformance
+- [x] `Runtime.sim` đã bỏ: app code đi qua `ChainPort` (`proposal_state`...). Còn lại: app code vẫn truyền seed id (`key_minh`, `lan`, `tUSDC`) vào ChainPort (adapter L1 phân giải), đổi sang hex là đổi `AttemptOut.signer` (thay đổi hợp đồng)
 
-## 8. Tiêu chí đóng băng (`API-001`)
+## 8. Tiêu chí đóng băng (`API-001`), đã đạt 2026-11-12
 
-- [ ] `Backend/openapi.json` sinh bằng lệnh có trong `Makefile` và commit; CI fail nếu lệch
-- [ ] Bảng payload event ở mục 2 khớp những gì `chain/sim` đang phát và `EventOut`
-- [ ] Giao diện `EventSink` / `EventStore` (indexer ghi, API đọc) được định nghĩa trong `Backend/src/guardian/chain/base.py` hoặc `services/`
-- [ ] Mục 7 được đóng thành checklist cho các issue sau
+- [x] `Backend/openapi.json` sinh bằng `make openapi` và commit; CI fail nếu lệch
+- [x] Bảng payload event ở mục 2 khớp những gì `chain/sim` đang phát (và `EventOut`)
+- [x] `EventSink` định nghĩa ở mục 9 (`workers/indexer.py`); `GET /api/events` đọc `ChainPort.events_since`
+- [x] Mục 7 được đóng thành checklist cho các issue sau
+
+## 9. EventSink và DemoControls
+
+`EventSink` (Protocol, `Backend/src/guardian/workers/indexer.py`; bản `InMemoryEventSink`) là phía ghi của indexer:
+
+- `write(event) -> bool`: idempotent theo `(tx_hash, log_index)`; `False` nếu đã có.
+- `last_block() -> int | None` (`meta.last_block_l1`; `None` khi chưa index gì), `set_last_block(block)`.
+- `events_in_range(first, last)` (sắp theo `(block, log_index)`) và `remove(tx_hash, log_index)` cho cửa sổ reorg.
+
+Không có `EventStore` riêng: `GET /api/events?since=` đọc `ChainPort.events_since(block)` (cả sim lẫn l1, adapter l1 tự đọc log), còn `Runtime.event_log` (deque) là bản ghi để dựng thành phố/sự cố. Khi có Postgres (DB-002), sink DB thay `InMemoryEventSink` mà không đổi ChainPort.
+
+`chain/base.py`: `DemoControls` (chỉ `reset`, chỉ sim; `demo_reset` gọi khi `not rt.is_l1`, l1 nạp bộ contract mới, mục 4.2) và `DemoChain(ChainPort, DemoControls)`. `balance` đã nằm trong `ChainPort`. `advance_day`, `topup`, `direct_call`, `apply_policy_v2` không do dịch vụ/API gọi nên không nằm trong `DemoControls`.

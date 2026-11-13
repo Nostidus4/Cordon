@@ -504,8 +504,8 @@ class SimChain:
         subject_principal: str | None,
         calls: list[dict[str, Any]],
         risk_report_hash: str,
-    ) -> int:
-        """Returns the proposal id; raises ChainRevert if the tx reverts (non-member, T11)."""
+    ) -> TxResult:
+        """TxResult with `proposal_id` on success; a revert (non-member, T11) is returned, not raised."""
         box: list[int] = []
 
         def body(tx: _Tx) -> None:
@@ -546,9 +546,9 @@ class SimChain:
             )
 
         res = self._transact(self._member(member), "propose", body)
-        if res.status != "ok":
-            raise ChainRevert(res.error_raw or "reverted", res.reason_code)
-        return box[0]
+        if res.status == "ok":
+            res.proposal_id = box[0]
+        return res
 
     def approve(self, member: str, proposal_id: int) -> TxResult:
         def body(tx: _Tx) -> None:
@@ -705,9 +705,11 @@ class SimChain:
     def apply_policy_v2(self) -> list[TxResult]:
         """Policy v2 via propose + 2 approvals (lan, trang)."""
         v2 = self._seed["policy_v2"]
-        pid = self.propose(
+        prop = self.propose(
             v2["approvers"][0], v2["title"], v2["subject_principal"], v2["calls"], _h("policy_v2")
         )
+        pid = prop.proposal_id
+        assert pid is not None, prop.error_raw
         return [self.approve(m, pid) for m in v2["approvers"]]
 
     # ------------------------------------------------------------- snapshot

@@ -8,7 +8,6 @@ import pytest
 from eth_account import Account
 
 from guardian.chain.client import ChainWriteError
-from guardian.chain.errors import ChainRevert
 from guardian.chain.l1 import L1Chain
 from guardian.chain.l1.signers import LocalSigner, SignerError, SignerRegistry
 from guardian.shared.money import to_base
@@ -149,7 +148,7 @@ def test_propose_two_approvals_executes_and_bumps_version_once(l1: L1Chain) -> N
         {"target": "vault", "fn": "setKeyDailyCap", "args": {"key": "key_minh", "cap": u(50_000)}}
     ]
     v = l1.snapshot().policy_version
-    pid = l1.propose("trang", "raise", "minh", calls, "0x01")
+    pid = l1.propose("trang", "raise", "minh", calls, "0x01").proposal_id
     assert pid == 1
     r1 = l1.approve("trang", pid)
     assert r1.ok and [e.name for e in r1.events] == ["Approved"]
@@ -165,49 +164,46 @@ def test_propose_two_approvals_executes_and_bumps_version_once(l1: L1Chain) -> N
     assert snap.policy_version == v + 1
     assert snap.keys[l1._addr("key_minh")].daily_cap == u(50_000)
     assert l1.cancel("trang", pid).error_raw == "ProposalNotOpen"
-    assert (
-        l1.propose(
-            "lan", "again", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x"
-        )
-        == 2
+    again = l1.propose(
+        "lan", "again", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x"
     )
+    assert again.proposal_id == 2
 
 
 def test_conflict_of_interest_declared_and_derived(l1: L1Chain) -> None:
     move = [
         {"target": "registry", "fn": "moveKey", "args": {"key": "key_agent_rebalance", "to": "huy"}}
     ]
-    pid = l1.propose("trang", "to huy", "huy", move, "0x02")
+    pid = l1.propose("trang", "to huy", "huy", move, "0x02").proposal_id
     r = l1.approve("huy", pid)
     assert r.status == "reverted" and r.error_raw == "ConflictOfInterest" and r.events == []
     # declared subject is minh but the call also touches huy's district: huy still cannot approve
     move2 = [{"target": "registry", "fn": "moveKey", "args": {"key": "key_huy_1", "to": "minh"}}]
-    pid2 = l1.propose("trang", "huy key to minh", "minh", move2, "0x03")
+    pid2 = l1.propose("trang", "huy key to minh", "minh", move2, "0x03").proposal_id
     assert l1.approve("huy", pid2).error_raw == "ConflictOfInterest"
     assert l1.approve("lan", pid2).ok and l1.approve("trang", pid2).ok
 
 
 def test_propose_errors_match_the_sim(l1: L1Chain, env: Env) -> None:
-    with pytest.raises(ChainRevert) as e:
-        l1.propose("trang", "evil", None, [{"target": "token", "fn": "mint", "args": {}}], "0x")
-    assert e.value.name == "TargetNotAllowed"
-    with pytest.raises(ChainRevert) as e:
-        l1.propose(
-            "trang", "evil", None, [{"target": "vault", "fn": "selfdestruct", "args": {}}], "0x"
-        )
-    assert e.value.name == "UnknownCall"
-    with pytest.raises(ChainRevert) as e:  # subject not among the affected principals
-        l1.propose(
+    bad = [
+        ("trang", None, [{"target": "token", "fn": "mint", "args": {}}], "TargetNotAllowed"),
+        ("trang", None, [{"target": "vault", "fn": "selfdestruct", "args": {}}], "UnknownCall"),
+        (  # subject not among the affected principals
             "trang",
-            "x",
             "huy",
             [{"target": "vault", "fn": "lockPrincipal", "args": {"principal_id": "minh"}}],
-            "0x",
-        )
-    assert e.value.name == "SubjectMismatch"
-    with pytest.raises(ChainRevert) as e:  # not a member
-        l1.propose("key_minh", "x", None, [{"target": "vault", "fn": "pauseAll", "args": {}}], "0x")
-    assert e.value.name == "NotCouncilMember"
+            "SubjectMismatch",
+        ),
+        (  # not a member
+            "key_minh",
+            None,
+            [{"target": "vault", "fn": "pauseAll", "args": {}}],
+            "NotCouncilMember",
+        ),
+    ]
+    for member, subject, calls, name in bad:
+        r = l1.propose(member, "x", subject, calls, "0x")
+        assert (r.ok, r.error_raw, r.proposal_id) == (False, name, None), name
     assert l1.snapshot().policy_version == 1  # nothing executed
 
 

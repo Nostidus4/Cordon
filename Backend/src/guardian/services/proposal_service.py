@@ -152,9 +152,12 @@ def propose(
     require_member(rt.snapshot(), member)
     change = resolve_change(snap, finding_id, change_raw)
     d = build_draft(snap, change)
-    pid = rt.chain.propose(
+    res = rt.chain.propose(
         member, title or d["title"], d["subject"], views.chain_calls(d["calls"]), d["hash"]
     )
+    if res.proposal_id is None:
+        raise ChainRevert(res.error_raw or "reverted", res.reason_code)
+    pid = res.proposal_id
     rt.stores.proposals[pid] = ProposalRec(
         id=pid,
         title=title or d["title"],
@@ -202,7 +205,10 @@ def propose_calls(
         "graphVersion": snap.policy_version,
     }
     h = risk_report_hash(report)
-    pid = rt.chain.propose(member, title, subject, views.chain_calls(calls), h)
+    res = rt.chain.propose(member, title, subject, views.chain_calls(calls), h)
+    if res.proposal_id is None:
+        raise ChainRevert(res.error_raw or "reverted", res.reason_code)
+    pid = res.proposal_id
     rt.stores.proposals[pid] = ProposalRec(
         id=pid,
         title=title,

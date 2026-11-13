@@ -12,6 +12,13 @@ from guardian.shared.money import to_base
 from guardian.shared.reason_codes import ReasonCode as R
 from guardian.shared.scenario4 import SCENARIO4_DISTRICT, SCENARIO4_STEPS
 
+
+def _pid(c: SimChain, *args) -> int:  # type: ignore[no-untyped-def]
+    r = c.propose(*args)
+    assert r.proposal_id is not None, r.error_raw
+    return r.proposal_id
+
+
 T0 = 1_800_000_000 - 1_800_000_000 % 86400 + 3600  # 01:00 UTC
 SEL = "0x" + "00" * 4
 
@@ -175,8 +182,8 @@ def test_t9_tighten_one_loosen_two_thirds_outsider_nothing():
     assert (
         c.emergency_pause("key_minh").error_raw == "NotCouncilMember"
     )  # allow-listed key, not a member
-    with pytest.raises(ChainRevert):
-        c.propose("key_minh", "x", None, [], "0x00")
+    r = c.propose("key_minh", "x", None, [], "0x00")
+    assert r.status == "reverted" and r.proposal_id is None
     # loosening via proposal needs 2 approvals
     pid = c.propose(
         "trang",
@@ -190,7 +197,7 @@ def test_t9_tighten_one_loosen_two_thirds_outsider_nothing():
             }
         ],
         "0x00",
-    )
+    ).proposal_id
     r1 = c.approve("trang", pid)
     assert r1.status == "ok" and [e.name for e in r1.events] == ["Approved"]
     assert c.snapshot().keys[k].daily_cap == u(10_000)
@@ -204,9 +211,11 @@ def test_t9_tighten_one_loosen_two_thirds_outsider_nothing():
 def test_t10_conflict_of_interest_and_suggestion():
     c = mk()
     req = c._seed["request_12"]
-    pid = c.propose("trang", req["title"], "minh", req["calls"], "0x01")
+    pid = c.propose("trang", req["title"], "minh", req["calls"], "0x01").proposal_id
     assert c.approve("lan", pid).status == "ok"
-    pid2 = c.propose("trang", "move agent to huy", "huy", req["suggestion"]["calls"], "0x02")
+    pid2 = c.propose(
+        "trang", "move agent to huy", "huy", req["suggestion"]["calls"], "0x02"
+    ).proposal_id
     r = c.approve("huy", pid2)
     assert r.status == "reverted" and r.error_raw == "ConflictOfInterest" and r.events == []
     assert c.approve("lan", pid2).status == "ok" and c.approve("trang", pid2).status == "ok"
@@ -215,13 +224,12 @@ def test_t10_conflict_of_interest_and_suggestion():
 
 def test_t11_target_outside_list_rejected():
     c = mk()
-    with pytest.raises(ChainRevert) as e:
-        c.propose("trang", "evil", None, [{"target": "token", "fn": "mint", "args": {}}], "0x00")
-    assert e.value.name == "TargetNotAllowed"
-    with pytest.raises(ChainRevert):
-        c.propose(
-            "trang", "evil", None, [{"target": "vault", "fn": "selfdestruct", "args": {}}], "0x"
-        )
+    r = c.propose("trang", "evil", None, [{"target": "token", "fn": "mint", "args": {}}], "0x00")
+    assert r.status == "reverted" and r.error_raw == "TargetNotAllowed"
+    r = c.propose(
+        "trang", "evil", None, [{"target": "vault", "fn": "selfdestruct", "args": {}}], "0x"
+    )
+    assert r.status == "reverted" and r.proposal_id is None
     assert c.council.proposals == {}
 
 
@@ -236,7 +244,7 @@ def test_t12_pause_and_unpause_needs_two_thirds():
     )
     pid = c.propose(
         "trang", "unpause", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x"
-    )
+    ).proposal_id
     c.approve("trang", pid)
     assert c.snapshot().paused
     c.approve("lan", pid)
@@ -446,7 +454,8 @@ def test_key_cap_zero_to_positive_is_loosening():
     )
     assert r.status == "reverted" and r.error_raw == "NeedsThreshold"
     # Raising via proposal (2/3 path) should work
-    pid = c.propose(
+    pid = _pid(
+        c,
         "trang",
         "raise key cap from zero",
         "minh",
@@ -469,7 +478,8 @@ def test_key_cap_positive_to_lower_is_tightening():
     c = mk()
     k = c._addr("key_minh")
     # Set initial cap via proposal
-    pid = c.propose(
+    pid = _pid(
+        c,
         "trang",
         "set key cap",
         "minh",
@@ -557,31 +567,26 @@ def test_subject_must_be_among_the_affected_principals():
     c = mk()
     lock_minh = [{"target": "vault", "fn": "lockPrincipal", "args": {"principal_id": "minh"}}]
     for wrong in (None, "huy", "nobody"):
-        with pytest.raises(ChainRevert) as e:
-            c.propose("trang", "x", wrong, lock_minh, "0x00")
-        assert e.value.name == "SubjectMismatch", wrong
+        r = c.propose("trang", "x", wrong, lock_minh, "0x00")
+        assert (r.status, r.error_raw, r.proposal_id) == ("reverted", "SubjectMismatch", None), (
+            wrong
+        )
     assert c.council.proposals == {}
-    assert c.propose("trang", "x", "minh", lock_minh, "0x00") == 1
+    assert _pid(c, "trang", "x", "minh", lock_minh, "0x00") == 1
     # no affected principal at all: the declared subject is not checked
-    assert (
-        c.propose("trang", "p", None, [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x")
-        == 2
-    )
-    assert (
-        c.propose("trang", "p", "huy", [{"target": "vault", "fn": "unpauseAll", "args": {}}], "0x")
-        == 3
-    )
+    unpause = [{"target": "vault", "fn": "unpauseAll", "args": {}}]
+    assert _pid(c, "trang", "p", None, unpause, "0x") == 2
+    assert _pid(c, "trang", "p", "huy", unpause, "0x") == 3
     assert c.council.proposals[1].affected == ["minh"]
     # an empty call list is BadCallArgs, as in the contract
-    with pytest.raises(ChainRevert) as e:
-        c.propose("trang", "empty", "minh", [], "0x")
-    assert e.value.name == "BadCallArgs"
+    r = c.propose("trang", "empty", "minh", [], "0x")
+    assert (r.status, r.error_raw) == ("reverted", "BadCallArgs")
 
 
 def test_member_of_an_affected_district_cannot_approve_even_if_not_the_subject():
     c = mk()
     # declared subject minh, but the key being moved comes from huy's district
-    pid = c.propose("trang", "huy key to minh", "minh", [_move("key_huy_1", "minh")], "0x01")
+    pid = _pid(c, "trang", "huy key to minh", "minh", [_move("key_huy_1", "minh")], "0x01")
     assert c.council.proposals[pid].affected == ["huy", "minh"]
     r = c.approve("huy", pid)
     assert r.status == "reverted" and r.error_raw == "ConflictOfInterest" and r.events == []
@@ -592,9 +597,9 @@ def test_member_of_an_affected_district_cannot_approve_even_if_not_the_subject()
 
 def test_affected_set_is_read_at_propose_time():
     c = mk()
-    pid = c.propose("trang", "p", "minh", [_move("key_huy_1", "minh")], "0x01")
+    pid = _pid(c, "trang", "p", "minh", [_move("key_huy_1", "minh")], "0x01")
     # later the key moves elsewhere; the stored set still protects huy
-    other = c.propose("trang", "q", "lan", [_move("key_huy_1", "lan")], "0x02")
+    other = _pid(c, "trang", "q", "lan", [_move("key_huy_1", "lan")], "0x02")
     c.approve("lan", pid)
     c.approve("trang", pid)
     assert c.council.proposals[other].affected == ["huy", "lan"]
@@ -606,7 +611,7 @@ def test_affected_set_is_read_at_propose_time():
 def test_policy_v2_still_approvable_by_lan_and_trang():
     c = mk()
     v2 = c._seed["policy_v2"]
-    pid = c.propose("lan", v2["title"], v2["subject_principal"], v2["calls"], "0x01")
+    pid = _pid(c, "lan", v2["title"], v2["subject_principal"], v2["calls"], "0x01")
     # four keys come from their own districts; neither lan nor trang is among them
     assert set(c.council.proposals[pid].affected) == {
         "minh",

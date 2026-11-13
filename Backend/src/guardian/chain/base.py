@@ -32,6 +32,7 @@ class TxResult:
     events: list[ChainEvent] = field(default_factory=list)
     error_raw: str | None = None
     simulated: bool = True
+    proposal_id: int | None = None  # set by `propose` when status == ok
 
     @property
     def ok(self) -> bool:
@@ -56,7 +57,12 @@ class ProposalState:
 
 
 class ChainPort(Protocol):
-    """Signers/addresses may be hex addresses (sim also accepts seed ids)."""
+    """Chain boundary. Contract (API-001): signer/member/key/to are hex addresses only.
+
+    shortcut: app code still passes seed ids ("key_minh", "tUSDC", "lan"); both sim and the L1
+    adapter (`_addr`/`_need_member`) resolve them. Converting at the call sites is CHN-004 (#53).
+    Sync on purpose: an L1 adapter runs web3 calls off the event loop behind one lock.
+    """
 
     # --- spend (called by keys) ---
     def pay(self, signer: str, token: str, to: str, amount: int, memo: str = "") -> TxResult: ...
@@ -106,7 +112,7 @@ class ChainPort(Protocol):
         subject_principal: str | None,
         calls: list[dict[str, Any]],
         risk_report_hash: str,
-    ) -> int: ...
+    ) -> TxResult: ...  # status ok -> proposal_id set; revert -> reason_code/error_raw, no raise
     def approve(self, member: str, proposal_id: int) -> TxResult: ...
     def cancel(self, member: str, proposal_id: int) -> TxResult: ...
 
@@ -122,3 +128,14 @@ class ChainPort(Protocol):
     def snapshot(self) -> PolicySnapshot: ...
     def events_since(self, block: int) -> list[ChainEvent]: ...
     def subscribe(self, callback: Callable[[ChainEvent], None]) -> Callable[[], None]: ...
+
+
+class DemoControls(Protocol):
+    """Sim-only extra that app code calls (`demo_reset`, guarded by `not rt.is_l1`; L1 reloads a fresh
+    deployment instead). `balance` is already on ChainPort and implemented by both."""
+
+    def reset(self) -> None: ...
+
+
+class DemoChain(ChainPort, DemoControls, Protocol):
+    """What `Runtime.chain` is typed as: the port plus demo controls."""

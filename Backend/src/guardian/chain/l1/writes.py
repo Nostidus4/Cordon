@@ -377,11 +377,13 @@ class L1Writes:
         subject_principal: str | None,
         calls: list[dict[str, Any]],
         risk_report_hash: str,
-    ) -> int:
-        """Proposal id from the `Proposed` event; raises `ChainRevert` on a revert or a blocked sender."""
-        encoded = self._encoder.encode(
-            calls
-        )  # raises ChainRevert (TargetNotAllowed...) like the sim
+    ) -> TxResult:
+        """`TxResult` with `proposal_id` (from the `Proposed` event) on success; a revert, a blocked sender or a
+        call the encoder rejects (TargetNotAllowed...) is returned, not raised."""
+        try:
+            encoded = self._encoder.encode(calls)
+        except ChainRevert as e:
+            return TxResult("reverted", reason_code=e.reason, error_raw=e.name, simulated=False)
         subject = id_to_bytes32(subject_principal) if subject_principal else bytes(32)
         res = self._council_tx(
             member,
@@ -392,10 +394,11 @@ class L1Writes:
             hash_to_bytes32(risk_report_hash),
         )
         if res.status != "ok":
-            raise ChainRevert(res.error_raw or "reverted", res.reason_code)
+            return res
         for ev in res.events:
             if ev.name == "Proposed":
-                return int(ev.payload["id"])
+                res.proposal_id = int(ev.payload["id"])
+                return res
         raise ChainWriteError("propose succeeded but emitted no Proposed event")
 
     def approve(self, member: str, proposal_id: int) -> TxResult:
@@ -407,11 +410,13 @@ class L1Writes:
     def apply_policy_v2(self) -> list[TxResult]:
         """Seed policy v2 via propose + the approvals listed in the seed (same as `SimChain`)."""
         v2 = self._seed["policy_v2"]
-        pid = self.propose(
+        prop = self.propose(
             v2["approvers"][0],
             v2["title"],
             v2["subject_principal"],
             v2["calls"],
             "0x" + keccak(text="policy_v2").hex(),
         )
+        pid = prop.proposal_id
+        assert pid is not None, prop.error_raw
         return [self.approve(m, pid) for m in v2["approvers"]]

@@ -20,7 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from guardian.chain.base import ChainEvent, ChainPort
+from guardian.chain.base import ChainEvent, DemoChain
 from guardian.chain.sim import SimChain
 from guardian.core.config import Settings
 from guardian.core.demo_guard import DemoGuard, ensure_test_chain
@@ -177,7 +177,7 @@ class Runtime:
     def __init__(
         self,
         settings: Settings,
-        chain: ChainPort | None = None,
+        chain: DemoChain | None = None,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self.settings = settings

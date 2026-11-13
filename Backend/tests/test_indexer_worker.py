@@ -219,3 +219,11 @@ def test_run_loop_recovers_after_errors_and_stops_gracefully() -> None:
 def test_invalid_window_rejected() -> None:
     with pytest.raises(ValueError):
         Indexer(FakeSource([], 0), InMemoryEventSink(), reorg_window=0)
+
+
+def test_sink_orders_by_block_then_log_index_and_ignores_duplicate_writes():
+    sink = InMemoryEventSink()
+    for blk, li in [(3, 0), (1, 1), (1, 0)]:
+        assert sink.write(ChainEvent("X", blk, f"0x{blk}{li}", li, {}, 0)) is True
+    assert sink.write(ChainEvent("X", 1, "0x10", 0, {}, 0)) is False  # same (tx_hash, log_index)
+    assert [(e.block, e.log_index) for e in sink.all()] == [(1, 0), (1, 1), (3, 0)]
