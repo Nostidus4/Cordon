@@ -1,8 +1,10 @@
 // Shared stage state: what the active scene wants the city to show, the "next recommended action" (Space), day/night, progress.
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
-import type { CityStageProps, PickTarget } from "./contract";
+import type { BuildingCode, CameraShot, CityStageProps, PickTarget } from "./contract";
 import type { StageScene } from "./logic";
+
+export type DrawerTab = "overview" | "rules" | "incident" | "faults";
 
 interface StageStore {
   /** props the active scene contributes to CityStage (merged over the defaults in StagePage) */
@@ -16,6 +18,12 @@ interface StageStore {
   setNightPref: (v: boolean | null) => void;
   autoNight: boolean;
   setAutoNight: (v: boolean) => void;
+  /** temporary camera shot that wins over the scene's own (e.g. framing the building of a new incident); null = scene decides */
+  shotOverride: CameraShot | null;
+  setShotOverride: (s: CameraShot | null) => void;
+  /** tab the building drawer should open on (set by "Xem" in the status strip); null = default */
+  drawerTab: DrawerTab | null;
+  setDrawerTab: (t: DrawerTab | null) => void;
   picked: PickTarget | null;
   setPicked: (p: PickTarget | null) => void;
   reached: StageScene[];
@@ -37,6 +45,10 @@ export const useStageStore = create<StageStore>((set) => ({
   setNightPref: (nightPref) => set({ nightPref }),
   autoNight: false,
   setAutoNight: (autoNight) => set({ autoNight }),
+  shotOverride: null,
+  setShotOverride: (shotOverride) => set({ shotOverride }),
+  drawerTab: null,
+  setDrawerTab: (drawerTab) => set({ drawerTab }),
   picked: null,
   setPicked: (picked) => set({ picked }),
   reached: [],
@@ -47,6 +59,13 @@ export const useStageStore = create<StageStore>((set) => ({
   ended: false,
   setEnded: (ended) => set({ ended }),
 }));
+
+/** Open the building drawer (optionally on a tab). */
+export function openBuilding(code: BuildingCode, tab: DrawerTab | null = null) {
+  const s = useStageStore.getState();
+  s.setDrawerTab(tab);
+  s.setPicked({ type: "building", code });
+}
 
 /** The active scene tells the city what to show. Pass a memoised object. */
 export function useCityProps(props: Partial<CityStageProps>) {

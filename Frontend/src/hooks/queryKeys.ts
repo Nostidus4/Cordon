@@ -10,4 +10,9 @@ export const qk = {
   simulate: (ids: string[], change?: unknown) => ["simulate", [...ids].sort().join(","), change ?? null] as const,
   city: ["city"] as const,
   runs: ["runs"] as const,
+  buildings: ["buildings"] as const,
+  building: (id: string) => ["building", id] as const,
+  faults: ["faults"] as const,
+  agentRuns: ["agentRuns"] as const,
+  incidents: (status: "open" | "all" = "open") => ["incidents", status] as const,
 };

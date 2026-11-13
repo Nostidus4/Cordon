@@ -8,7 +8,7 @@ import { useFindings } from "../../hooks/useFindings";
 import { useGraph } from "../../hooks/useGraph";
 import { useSimulate } from "../../hooks/useSimulate";
 import type { CameraShot, CityStageProps } from "../contract";
-import { BUILDING_NAME, describeNode, keyTiny } from "../logic";
+import { describeNode, keyTiny } from "../logic";
 import { useCityProps, usePrimaryAction, useStageStore } from "../stageStore";
 import { Counter, FlagIcon, KindIcon, Ribbon, ToyButton, ToyCard, CheckIcon, WarnIcon } from "../ui";
 
@@ -51,7 +51,7 @@ export function LookScene() {
 
   return (
     <>
-      <div className="absolute bottom-12 left-6">
+      <div className="absolute bottom-12 left-6" data-slot="scene-left">
         <ToyCard className="w-[min(430px,calc(100vw-48px))] px-6 pb-6 pt-5" label="Bạn nghĩ anh Minh cầm bao nhiêu">
           <Ribbon scene="look">Cảnh 1 · Nhìn</Ribbon>
           <div className="toy-eyebrow mt-1" style={{ fontSize: 17 }}>Bạn nghĩ anh Minh chỉ cầm</div>
@@ -80,13 +80,13 @@ export function LookScene() {
         </ToyCard>
       </div>
 
-      {info || picked?.type === "building" ? (
-        <div className="absolute right-6 top-24">
+      {info ? (
+        <div className="absolute right-6 top-24" data-slot="scene-right">
           <ToyCard className="w-[300px] p-4" label="Chi tiết" key={picked ? JSON.stringify(picked) : "x"}>
             <div className="flex items-start gap-3">
               <KindIcon kind={info?.kind ?? "other"} size={46} />
               <div className="min-w-0 flex-1">
-                <div className="font-toy text-[20px] font-bold leading-tight" style={{ color: "var(--ink)" }}>{info?.title ?? (picked?.type === "building" ? BUILDING_NAME[picked.code] : "")}</div>
+                <div className="font-toy text-[20px] font-bold leading-tight" style={{ color: "var(--ink)" }}>{info?.title}</div>
               </div>
               <button type="button" aria-label="Đóng" onClick={() => setPicked(null)} className="grid size-8 place-items-center rounded-full border-0 bg-[#f1e4cc]" style={{ color: "var(--ink)", cursor: "pointer" }}><X size={16} strokeWidth={3} /></button>
             </div>
@@ -97,7 +97,6 @@ export function LookScene() {
                   {l.declared ? <span className="mt-0.5 flex items-center gap-1 text-[13px] font-bold" style={{ color: "var(--amber-ink)" }}><WarnIcon size={13} />tự khai, chưa kiểm chứng</span> : null}
                 </li>
               ))}
-              {picked?.type === "building" ? <li className="toy-body">Một tòa nhà của thành phố.</li> : null}
             </ul>
           </ToyCard>
         </div>

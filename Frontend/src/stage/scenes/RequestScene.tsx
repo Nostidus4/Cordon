@@ -58,7 +58,7 @@ export function RequestScene() {
 
   return (
     <>
-      <div className="absolute bottom-12 left-6 flex w-[min(520px,calc(100vw-48px))] flex-col gap-3">
+      <div className="absolute bottom-12 left-6 flex w-[min(520px,calc(100vw-48px))] flex-col gap-3" data-slot="scene-left">
         {!nums || !p12 || !p13 ? (
           <ToyCard className="px-6 pb-5 pt-5" label="Đang tải số liệu">
             <Ribbon scene="request">Cảnh 5 · Xin thêm quyền</Ribbon>
@@ -110,7 +110,7 @@ export function RequestScene() {
         <div className="flex items-center gap-3 pl-1"><ToyButton size="lg" color="teal" onClick={() => setEnded(true)}>Xem tóm tắt →</ToyButton></div>
       </div>
 
-      <div className="absolute right-6 top-24">
+      <div className="absolute right-6 top-24" data-slot="scene-right">
         <ToyCard className="w-[min(350px,calc(100vw-48px))] p-4" label="Trợ lý" delay={0.15}>
           <AssistantBubble questionIds={["give_agent_huy"]} screen="requests" principalIds={["huy"]} proposalId={p13?.id}
             devAskId={import.meta.env.DEV ? new URLSearchParams(window.location.search).get("ask") : null} />

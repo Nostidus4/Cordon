@@ -4,6 +4,7 @@ import type { Attempt } from "./attempt";
 import type { CityStates } from "./city";
 import type { ProposalStatus } from "./common";
 import type { ChainEvent } from "./event";
+import type { Incident } from "./ops";
 
 export type StreamMessage =
   | { type: "event"; data: ChainEvent }
@@ -12,10 +13,11 @@ export type StreamMessage =
   | { type: "proposal_updated"; data: { proposalId: number; status: ProposalStatus; approvals: number } }
   | { type: "agent_run"; data: AgentRun }
   | { type: "city_updated"; data: CityStates }
+  | { type: "incident_updated"; data: Incident }
   | { type: "reset"; data: { at: string } };
 
 export type StreamMessageType = StreamMessage["type"];
-export const STREAM_TYPES: (StreamMessageType | "incident_updated")[] = [
-  "event", "attempt", "graph_updated", "proposal_updated", "agent_run", "city_updated", "reset", "incident_updated",
+export const STREAM_TYPES: StreamMessageType[] = [
+  "event", "attempt", "graph_updated", "proposal_updated", "agent_run", "city_updated", "incident_updated", "reset",
 ];
 export type StreamListener = (msg: StreamMessage) => void;

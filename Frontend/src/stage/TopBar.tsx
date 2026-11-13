@@ -1,7 +1,8 @@
 // Slim toy top bar: company, the five-scene stepper, day/night, Live/Replay and "Chơi lại từ đầu".
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { MoreHorizontal, RotateCcw, Wrench } from "lucide-react";
 import { SoundToggle } from "../audio/SoundToggle";
 import { useUiStore } from "../store/uiStore";
 import type { SceneId } from "./contract";
@@ -16,11 +17,12 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
   scene: SceneId; night: boolean; onGo: (s: SceneId) => void; onNight: (n: boolean) => void; onReset: () => void; resetting: boolean;
 }) {
   const reached = useStageStore((s) => s.reached);
+  const [more, setMore] = useState(false);
   const mode = useUiStore((s) => s.mode);
   const setMode = useUiStore((s) => s.setMode);
   return (
-    <header className="stage-topbar-in pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-4 pt-3.5">
-      <Link to="/" onClick={() => onGo("intro")} className="toy-card pointer-events-auto flex items-center gap-2.5 py-1.5 pl-3 pr-4 no-underline" style={{ borderRadius: 999 }} aria-label="Cordon, về đầu. Mây Labs (giả định)">
+    <header data-slot="top-bar" className="stage-topbar-in pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-4 pt-3.5">
+      <Link to="/" onClick={() => onGo("intro")} className="toy-card pointer-events-auto flex items-center gap-2.5 py-1.5 pl-3 pr-4 no-underline max-sm:hidden" style={{ borderRadius: 999 }} aria-label="Cordon, về đầu. Mây Labs (giả định)">
         <CordonLogo tone="dark" height={30} title="Cordon" />
         <span aria-hidden className="hidden h-5 w-0.5 rounded-full 2xl:block" style={{ background: "#e9d5b0" }} />
         <span className="hidden whitespace-nowrap font-toy text-[15px] font-bold leading-none 2xl:inline" style={{ color: "var(--ink)" }}>Mây Labs <span style={{ color: "var(--ink-2)", fontWeight: 600 }}>(giả định)</span></span>
@@ -32,19 +34,19 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
           const done = !active && reached.includes(s);
           return (
             <button key={s} type="button" onClick={() => onGo(s)} aria-current={active ? "step" : undefined}
-              className="relative flex items-center gap-2 rounded-full border-0 bg-transparent py-1.5 pl-1.5 pr-3.5 font-toy text-[16px] font-bold leading-none"
+              className="relative flex items-center gap-2 rounded-full border-0 bg-transparent py-1.5 pl-1.5 pr-1.5 sm:pr-3.5 font-toy text-[16px] font-bold leading-none"
               style={{ color: active ? "#fff" : "var(--ink)", cursor: "pointer" }}>
               {active ? <motion.span layoutId="stage-step" className="absolute inset-0 rounded-full" style={{ background: DOT[s], boxShadow: `0 3px 0 rgba(0,0,0,.25)` }} transition={{ type: "spring", stiffness: 420, damping: 30 }} /> : null}
               <span className="relative grid size-7 place-items-center rounded-full text-[15px]" style={{ background: active ? "rgba(255,255,255,.28)" : done ? "var(--teal-soft)" : "#f1e4cc", color: active ? "#fff" : done ? "var(--teal-ink)" : "var(--ink)" }}>
                 {done ? <CheckIcon size={15} /> : SCENE_META[s].n}
               </span>
-              <span className={`relative ${active ? "" : "hidden xl:inline"}`}>{SCENE_META[s].label}</span>
+              <span className={`relative whitespace-nowrap ${active ? "" : "hidden min-[1700px]:inline"}`}>{SCENE_META[s].label}</span>
             </button>
           );
         })}
       </nav>
 
-      <div className="pointer-events-auto flex items-center gap-2">
+      <div className="pointer-events-auto flex items-center gap-2 max-sm:hidden" data-topbar-right>
         <SoundToggle />
         <div className="toy-card toy-pill-toggle" role="group" aria-label="Ngày hay đêm" style={{ borderRadius: 999, padding: 4 }}>
           <button type="button" aria-pressed={!night} onClick={() => onNight(false)}><SunIcon size={18} /><span className="hidden 2xl:inline">Ngày</span></button>
@@ -56,8 +58,26 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
           </button>
           <button type="button" aria-pressed={mode === "replay"} onClick={() => { setMode("replay"); onGo("incident"); }}>Xem lại</button>
         </div>
-        <Link to="/he-thong" className="toy-card hidden px-3.5 py-1.5 text-[13px] font-bold no-underline xl:inline-block" style={{ borderRadius: 999, color: "var(--ink-2)", borderWidth: 2 }}>Bảng kỹ thuật</Link>
+        <Link to="/he-thong" title="Bảng kỹ thuật" aria-label="Bảng kỹ thuật" className="toy-card inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-bold no-underline" style={{ borderRadius: 999, color: "var(--ink-2)", borderWidth: 2 }}><Wrench size={16} strokeWidth={2.6} aria-hidden /><span className="hidden min-[1441px]:inline">Bảng kỹ thuật</span></Link>
         <button type="button" onClick={onReset} disabled={resetting} className="toy-btn" data-c="cream" data-size="sm" aria-label="Chơi lại từ đầu"><RotateCcw size={16} strokeWidth={2.6} aria-hidden />Chơi lại<span className="hidden 2xl:inline"> từ đầu</span></button>
+      </div>
+      <div className="pointer-events-auto relative sm:hidden">
+        <button type="button" className="toy-btn" data-c="cream" data-size="sm" aria-label="Thêm" aria-expanded={more} onClick={() => setMore((v) => !v)}><MoreHorizontal size={20} strokeWidth={2.8} aria-hidden /></button>
+        {more ? (
+          <div className="toy-card absolute right-0 top-12 z-40 flex w-[236px] flex-col gap-2.5 p-3" role="menu" aria-label="Thêm">
+            <div className="flex items-center justify-between gap-2"><SoundToggle />
+              <div className="toy-pill-toggle" role="group" aria-label="Ngày hay đêm">
+                <button type="button" aria-pressed={!night} onClick={() => onNight(false)}><SunIcon size={18} /></button>
+                <button type="button" aria-pressed={night} onClick={() => onNight(true)}><MoonIcon size={18} /></button>
+              </div></div>
+            <div className="toy-pill-toggle self-start" role="group" aria-label="Chạy thật hay xem lại">
+              <button type="button" aria-pressed={mode === "live"} onClick={() => setMode("live")}>Trực tiếp</button>
+              <button type="button" aria-pressed={mode === "replay"} onClick={() => { setMode("replay"); onGo("incident"); setMore(false); }}>Xem lại</button>
+            </div>
+            <Link to="/he-thong" className="font-toy text-[15px] font-bold no-underline" style={{ color: "var(--ink)" }}>Bảng kỹ thuật</Link>
+            <button type="button" onClick={() => { setMore(false); onReset(); }} disabled={resetting} className="toy-btn self-start" data-c="cream" data-size="sm"><RotateCcw size={16} strokeWidth={2.6} aria-hidden />Chơi lại từ đầu</button>
+          </div>
+        ) : null}
       </div>
     </header>
   );

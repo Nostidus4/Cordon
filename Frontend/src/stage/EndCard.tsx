@@ -18,7 +18,7 @@ export function EndCard() {
   const attacker = data?.length ? deriveView(data, false).attackerSpent : 0n;
   const stolen = attacker > 0n ? disp(attacker) : disp(SCRIPTED_STOLEN);
   return (
-    <div className="pointer-events-auto absolute inset-0 z-40 grid place-items-center bg-[rgba(45,34,80,0.38)] px-4" role="dialog" aria-modal="true" aria-label="Tóm tắt">
+    <div data-slot="end-card" className="pointer-events-auto absolute inset-0 z-40 grid place-items-center bg-[rgba(45,34,80,0.38)] px-4" role="dialog" aria-modal="true" aria-label="Tóm tắt">
       <ToyCard className="relative w-[min(760px,100%)] px-8 pb-7 pt-6">
         <Confetti burst={1} />
         <div className="flex items-center gap-3"><CordonMark size={46} /><h2 className="m-0 font-toy text-[30px] font-extrabold leading-tight" style={{ color: "var(--ink)" }}>Cùng một vụ chiếm máy, hai kết cục</h2></div>

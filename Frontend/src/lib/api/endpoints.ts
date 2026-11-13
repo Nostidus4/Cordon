@@ -5,6 +5,7 @@ import type {
   ActionResult, AgentRun, AskRequest, AssistantAnswer, AssistantLog, Attempt, ChainEvent, CityStates, CreateProposalRequest, DistrictDetail,
   DraftProposalRequest, Finding, GraphSnapshot, Health, LockRequest, MemberId, Org, PauseRequest, Proposal, ProposalDraft,
   ScenarioRun, SimResult, SimulateRequest, StreamListener,
+  BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident,
 } from "../../types";
 import { connectSse } from "../sse";
 import { http } from "./client";
@@ -37,6 +38,13 @@ export interface Api {
   getAgentRuns(): Promise<AgentRun[]>;
   /** Read-only (system dashboard): assistant_logs table, oldest first. */
   getAssistantLogs(): Promise<AssistantLog[]>;
+  /** CITY_OPS (docs/spec/CITY_OPS.md): the 8 buildings, one building, fault catalogue, inject a fault, incidents. */
+  getBuildings(): Promise<BuildingInfo[]>;
+  getBuilding(id: string): Promise<BuildingDetail>;
+  getFaults(): Promise<FaultDef[]>;
+  injectFault(id: string): Promise<FaultResult>;
+  getIncidents(status?: "open" | "all"): Promise<Incident[]>;
+  getIncident(id: number): Promise<Incident>;
   /** Stream subscription (SSE /api/stream in live mode, in-process bus in mock mode). Returns unsubscribe. */
   subscribe(listener: StreamListener): () => void;
 }
@@ -66,6 +74,12 @@ const liveApi: Api = {
   getScenarioRuns: () => http("GET", "/scenario/runs"),
   getAgentRuns: () => http("GET", "/agent/runs"),
   getAssistantLogs: () => http("GET", "/assistant/logs"),
+  getBuildings: () => http("GET", "/city/buildings"),
+  getBuilding: (id) => http("GET", `/city/buildings/${encodeURIComponent(id)}`),
+  getFaults: () => http("GET", "/faults"),
+  injectFault: (id) => http("POST", `/faults/${encodeURIComponent(id)}/inject`),
+  getIncidents: (status = "all") => http("GET", `/incidents?status=${status}`),
+  getIncident: (id) => http("GET", `/incidents/${id}`),
   subscribe: (l) => connectSse(l),
 };
 
