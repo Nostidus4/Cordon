@@ -110,7 +110,7 @@ export default function RequestsPage() {
               </motion.div>
             ) : selected ? (
               <motion.div key={`p-${selected.id}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-                <ProposalDetail proposal={selected} all={list} members={org?.council.members ?? []} demoMode={demoMode} pendingMember={pendingMember}
+                <ProposalDetail proposal={selected} all={list} members={org?.council ?? []} demoMode={demoMode} pendingMember={pendingMember}
                   onApprove={approve} onOpen={select} onDraft={(change) => openDraft({ change })} treasury={treasury} />
               </motion.div>
             ) : !isLoading ? (

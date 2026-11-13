@@ -118,7 +118,7 @@ export function NodeDetailPanel({ id, snapshot, findings, onSelect, onClose, onD
             {node.data.active !== false
               ? <OnChain>Chain xác nhận thẻ thuộc khu {owner} và đang trong danh sách được phép (Tx AllowList).</OnChain>
               : <div className="rounded-xl border border-lock/50 bg-lock-soft px-3 py-2.5 text-[13px] text-lock">◐ Thẻ đã bị gạch khỏi danh sách cho phép: node chain từ chối mọi giao dịch.</div>}
-            {decl.map((e) => <Declared key={e.id} title={`${RELATION_LABEL[e.type as "CONTROLS" | "ADMINS"]}: ${casual(labelOfP(e.from.replace(/^p:/, "")))}`} note={e.note} />)}
+            {decl.map((e) => <Declared key={e.id} title={`${RELATION_LABEL[e.type as "CONTROLS" | "ADMINS"]}: ${casual(labelOfP(e.from.replace(/^p:/, "")))}`} />)}
           </div>
         </Section>
         <Section title="Được phép làm gì">

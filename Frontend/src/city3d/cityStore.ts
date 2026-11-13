@@ -1,9 +1,9 @@
 import { create } from "zustand";
 import { BUILDINGS, type BuildingState } from "./buildings";
 import { SCENARIOS, type ScenarioId } from "./scenarios";
-import type { CityStates } from "../types";
+import type { BuildingEvidence, CityStates } from "../types";
 
-export type Reason = { reasonVi: string; evidence?: NonNullable<CityStates["B01"]["evidence"]> };
+export type Reason = { reasonVi: string; evidence?: BuildingEvidence };
 
 type States = Record<string, BuildingState>;
 
@@ -95,8 +95,8 @@ export const useCityStore = create<CityStore>((set, get) => {
       set({ liveCache: c });
       if (get().source === "live") {
         set({
-          states: Object.fromEntries(Object.entries(c).map(([k, v]) => [k, v.state])) as States,
-          reasons: Object.fromEntries(Object.entries(c).map(([k, v]) => [k, { reasonVi: v.reasonVi, evidence: v.evidence }])),
+          states: Object.fromEntries(c.buildings.map((b) => [b.id, b.state])) as States,
+          reasons: Object.fromEntries(c.buildings.map((b) => [b.id, { reasonVi: b.reasonVi, evidence: b.evidence[0] }])),
           chips: {},
         });
       }

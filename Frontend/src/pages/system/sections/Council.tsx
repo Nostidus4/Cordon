@@ -135,7 +135,7 @@ export function Council() {
   const { data: proposals } = useProposals();
   const { data: org } = useOrg();
   const { data: events } = useEvents();
-  const members = org?.council.members ?? [];
+  const members = org?.council ?? [];
   const open = (proposals ?? []).filter((p) => p.status === "open"), done = (proposals ?? []).filter((p) => p.status !== "open");
   return (
     <Section id="hoi-dong" accent={ACCENT.council} title="Hội đồng và đề xuất" sub="Siết thì một người là đủ, nới thì cần 2/3; trợ lý AI không có phiếu nào.">

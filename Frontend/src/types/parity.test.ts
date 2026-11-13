@@ -39,15 +39,15 @@ type Known<O = never, F = never, D = never> = { onlyBE: O; onlyFE: F; differ: D 
 // Money <-> Money
 expectTypeOf<DiffR<S["Money"], T.Money>>().toEqualTypeOf<Known<never, never, never>>();
 // HealthOut <-> Health
-expectTypeOf<DiffR<S["HealthOut"], T.Health>>().toEqualTypeOf<Known<"cChainBlock" | "graphVersion" | "indexerLagBlocks" | "l1Block" | "simulated" | "status", "ok" | "l1" | "cchain" | "indexerLagMs" | "uptimeSec", "agent" | "blockStalled" | "lastBlockAt" | "policyLabel">>();
+expectTypeOf<DiffR<S["HealthOut"], T.Health>>().toEqualTypeOf<Known<never, never, never>>();
 // OrgOut <-> Org
-expectTypeOf<DiffR<S["OrgOut"], T.Org>>().toEqualTypeOf<Known<"policyLabel" | "policyVersion" | "fictional" | "id" | "name" | "threshold", "company", "council">>();
+expectTypeOf<DiffR<S["OrgOut"], T.Org>>().toEqualTypeOf<Known<never, never, never>>();
 // GraphSnapshot <-> GraphSnapshot
-expectTypeOf<DiffR<S["GraphSnapshot"], T.GraphSnapshot>>().toEqualTypeOf<Known<never, never, "policyLabel">>();
+expectTypeOf<DiffR<S["GraphSnapshot"], T.GraphSnapshot>>().toEqualTypeOf<Known<never, never, never>>();
 // GraphNode <-> GraphNode
 expectTypeOf<DiffR<S["GraphNode"], T.GraphNode>>().toEqualTypeOf<Known<never, never, never>>();
 // GraphEdge <-> GraphEdge
-expectTypeOf<DiffR<S["GraphEdge"], T.GraphEdge>>().toEqualTypeOf<Known<never, "note", never>>();
+expectTypeOf<DiffR<S["GraphEdge"], T.GraphEdge>>().toEqualTypeOf<Known<never, never, never>>();
 // GraphDistrict <-> District
 expectTypeOf<DiffR<S["GraphDistrict"], T.District>>().toEqualTypeOf<Known<never, never, never>>();
 // FindingOut <-> Finding
@@ -79,27 +79,27 @@ expectTypeOf<DiffR<S["AgentRunOut"], T.AgentRun>>().toEqualTypeOf<Known<"ts" | "
 // ScenarioRunOut <-> ScenarioRun
 expectTypeOf<DiffR<S["ScenarioRunOut"], T.ScenarioRun>>().toEqualTypeOf<Known<"policyVersion" | "attempts" | "delay" | "error", "name" | "attemptCount", "finishedAt" | "startedAt">>();
 // CityStates <-> CityStates
-expectTypeOf<DiffR<S["CityStates"], T.CityStates>>().toEqualTypeOf<Known<"graphVersion" | "policyLabel" | "policyVersion" | "buildings" | "updatedAt", "B01" | "B02" | "B03" | "B04" | "B05" | "B06" | "B07" | "B08", never>>();
+expectTypeOf<DiffR<S["CityStates"], T.CityStates>>().toEqualTypeOf<Known<never, never, never>>();
 // Building <-> CityBuildingStatus
-expectTypeOf<DiffR<S["Building"], T.CityBuildingStatus>>().toEqualTypeOf<Known<"id" | "name", never, "evidence">>();
+expectTypeOf<DiffR<S["Building"], T.CityBuildingStatus>>().toEqualTypeOf<Known<never, never, never>>();
 // BuildingInfo <-> BuildingInfo
 expectTypeOf<DiffR<S["BuildingInfo"], T.BuildingInfo>>().toEqualTypeOf<Known<never, never, never>>();
 // BuildingDetail <-> BuildingDetail
-expectTypeOf<DiffR<S["BuildingDetail"], T.BuildingDetail>>().toEqualTypeOf<Known<never, never, "recent">>();
+expectTypeOf<DiffR<S["BuildingDetail"], T.BuildingDetail>>().toEqualTypeOf<Known<never, never, never>>();
 // RecentItem <-> BuildingRecent
-expectTypeOf<DiffR<S["RecentItem"], T.BuildingRecent>>().toEqualTypeOf<Known<never, never, "ref">>();
+expectTypeOf<DiffR<S["RecentItem"], T.BuildingRecent>>().toEqualTypeOf<Known<never, never, never>>();
 // Evidence <-> BuildingEvidence
-expectTypeOf<DiffR<S["Evidence"], T.BuildingEvidence>>().toEqualTypeOf<Known<never, "simulated" | "txHash", never>>();
+expectTypeOf<DiffR<S["Evidence"], T.BuildingEvidence>>().toEqualTypeOf<Known<never, never, never>>();
 // RuleStatus <-> BuildingDetailRule
 expectTypeOf<DiffR<S["RuleStatus"], T.BuildingDetailRule>>().toEqualTypeOf<Known<never, never, never>>();
 // FaultDef <-> FaultDef
 expectTypeOf<DiffR<S["FaultDef"], T.FaultDef>>().toEqualTypeOf<Known<never, never, never>>();
 // FaultResult <-> FaultResult
-expectTypeOf<DiffR<S["FaultResult"], T.FaultResult>>().toEqualTypeOf<Known<never, never, "at">>();
+expectTypeOf<DiffR<S["FaultResult"], T.FaultResult>>().toEqualTypeOf<Known<never, never, never>>();
 // FaultAction <-> FaultAction
 expectTypeOf<DiffR<S["FaultAction"], T.FaultAction>>().toEqualTypeOf<Known<never, never, never>>();
 // IncidentOut <-> Incident
-expectTypeOf<DiffR<S["IncidentOut"], T.Incident>>().toEqualTypeOf<Known<never, never, "trigger">>();
+expectTypeOf<DiffR<S["IncidentOut"], T.Incident>>().toEqualTypeOf<Known<never, never, never>>();
 // IncidentStep <-> IncidentStep
 expectTypeOf<DiffR<S["IncidentStep"], T.IncidentStep>>().toEqualTypeOf<Known<never, never, never>>();
 // AgentStep <-> AgentStep
