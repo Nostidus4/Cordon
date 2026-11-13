@@ -1,7 +1,6 @@
 // Rủi ro: simulateCompromise runner (youThink / enforced / estimated), findings R1-R4 and the §8.4 reference table.
 import { createContext, useContext, useMemo, useState } from "react";
 import { Play } from "lucide-react";
-import { env } from "../../../lib/api";
 import { useFindings } from "../../../hooks/useFindings";
 import { useGraph } from "../../../hooks/useGraph";
 import { useProposals } from "../../../hooks/useProposals";
@@ -142,10 +141,9 @@ function Rules() {
       <h3 style={h}>Phát hiện rủi ro <span style={{ fontSize: 13, fontWeight: 700, color: nOpen ? "var(--red-ink)" : "var(--ok-ink)", marginLeft: 6 }}>{nOpen ? `${nOpen} đang mở` : "không còn cái nào mở"}</span></h3>
       <div className="grid gap-2">
         {rows.map(({ r, open, inProposals, resolvedBy }) => {
-          const notRun = env.apiMode === "mock" && (r.id === "R2_AGENT_NO_ALLOWLIST" || r.id === "R3_ADMIN_IS_OPERATOR");
           const state = open.length ? "open" : inProposals.length ? "warn" : resolvedBy.length ? "fixed" : "clear";
           const color = { open: "#ff2d3d", warn: "#ffb300", fixed: "#22c55e", clear: "#cdbd98" }[state];
-          const status = state === "open" ? `${open.length} đang mở` : state === "warn" ? `cảnh báo trong đề xuất #${inProposals.map((x) => x.p.id).join(", #")}` : state === "fixed" ? `đã xử lý bởi #${resolvedBy.map((p) => p.id).join(", #")}` : notRun ? "bản mock chưa tính" : "không có";
+          const status = state === "open" ? `${open.length} đang mở` : state === "warn" ? `cảnh báo trong đề xuất #${inProposals.map((x) => x.p.id).join(", #")}` : state === "fixed" ? `đã xử lý bởi #${resolvedBy.map((p) => p.id).join(", #")}` : "không có";
           const sample = open[0] ?? inProposals[0]?.f;
           return (
             <div key={r.id} style={{ background: "#fff", borderRadius: 18, padding: "10px 14px 11px", boxShadow: "0 2px 0 var(--line)", display: "grid", gridTemplateColumns: "10px 1fr", gap: "0 12px" }}>

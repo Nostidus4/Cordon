@@ -169,24 +169,59 @@ export function controlledKeys(s: State, pid: string): string[] {
   for (const e of s.declared) if (e.from === pid && s.keys[e.to]) ks.add(e.to);
   return [...ks];
 }
+/** A lock only strips keys from the Tx AllowList (sets `active=false`); like the backend, a key counts as live until it is deactivated for good. */
+const isLive = (s: State, k: MKey) => k.active || s.principals[k.principalId]?.locked === true;
+/** max(card cap) x 1.5, rounded up to a whole USDC (seed: 20.000 -> 30.000). */
+function suggestedSharedCap(s: State, ids: string[]): bigint {
+  const m = ids.reduce((a, k) => (s.keys[k] && s.keys[k].dailyCap > a ? s.keys[k].dailyCap : a), 0n);
+  return ((m * 3n / 2n + U(1) - 1n) / U(1)) * U(1);
+}
+const FINDING_AT = new Date(0).toISOString();
+const mkFinding = (s: State, f: Omit<Finding, "createdAt" | "resolvedByProposal">): Finding => ({ ...f, createdAt: FINDING_AT, resolvedByProposal: s.resolved[f.id] ?? null });
+
+/** Same rules, ids and order as the backend `compute_findings` (R1, R2, R3). R4 is change-driven, see server.ts `buildDraft`. */
 export function computeFindings(s: State, _includeResolved = false): Finding[] {
   const out: Finding[] = [];
-  for (const p of activePrincipals(s)) {
-    const ctrl = controlledKeys(s, p.id);
-    const districts = new Set(ctrl.map((k) => s.keys[k].principalId));
-    if (districts.size < 2) continue;
+  for (const p of Object.values(s.principals)) {
+    if (!keysOf(s, p.id).some((k) => isLive(s, k))) continue;
+    const ctrl = controlledKeys(s, p.id).filter((k) => isLive(s, s.keys[k]));
+    const districts = [...new Set(ctrl.map((k) => s.keys[k].principalId))].sort();
+    if (districts.length < 2) continue;
     const foreign = ctrl.filter((k) => s.keys[k].principalId !== p.id);
     const maxCap = ctrl.reduce((m, k) => (s.keys[k].dailyCap > m ? s.keys[k].dailyCap : m), 0n);
-    const cap = ((maxCap * 3n) / 2n / U(1)) * U(1);
-    const id = `F-R1-${p.id}`;
-    out.push({
-      id, ruleId: "R1_MULTI_KEY_NO_SHARED_CAP", severity: "HIGH", principalId: p.id,
-      title: `${p.label} điều khiển ${ctrl.length} thẻ ở ${districts.size} khu khác nhau`,
+    const cap = suggestedSharedCap(s, ctrl);
+    out.push(mkFinding(s, {
+      id: `R1_MULTI_KEY_NO_SHARED_CAP:${p.id}`, ruleId: "R1_MULTI_KEY_NO_SHARED_CAP", severity: "HIGH", principalId: p.id,
+      title: `${p.label} điều khiển ${ctrl.length} thẻ nhưng chưa có cổng chung.`,
       detail: `Mỗi thẻ có trần riêng nhưng không có trần chung. Nếu ${p.label} bị chiếm, mất tối đa ${fmtDisplay(ctrl.reduce((a, k) => a + s.keys[k].dailyCap, 0n))}/ngày.`,
-      createdAt: new Date(0).toISOString(), resolvedByProposal: s.resolved[id] ?? null,
       suggestedChange: { kind: "consolidate", into: p.id, keys: foreign, sharedCapRaw: cap.toString() },
-      data: { controlledKeys: ctrl.length, districts: districts.size },
-    });
+      data: { keys: ctrl.map((k) => s.keys[k].address), districts, reason: "cross_district", maxKeyDailyCap: money(maxCap), suggestedDistrictCap: money(cap) },
+    }));
+  }
+  if (s.recipients.length === 0)
+    for (const k of Object.values(s.keys))
+      if (isLive(s, k) && (k.kind === "AGENT" || k.kind === "SERVICE"))
+        out.push(mkFinding(s, {
+          id: `R2_AGENT_NO_ALLOWLIST:${k.address}`, ruleId: "R2_AGENT_NO_ALLOWLIST", severity: "MEDIUM", principalId: k.principalId,
+          title: `Thẻ ${k.label} chưa có danh sách người nhận được duyệt.`,
+          detail: "Chưa có người nhận nào được duyệt, nên thẻ này không có ranh giới rõ về nơi được chuyển tiền tới.",
+          data: { key: k.address },
+        }));
+  for (const e of s.declared) {
+    const admin = s.principals[e.from];
+    if (e.relation !== "ADMINS" || !admin) continue;
+    const svc = [e.to].filter((id) => { const k = s.keys[id]; return k && isLive(s, k) && (k.kind === "SERVICE" || k.kind === "AGENT") && k.principalId !== admin.id; });
+    const own = keysOf(s, admin.id).filter((k) => isLive(s, k));
+    if (!svc.length || !own.some((k) => k.kind === "HUMAN")) continue;
+    const suggested = suggestedSharedCap(s, [...own.map((k) => k.id), ...svc]);
+    const cap = admin.dailyCap && admin.dailyCap > suggested ? admin.dailyCap : suggested;
+    out.push(mkFinding(s, {
+      id: `R3_ADMIN_IS_OPERATOR:${e.id}`, ruleId: "R3_ADMIN_IS_OPERATOR", severity: "MEDIUM", principalId: admin.id,
+      title: `${admin.label} vừa quản trị vừa vận hành thẻ dịch vụ.`,
+      detail: `${admin.label} vừa là người quản trị máy chủ vừa giữ thẻ chi tiêu, nên một chỗ bị lộ có thể mở cả hai cửa. Nên gom thẻ dịch vụ về khu của ${admin.label} để dùng chung một hạn mức.`,
+      suggestedChange: { kind: "consolidate", into: admin.id, keys: svc, sharedCapRaw: cap.toString() },
+      data: { edge: e.id, keys: svc.map((k) => s.keys[k].address) },
+    }));
   }
   return out;
 }

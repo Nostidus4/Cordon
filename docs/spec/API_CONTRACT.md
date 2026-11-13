@@ -145,10 +145,10 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 
 ## 7. Chênh lệch đã biết giữa mock và backend (checklist theo issue)
 
-- [ ] Id finding: mock `F-R1-minh`, backend `R1_MULTI_KEY_NO_SHARED_CAP:minh` -> WEB-002 (#12)
-- [ ] Mock chỉ có finding R1; backend có R1–R4 -> WEB-002 (#12)
-- [x] `chain/sim` phát `AllowListRoleSet` khi khoá khu bị khoá/mở khoá (CHN-003). Còn lại: mock frontend chưa phát -> WEB-002 (#12)
-- [ ] Đề xuất #11 (gom khu): proposer trên mock khác `lan`, backend dùng `lan` -> WEB-002 (#12)
+- [x] Id finding: mock dùng cùng format backend `<RULE>:<subject>` (`R1_MULTI_KEY_NO_SHARED_CAP:minh`, R4 cũng vậy) (WEB-002)
+- [x] Mock tính R1, R2, R3 theo đúng luật `graph/findings.py` (R4 theo đề xuất, trong bản nháp). Chính sách v1: R1 + R3, cùng id với `GET /api/findings` (WEB-002). Còn lệch: địa chỉ thẻ trên mock là địa chỉ giả nên id R2 và `data.keys` khác giá trị; finding mock vẫn theo type Frontend (`suggestedChange`, `detail`) trong khi backend trả `proposal` -> QA-001 (#21)
+- [x] `chain/sim` phát `AllowListRoleSet` khi khoá khu bị khoá/mở khoá (CHN-003); mock frontend phát giống vậy (role 0 mỗi thẻ khi khoá, role 1 mỗi thẻ còn hoạt động khi mở, cùng tx) (WEB-002)
+- [x] Đề xuất #11 (gom khu): proposer `lan` trên cả mock và backend (WEB-002)
 - [x] `GET /agent/runs`, `GET /assistant/logs` đã có (CITY_OPS)
 - [ ] Chạy trọn luồng trực tiếp (live) Frontend ↔ Backend -> WEB-001 (#17)
 - [ ] Kiểm tương đương (parity) schema/mock/backend tự động -> QA-001 (#21)

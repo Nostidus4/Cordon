@@ -12,6 +12,7 @@ describe("eventLog", () => {
     expect(contractOf("KeyMoved")).toBe("PrincipalRegistry");
     expect(contractOf("Proposed")).toBe("GuardianCouncil");
     expect(contractOf("RoleSet")).toBe("TxAllowList");
+    expect(contractOf("AllowListRoleSet")).toBe("TxAllowList");
     expect(contractOf("Weird")).toBe("other");
   });
   it("summarises payload with Money display and counts arrays", () => {

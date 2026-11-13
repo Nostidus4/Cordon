@@ -19,7 +19,7 @@ const OF: Record<string, ContractId> = {
   CapChanged: "PolicyVault", AllowChanged: "PolicyVault", PolicyVersionBumped: "PolicyVault", TopUpRecorded: "PolicyVault",
   PrincipalCreated: "PrincipalRegistry", KeyAdded: "PrincipalRegistry", KeyMoved: "PrincipalRegistry", KeyDeactivated: "PrincipalRegistry",
   Proposed: "GuardianCouncil", Approved: "GuardianCouncil", Executed: "GuardianCouncil", Cancelled: "GuardianCouncil", EmergencyAction: "GuardianCouncil",
-  RoleSet: "TxAllowList", AllowListModified: "TxAllowList",
+  RoleSet: "TxAllowList", AllowListRoleSet: "TxAllowList", AllowListModified: "TxAllowList",
 };
 export const contractOf = (name: string): ContractId => OF[name] ?? "other";
 
@@ -30,7 +30,7 @@ const FIELDS: Record<string, string[]> = {
   CapChanged: ["kind", "subject", "oldCap", "newCap"], AllowChanged: ["kind", "subject", "selector", "allowed"], PolicyVersionBumped: ["version"],
   PrincipalCreated: ["id", "label"], KeyAdded: ["id", "key", "kind"], KeyMoved: ["key", "fromId", "toId"], KeyDeactivated: ["key"],
   Proposed: ["proposalId", "proposer", "subjectPrincipal"], Approved: ["proposalId", "member"], Executed: ["proposalId"], Cancelled: ["proposalId"],
-  EmergencyAction: ["member", "action", "subject"],
+  EmergencyAction: ["member", "action", "subject"], AllowListRoleSet: ["key", "role", "by"],
 };
 
 /** One payload value as short text (Money -> display, address/hash -> shortened, array -> joined or counted). */

@@ -15,7 +15,7 @@ import { fmtDisplay, fmtPercent, money, percentOf } from "../format";
 import { verifyAnswer } from "./assistantVerify";
 import {
   MAIN_TREASURY, U, applyCalls, applySpend, buildDistrictDetail, buildDistricts, buildGraph, changeToCalls, computeFindings, evaluate,
-  fakeHex, fakeTxHash, keyRemaining, keysOf, remainingOf, seedState, simulate, spentOf, subjectOf, titleOf, type Action, type State,
+  fakeAddress, fakeHex, fakeTxHash, keyRemaining, keysOf, remainingOf, seedState, simulate, spentOf, subjectOf, titleOf, type Action, type State,
 } from "./core";
 
 export class ApiError extends Error {
@@ -60,6 +60,7 @@ function emitCity(force = false) {
 function graphUpdated() {
   emit({ type: "graph_updated", data: { version: S.graphVersion, policyVersion: S.policyVersion, block: currentBlock() } });
 }
+const COUNCIL_ADDRESS = fakeAddress("guardian_council");
 function pushEvent(name: string, payload: Record<string, unknown>, txHash?: string): ChainEvent {
   const e: ChainEvent = { id: nextId("ev"), chain: "l1", block: currentBlock(), txHash: txHash ?? fakeTxHash(`ev${counter}`), simulated: true, logIndex: 0, name, payload, ts: nowIso() };
   events.push(e); emit({ type: "event", data: e });
@@ -190,7 +191,7 @@ function buildDraft(change: ProposedChange): ProposalDraft {
     const m = S.members.find((x) => x.id === conflicted[0])!;
     warnings.push({ code: "CONFLICT_OF_INTEREST", text: `${m.label} đang ngồi Hội đồng và là chủ khu nhận thêm quyền, không được duyệt đề xuất này.` });
     warnings.push({ code: "CONCENTRATION", text: `Khu ${subject} sẽ lên ${after.totals.enforced.display}/ngày (từ ${before.totals.enforced.display}) kèm một phiếu duyệt. Nên lập khu do Hội đồng sở hữu.` });
-    findingsAfter.push({ id: `F-R4-${subject}`, ruleId: "R4_COUNCIL_CONCENTRATION", severity: "HIGH", principalId: subject,
+    findingsAfter.push({ id: `R4_COUNCIL_CONCENTRATION:${subject}`, ruleId: "R4_COUNCIL_CONCENTRATION", severity: "HIGH", principalId: subject,
       title: `${m.label} vừa giữ phiếu duyệt vừa nhận thêm quyền`, detail: "Dồn quyền chi tiêu và quyền duyệt vào cùng một người.", createdAt: nowIso(), resolvedByProposal: null });
   }
   const declaredTouch = S.declared.some((e) => subject === e.from);
@@ -569,7 +570,8 @@ function injectFault(id: string): FaultResult {
         proposal: { title: "Tắt thẻ bị lộ và mở lại khu anh Minh", detailVi: "tắt thẻ bị lộ, mở lại khu", calls: [
           { target: "PolicyVault", fn: "deactivateKey", args: { key: leakedKey }, describe: "Tắt thẻ bị lộ" },
           { target: "PolicyVault", fn: "unlockPrincipal", args: { id: "minh" }, describe: "Mở lại khu anh Minh" }],
-          recover: () => { const m = S.principals.minh; m.locked = false; for (const k of keysOf(S, "minh")) k.active = k.id !== leakedKey; S.graphVersion++; pushEvent("PrincipalUnlocked", { principalId: "minh" }); } },
+          recover: () => { const m = S.principals.minh; m.locked = false; for (const k of keysOf(S, "minh")) k.active = k.id !== leakedKey; S.graphVersion++; const tx = fakeTxHash(`unlock${++counter}`); pushEvent("PrincipalUnlocked", { principalId: "minh" }, tx);
+            for (const k of keysOf(S, "minh")) if (k.active) pushEvent("AllowListRoleSet", { key: k.address, role: 1, by: COUNCIL_ADDRESS }, tx); } },
         closeVi: "" }).id;
       break;
     }
@@ -665,8 +667,9 @@ function lockPrincipal(req: LockRequest): ActionResult {
     p.locked = true; for (const k of keysOf(S, p.id)) k.active = false;
     S.graphVersion++;
     const tx = fakeTxHash(`lock${++counter}`);
-    pushEvent("EmergencyAction", { member: req.member, action: "lockPrincipal", subject: p.id }, tx);
     pushEvent("PrincipalLocked", { principalId: p.id, by: req.member, keysRemoved: keysOf(S, p.id).map((k) => k.id) }, tx);
+    for (const k of keysOf(S, p.id)) pushEvent("AllowListRoleSet", { key: k.address, role: 0, by: COUNCIL_ADDRESS }, tx);
+    pushEvent("EmergencyAction", { member: req.member, action: "lockPrincipal", subject: p.id }, tx);
     if (currentRunId) {
       const at: Attempt = { id: nextId("at"), runId: currentRunId, step: 6, ts: nowIso(), scenarioTime: "14:04", signer: req.member, signerLabel: signerLabel(req.member), principalId: p.id,
         action: { kind: "lock", label: `${signerLabel(req.member)} khoá khu ${p.id}: ${keysOf(S, p.id).length} thẻ bị gạch khỏi chain` }, outcome: "ok", reasonCode: null, txHash: tx, simulated: true, errorRaw: null, keySpentAfter: null, principalSpentAfter: null };
@@ -738,7 +741,7 @@ export const mockApi = {
     await lat();
     const f = computeFindings(S)[0];
     if (!f?.suggestedChange) return ok(null);
-    const p = addProposal(f.suggestedChange, "trang");
+    const p = addProposal(f.suggestedChange, "lan");
     for (const m of ["lan", "trang"] as MemberId[]) if (p.status === "open") approve(p.id, m);
     return ok(null);
   },
