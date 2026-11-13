@@ -76,9 +76,9 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 | GET / POST | `/proposals`, `/proposals/{id}` | danh sách, tạo (demo signer) | có |
 | POST | `/proposals/{id}/approve` | `{member}` (demo signer) | có |
 | POST | `/actions/lock`, `/actions/pause` | demo signer, `emergencyLock` / `emergencyPause` | có |
-| POST | `/assistant/ask` | `{question, context}` → `AssistantAnswer` (+ `numbersVerified`) | có |
+| POST | `/assistant/ask` | `{question, context}` → `AssistantAnswer` (+ `numbersVerified`). Câu cố định: mẫu + tool. Câu tự do (`questionId = "free_text"`): chỉ khi LLM bật (LLM, tool chỉ đọc, mọi số được verifier kiểm; sai/lỗi/timeout 15 s → câu mặc định, `numbersVerified=false`); LLM tắt thì 422 `UNKNOWN_QUESTION` | có |
 | GET | `/assistant/logs` | bảng `assistant_logs`, cũ nhất trước, `?limit=` (mặc định 200) | có (CITY_OPS) |
-| POST | `/agent/run-once` | chạy agent một vòng → `AgentRun` | có |
+| POST | `/agent/run-once` | chạy agent một vòng → `AgentRun` (`reasonSource` = `llm` nếu LLM viết câu giải thích đạt kiểm tra, ngược lại `template`; số tiền/token/DEX không bao giờ do LLM chọn) | có |
 | GET | `/agent/runs` | bảng `agent_runs`, cũ nhất trước, `?limit=` (mặc định 200); `AgentRun` thêm `steps`, `untrustedInput`, `injectionIgnored` | có (CITY_OPS) |
 | POST | `/scenario/scene4/run`, `/scenario/scene4/step7` | chạy kịch bản từ server | có |
 | GET | `/scenario/runs`, `/scenario/runs/{id}` | các lần chạy (Replay dùng) | có |

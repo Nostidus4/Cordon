@@ -196,6 +196,7 @@ class Runtime:
         self.bus = EventBus()
         self.guard = DemoGuard(settings)
         self.stores = Stores()
+        self.llm_client: Any = None  # built lazily by core.llm.open_session; tests inject a fake
         self.graph_version = 1
         self.scenario_tasks: dict[str, asyncio.Task[None]] = {}
         self.event_log: deque[ChainEvent] = deque(maxlen=EVENT_LOG_SIZE)

@@ -1,6 +1,6 @@
 """agent-rebalance, one round (spec §7.1): balances -> rule engine -> simulate -> swap or BLOCKED.
 
-The LLM never touches amount/token/DEX: `write_reason` only phrases the sentence (template now).
+The LLM never touches amount/token/DEX: `write_reason` only phrases the sentence (LLM, else template); `decision` is final before it runs.
 """
 
 from __future__ import annotations
@@ -55,7 +55,9 @@ def _step(key: str, label: str, status: str, **detail: Any) -> dict[str, Any]:
     return {"key": key, "labelVi": label, "status": status, "detail": detail}
 
 
-def run_once(rt: Runtime, untrusted_input: str | None = None) -> dict[str, Any]:
+def run_once(
+    rt: Runtime, untrusted_input: str | None = None, llm_reason: bool = True
+) -> dict[str, Any]:
     """One round. `untrusted_input` (CITY_OPS F06) is foreign text handed to the agent: it is recorded and shown,
     but neither `decide` nor the amount/token/DEX ever read it, so `injection_ignored` is true by construction."""
     snap = rt.snapshot()
@@ -124,7 +126,8 @@ def run_once(rt: Runtime, untrusted_input: str | None = None) -> dict[str, Any]:
             **decision_out(decision),  # type: ignore[arg-type]
         )
     )
-    text, source = write_reason(decision)
+    # llm_reason=False (bulk runs such as F07) keeps the template so a loop never holds the event loop per round
+    text, source = write_reason(decision, rt if llm_reason else None, untrusted_input)
     rh = reason_hash(text)
     explain = _step(
         "explain", "Giải thích", "ok", reasonText=text, reasonSource=source, reasonHash=rh
