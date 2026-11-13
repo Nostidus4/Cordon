@@ -6,10 +6,12 @@ import type {
   DraftProposalRequest, Finding, GraphSnapshot, Health, LockRequest, MemberId, Org, PauseRequest, Proposal, ProposalDraft,
   ScenarioRun, SimResult, SimulateRequest, StreamListener,
   BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident,
+  CopilotDraft, CopilotEval, CopilotReply,
 } from "../../types";
 import { connectSse } from "../sse";
 import { http } from "./client";
 import { mockApi } from "../mock/server";
+import { mockCopilot } from "../mock/copilot";
 
 export interface Api {
   getHealth(): Promise<Health>;
@@ -45,6 +47,12 @@ export interface Api {
   injectFault(id: string): Promise<FaultResult>;
   getIncidents(status?: "open" | "all"): Promise<Incident[]>;
   getIncident(id: number): Promise<Incident>;
+  /** Copilot (B02, CITY-004; docs/spec/CITY_OPS.md §8): prepare-only chat, drafts, the single confirm path, latest eval. */
+  askCopilot(message: string): Promise<CopilotReply>;
+  getCopilotDrafts(): Promise<CopilotDraft[]>;
+  confirmCopilotDraft(id: number, acknowledgeRisk: boolean): Promise<CopilotDraft>;
+  rejectCopilotDraft(id: number): Promise<CopilotDraft>;
+  getCopilotEval(): Promise<CopilotEval>;
   /** Stream subscription (SSE /api/stream in live mode, in-process bus in mock mode). Returns unsubscribe. */
   subscribe(listener: StreamListener): () => void;
 }
@@ -80,7 +88,12 @@ const liveApi: Api = {
   injectFault: (id) => http("POST", `/faults/${encodeURIComponent(id)}/inject`),
   getIncidents: (status = "all") => http("GET", `/incidents?status=${status}`),
   getIncident: (id) => http("GET", `/incidents/${id}`),
+  askCopilot: (message) => http("POST", "/assistant/copilot", { message }),
+  getCopilotDrafts: () => http("GET", "/assistant/copilot/drafts"),
+  confirmCopilotDraft: (id, acknowledgeRisk) => http("POST", `/assistant/copilot/drafts/${id}/confirm`, { acknowledgeRisk }),
+  rejectCopilotDraft: (id) => http("POST", `/assistant/copilot/drafts/${id}/reject`),
+  getCopilotEval: () => http("GET", "/assistant/copilot/eval"),
   subscribe: (l) => connectSse(l),
 };
 
-export const api: Api = env.apiMode === "live" ? liveApi : (mockApi as Api);
+export const api: Api = env.apiMode === "live" ? liveApi : ({ ...mockApi, ...mockCopilot } as Api);

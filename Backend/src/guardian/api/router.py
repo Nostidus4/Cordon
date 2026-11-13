@@ -8,6 +8,7 @@ from guardian.api.routes import (
     assistant,
     attempts,
     buildings,
+    copilot,
     demo,
     districts,
     events,
@@ -42,3 +43,4 @@ api_router.include_router(demo.router)
 api_router.include_router(buildings.router)
 api_router.include_router(faults.router)
 api_router.include_router(incidents.router)
+api_router.include_router(copilot.router)

@@ -15,6 +15,7 @@ import { INCIDENT_STATUS_VI, actionOutcomeVi, awaitsCouncil, faultsOfBuilding, r
 import { MEMBER_SHORT, approvalSlots } from "../pages/requests/logic";
 import { BUILDING_BY_ID, type BuildingId, type RuleState } from "../shared/buildings";
 import type { AgentRun, BuildingDetail, BuildingEvidence, FaultAction, FaultDef, FaultResult, Incident, MemberId } from "../types";
+import { CopilotPanel } from "./CopilotPanel";
 import { useStageStore, type DrawerTab } from "./stageStore";
 import { CheckIcon, CrossIcon, FaceAvatar, ToyButton, ToyCard } from "./ui";
 
@@ -259,6 +260,7 @@ export function BuildingDrawer({ code }: { code: BuildingId }) {
             : tab === "rules" ? <Rules d={d} />
             : tab === "incident" && inc ? <IncidentTab inc={inc} demo={demo} />
             : <><div className="toy-eyebrow mb-1.5" style={{ fontSize: 14 }}>Thử gây sự cố</div><Faults building={code} faults={faults} /></>}
+          {code === "B02" && tab === "overview" ? <CopilotPanel /> : null}
         </div>
       </ToyCard>
     </div>

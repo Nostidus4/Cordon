@@ -1,4 +1,4 @@
-.PHONY: openapi shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
+.PHONY: copilot-eval openapi shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web test lint build docker-up docker-down db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
 
 API_URL ?= http://localhost:8000
 
@@ -20,6 +20,10 @@ test:
 lint:
 	cd Backend && uv run ruff check . && uv run ruff format --check .
 	cd Frontend && npm run lint && npm run typecheck
+
+# Copilot eval (B02, CITY-004): 30 VI/EN cases on the sim chain, no LLM; writes docs/reports/copilot_eval.{json,md}
+copilot-eval:
+	cd Backend && uv run python scripts/copilot_eval.py
 
 # Export FastAPI's OpenAPI to Backend/openapi.json (CI fails when the committed file is stale)
 openapi:
