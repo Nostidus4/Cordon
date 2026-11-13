@@ -33,9 +33,9 @@ Mặc định không gọi LLM: câu cố định và lý do của agent dùng m
 |---|---|
 | `ANTHROPIC_API_KEY` | Khóa Anthropic (SDK còn đọc `ANTHROPIC_AUTH_TOKEN`). Không bao giờ được log. |
 | `LLM_ENABLED` | `true`/`false`. Bỏ trống = bật khi có khóa, tắt khi không có. |
-| `LLM_MODEL` | Mặc định `claude-opus-5-5`. |
+| `LLM_MODEL` | Mặc định `claude-haiku-4-5` (rẻ nhất). Đặt `claude-opus-5-5` khi cần chất lượng cao nhất (đắt hơn khoảng 4 lần). |
 | `LLM_TIMEOUT_SECONDS` | Ngân sách cứng cho mọi lần gọi của một request, mặc định `15` (câu tự do chạy ngoài event loop). |
-| `LLM_REASON_TIMEOUT_SECONDS` | Ngân sách cho câu lý do của agent cân đối, mặc định `3` (chạy giữa các lần ghi chain nên phải ngắn; quá hạn thì dùng câu mẫu). |
+| `LLM_REASON_TIMEOUT_SECONDS` | Ngân sách cho câu lý do của agent cân đối, mặc định `5` (đo thật p50 khoảng 3,2 s; chạy giữa các lần ghi chain nên phải ngắn; quá hạn thì dùng câu mẫu). |
 | `LLM_MAX_TOOL_CALLS` | Số lần gọi tool tối đa mỗi câu hỏi, mặc định `4`. |
 
 - Bật LLM thì `POST /api/assistant/ask` nhận câu tự do: mọi số trong câu trả lời phải qua `verifier.verify`, nếu không trả câu mặc định với `numbersVerified=false`. Lỗi, timeout, từ chối đều rơi về mẫu. Tắt LLM thì câu ngoài danh sách cố định vẫn trả 422.

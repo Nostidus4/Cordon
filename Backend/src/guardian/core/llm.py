@@ -86,6 +86,10 @@ def _echo(content: list[Any]) -> list[Any]:
     ]
 
 
+def _is_haiku(model: str) -> bool:
+    return model.startswith("claude-haiku")
+
+
 class AnthropicClient:
     def __init__(self, settings: Settings) -> None:
         key = settings.anthropic_api_key
@@ -105,12 +109,16 @@ class AnthropicClient:
         max_tokens: int,
         timeout: float,
     ) -> LlmTurn:
-        # Opus 5.5: adaptive thinking is always on (never send `thinking` disabled / budget_tokens);
-        # no prefill, no forced tool_choice.
-        output_config: dict[str, Any] = {"effort": effort}
+        # Never send `thinking` disabled / budget_tokens, no prefill, no forced tool_choice. Haiku 4.5 (the default,
+        # chosen for cost) rejects `effort` and has no server-side fallback; Opus/Sonnet/Fable get both.
+        output_config: dict[str, Any] = {} if _is_haiku(self._model) else {"effort": effort}
         if schema is not None:
             output_config["format"] = {"type": "json_schema", "schema": schema}
         extra: dict[str, Any] = {"tools": tools} if tools else {}
+        if output_config:
+            extra["output_config"] = output_config
+        if not _is_haiku(self._model):
+            extra |= {"betas": [FALLBACK_BETA], "fallbacks": "default"}
         try:
             resp = self._client.with_options(
                 timeout=anthropic.Timeout(timeout, connect=min(2.0, timeout))
@@ -119,9 +127,6 @@ class AnthropicClient:
                 max_tokens=max_tokens,
                 system=system,
                 messages=messages,  # type: ignore[arg-type]
-                output_config=output_config,  # type: ignore[arg-type]
-                betas=[FALLBACK_BETA],
-                fallbacks="default",
                 **extra,
             )
         except anthropic.APITimeoutError as e:  # before APIConnectionError (its parent)

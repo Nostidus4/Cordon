@@ -33,11 +33,15 @@ class Settings(BaseSettings):
     # LLM (assistant free text + agent reason). Credentials come from the SDK chain (ANTHROPIC_API_KEY, ...).
     # None = "decide from credentials": on when an API key is present, off otherwise (templates only).
     llm_enabled: bool | None = None
-    llm_model: str = "claude-opus-5-5"
+    llm_model: str = (
+        "claude-haiku-4-5"  # cheapest current model; set LLM_MODEL=claude-opus-5-5 for top quality
+    )
     llm_timeout_seconds: float = 15.0  # hard budget for ALL LLM calls of one request
     # the agent reason is written on the event loop (it sits between chain writes), so it gets a short budget:
     # past it the template sentence is used and the SSE stream is never held for long
-    llm_reason_timeout_seconds: float = 3.0
+    llm_reason_timeout_seconds: float = (
+        5.0  # live p50 ~3.2 s measured on claude-opus-5-5; Haiku is faster
+    )
     llm_max_tool_calls: int = 4
     anthropic_api_key: SecretStr | None = None  # also read from the process env by the SDK
 

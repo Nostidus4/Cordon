@@ -190,3 +190,14 @@ def test_reason_has_its_own_short_budget() -> None:
     t = time.monotonic()
     assert write_reason(D5, rt) == (template_reason(D5), "template")
     assert time.monotonic() - t < 1.5
+
+
+async def test_f07_bulk_runs_never_wait_on_the_llm() -> None:
+    """F07 loops run_once until the card cap: every round keeps the template, so the LLM is never called."""
+    llm = ScriptedLlm(reason_turn(GOOD), delay=1.0)
+    async with llm_app(llm) as (_, rt, c):
+        await to_v2(c)
+        r = await c.post("/api/faults/F07_AGENT_CAP/inject")
+        assert r.status_code == 200, r.text
+        assert llm.requests == []
+        assert all(run.reason_source == "template" for run in rt.stores.agent_runs)

@@ -43,7 +43,9 @@ def test_disabled_session_is_unavailable_and_builds_no_client() -> None:
     assert rt.llm_client is None
 
 
-def _client(resp_or_exc: Any) -> tuple[AnthropicClient, list[dict[str, Any]]]:
+def _client(
+    resp_or_exc: Any, model: str = "claude-opus-5-5"
+) -> tuple[AnthropicClient, list[dict[str, Any]]]:
     seen: list[dict[str, Any]] = []
 
     def create(**kw: Any) -> Any:
@@ -57,7 +59,7 @@ def _client(resp_or_exc: Any) -> tuple[AnthropicClient, list[dict[str, Any]]]:
             beta=SimpleNamespace(messages=SimpleNamespace(create=create))
         )
     )
-    c = AnthropicClient(Settings(_env_file=None, anthropic_api_key=KEY))  # type: ignore[call-arg]
+    c = AnthropicClient(Settings(_env_file=None, anthropic_api_key=KEY, llm_model=model))  # type: ignore[call-arg]
     c._client = sdk  # type: ignore[assignment]
     return c, seen
 
@@ -90,6 +92,26 @@ def test_request_shape_follows_the_opus_55_rules() -> None:
     # adaptive thinking is on by default: never disabled, no budget, no forced tool choice, no prefill
     assert "thinking" not in kw and "tool_choice" not in kw
     assert kw["messages"][-1]["role"] == "user"
+
+
+def test_default_model_is_haiku_and_gets_no_effort_or_fallback() -> None:
+    """Haiku 4.5 (the cost default) rejects `effort` and has no server-side fallback: neither is sent."""
+    assert Settings(_env_file=None).llm_model == "claude-haiku-4-5"  # type: ignore[call-arg]
+    msg = SimpleNamespace(stop_reason="end_turn", content=[SimpleNamespace(type="text", text="{}")])
+    c, seen = _client(msg, model="claude-haiku-4-5")
+    _call(c)
+    kw = seen[0]
+    assert kw["model"] == "claude-haiku-4-5"
+    assert (
+        "effort" not in kw.get("output_config", {})
+        and kw["output_config"]["format"]["type"] == "json_schema"
+    )
+    assert (
+        "betas" not in kw
+        and "fallbacks" not in kw
+        and "thinking" not in kw
+        and "tool_choice" not in kw
+    )
 
 
 def test_tool_use_is_parsed() -> None:

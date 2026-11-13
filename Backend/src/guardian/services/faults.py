@@ -313,7 +313,9 @@ def _f07(rt: Runtime) -> list[dict[str, Any]]:
     _require_usable_key(rt, agent_service.AGENT_SEED)
     actions: list[dict[str, Any]] = []
     for i in range(AGENT_CAP_MAX_RUNS):
-        run = agent_service.run_once(rt)
+        run = agent_service.run_once(
+            rt, llm_reason=False
+        )  # many rounds: template reason, no LLM wait
         att_rec = next((a for a in rt.stores.attempts if a.id == run["attemptId"]), None)
         if run["outcome"] == "no_action":
             if i == 0:
