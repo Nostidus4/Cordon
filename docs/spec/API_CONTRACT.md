@@ -152,6 +152,7 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 - [x] `GET /agent/runs`, `GET /assistant/logs` đã có (CITY_OPS)
 - [ ] Chạy trọn luồng trực tiếp (live) Frontend ↔ Backend -> WEB-001 (#17)
 - [ ] Kiểm tương đương (parity) schema/mock/backend tự động -> QA-001 (#21)
+- [ ] Type Frontend lệch schema Backend: danh sách lệch hiện tại là các `Known<...>` trong `Frontend/src/types/parity.test.ts` (API-002 kiểm bằng `npm run typecheck`, chỉ cho giảm). Lệch gây lỗi khi chạy live: `POST /proposals` Frontend gửi `proposer`, Backend nhận `member` + `title` (422) -> WEB-001 (#17)
 - [ ] `chain/sim` lệch [CONTRACTS.md](CONTRACTS.md) mục 6: `KeyAdded.kind` phát chữ hoa (`HUMAN`) thay vì `human`; `Proposed.subjectPrincipal` là `null` thay vì bytes32 rỗng. Sửa sim khi viết adapter L1 / bộ test conformance
 - [x] `Runtime.sim` đã bỏ: app code đi qua `ChainPort` (`proposal_state`...). Còn lại: app code vẫn truyền seed id (`key_minh`, `lan`, `tUSDC`) vào ChainPort (adapter L1 phân giải), đổi sang hex là đổi `AttemptOut.signer` (thay đổi hợp đồng)
 

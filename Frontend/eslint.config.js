@@ -4,7 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules", "public", ".screenshots", "coverage"] },
+  { ignores: ["dist", "src/types/generated", "node_modules", "public", ".screenshots", "coverage"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
