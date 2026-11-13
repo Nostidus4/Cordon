@@ -37,7 +37,7 @@ function Risk({ before, after }: { before: SimTotals; after: SimTotals }) {
 }
 
 function Voters({ p, members }: { p: Proposal; members: CouncilMember[] }) {
-  const approved = new Set(p.approvals.map((a) => a.member));
+  const approved = new Set(p.approvals);
   const sum = approvalSummary(p, members);
   return (
     <div>
@@ -78,7 +78,7 @@ function ProposalCard({ p, members, events }: { p: Proposal; members: CouncilMem
       <p style={{ margin: "6px 0 10px", fontWeight: 700, fontSize: 15, lineHeight: 1.35 }}>{p.title}</p>
 
       <ul style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 2, color: "var(--ink)", listStyle: "disc" }}>
-        {(p.describe.length ? p.describe : p.calls.map((c) => c.describe)).map((d, i) => <li key={i}>{d}</li>)}
+        {p.descriptionVi.map((d, i) => <li key={i}>{d}</li>)}
       </ul>
       <div className="mt-2.5" style={{ background: "#2d2250", borderRadius: 14, padding: "8px 12px", display: "grid", gap: 2 }}>
         {p.calls.map((c, i) => <code key={i} className="mono" style={{ color: "#8fe7c9", wordBreak: "break-all", fontSize: 11.5 }}>{callSymbol(c)}</code>)}
@@ -91,7 +91,6 @@ function ProposalCard({ p, members, events }: { p: Proposal; members: CouncilMem
         {p.status === "executed" ? (<>
           <span style={{ color: "var(--ok-ink)", fontWeight: 700 }}>Đã thực thi</span>
           {executedEv ? <Hash value={executedEv.txHash} simulated={executedEv.simulated} /> : null}
-          {p.resultingPolicyVersion ? <span>chính sách → v{p.resultingPolicyVersion}</span> : null}
         </>) : <span>Đủ {p.threshold} phiếu hợp lệ thì tự thực thi.</span>}
         {p.warnings.map((w, i) => <span key={i} style={{ color: "var(--amber-ink)", fontWeight: 600 }} title={w.text}>⚠ {w.text}</span>)}
       </div>
@@ -162,7 +161,7 @@ export function Council() {
                     <b className="font-toy" style={{ fontSize: 16 }}>#{p.id}</b>
                     <span style={{ fontWeight: 600 }}>{p.title}</span>
                     <span style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 700, color: p.status === "executed" ? "var(--ok-ink)" : "var(--ink-2)" }}>
-                      {p.status === "executed" ? `✓ đã thực thi · ${p.approvals.length}/${p.threshold} phiếu${p.resultingPolicyVersion ? ` · chính sách v${p.resultingPolicyVersion}` : ""}` : "đã huỷ"}
+                      {p.status === "executed" ? `✓ đã thực thi · ${p.approvals.length}/${p.threshold} phiếu` : "đã huỷ"}
                     </span>
                   </summary>
                   <div className="mt-3"><ProposalCard p={p} members={members} events={events ?? []} /></div>

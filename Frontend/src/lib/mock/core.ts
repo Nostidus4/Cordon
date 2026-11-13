@@ -2,7 +2,7 @@
 // proposal calls. Pure functions over `State`; money is bigint (base units, 6 decimals) internally.
 import type {
   Call, CouncilMember, District, DistrictDetail, EdgeSource, Finding, GraphEdge, GraphNode, GraphSnapshot, KeyKind,
-  MemberId, Proposal, ProposedChange, SimResult, SimResultCore, SimTotals,
+  MemberId, Money, Proposal, ProposedChange, SimResult, SimResultCore, SimTotals,
 } from "../../types";
 import type { ReasonCode } from "../../shared/reasonCodes";
 import { fmtDisplay, money, percentOf, toBase } from "../format";
@@ -176,8 +176,9 @@ function suggestedSharedCap(s: State, ids: string[]): bigint {
   const m = ids.reduce((a, k) => (s.keys[k] && s.keys[k].dailyCap > a ? s.keys[k].dailyCap : a), 0n);
   return ((m * 3n / 2n + U(1) - 1n) / U(1)) * U(1);
 }
-const FINDING_AT = new Date(0).toISOString();
-const mkFinding = (s: State, f: Omit<Finding, "createdAt" | "resolvedByProposal">): Finding => ({ ...f, createdAt: FINDING_AT, resolvedByProposal: s.resolved[f.id] ?? null });
+/** Backend-shaped R1/R3 fix: merge `keys` (addresses) into `into` with a shared cap. */
+const mergeFix = (s: State, into: string, keys: string[], cap: bigint): ProposedChange =>
+  ({ kind: "merge_district", into, keys: keys.map((k) => s.keys[k].address), districtCap: money(cap) });
 
 /** Same rules, ids and order as the backend `compute_findings` (R1, R2, R3). R4 is change-driven, see server.ts `buildDraft`. */
 export function computeFindings(s: State, _includeResolved = false): Finding[] {
@@ -190,23 +191,21 @@ export function computeFindings(s: State, _includeResolved = false): Finding[] {
     const foreign = ctrl.filter((k) => s.keys[k].principalId !== p.id);
     const maxCap = ctrl.reduce((m, k) => (s.keys[k].dailyCap > m ? s.keys[k].dailyCap : m), 0n);
     const cap = suggestedSharedCap(s, ctrl);
-    out.push(mkFinding(s, {
+    out.push({
       id: `R1_MULTI_KEY_NO_SHARED_CAP:${p.id}`, ruleId: "R1_MULTI_KEY_NO_SHARED_CAP", severity: "HIGH", principalId: p.id,
       title: `${p.label} điều khiển ${ctrl.length} thẻ nhưng chưa có cổng chung.`,
-      detail: `Mỗi thẻ có trần riêng nhưng không có trần chung. Nếu ${p.label} bị chiếm, mất tối đa ${fmtDisplay(ctrl.reduce((a, k) => a + s.keys[k].dailyCap, 0n))}/ngày.`,
-      suggestedChange: { kind: "consolidate", into: p.id, keys: foreign, sharedCapRaw: cap.toString() },
+      proposal: mergeFix(s, p.id, foreign, cap),
       data: { keys: ctrl.map((k) => s.keys[k].address), districts, reason: "cross_district", maxKeyDailyCap: money(maxCap), suggestedDistrictCap: money(cap) },
-    }));
+    });
   }
   if (s.recipients.length === 0)
     for (const k of Object.values(s.keys))
       if (isLive(s, k) && (k.kind === "AGENT" || k.kind === "SERVICE"))
-        out.push(mkFinding(s, {
+        out.push({
           id: `R2_AGENT_NO_ALLOWLIST:${k.address}`, ruleId: "R2_AGENT_NO_ALLOWLIST", severity: "MEDIUM", principalId: k.principalId,
           title: `Thẻ ${k.label} chưa có danh sách người nhận được duyệt.`,
-          detail: "Chưa có người nhận nào được duyệt, nên thẻ này không có ranh giới rõ về nơi được chuyển tiền tới.",
-          data: { key: k.address },
-        }));
+          data: { key: k.address }, proposal: null,
+        });
   for (const e of s.declared) {
     const admin = s.principals[e.from];
     if (e.relation !== "ADMINS" || !admin) continue;
@@ -215,62 +214,71 @@ export function computeFindings(s: State, _includeResolved = false): Finding[] {
     if (!svc.length || !own.some((k) => k.kind === "HUMAN")) continue;
     const suggested = suggestedSharedCap(s, [...own.map((k) => k.id), ...svc]);
     const cap = admin.dailyCap && admin.dailyCap > suggested ? admin.dailyCap : suggested;
-    out.push(mkFinding(s, {
+    out.push({
       id: `R3_ADMIN_IS_OPERATOR:${e.id}`, ruleId: "R3_ADMIN_IS_OPERATOR", severity: "MEDIUM", principalId: admin.id,
       title: `${admin.label} vừa quản trị vừa vận hành thẻ dịch vụ.`,
-      detail: `${admin.label} vừa là người quản trị máy chủ vừa giữ thẻ chi tiêu, nên một chỗ bị lộ có thể mở cả hai cửa. Nên gom thẻ dịch vụ về khu của ${admin.label} để dùng chung một hạn mức.`,
-      suggestedChange: { kind: "consolidate", into: admin.id, keys: svc, sharedCapRaw: cap.toString() },
+      proposal: mergeFix(s, admin.id, svc, cap),
       data: { edge: e.id, keys: svc.map((k) => s.keys[k].address) },
-    }));
+    });
   }
   return out;
 }
 
 // ---------- proposals: change -> calls ----------
-const keyLabel = (s: State, k: string) => s.keys[k]?.label ?? k;
-export function changeToCalls(s: State, c: ProposedChange): Call[] {
-  const R = "PrincipalRegistry" as const, V = "PolicyVault" as const;
-  const bump: Call = { target: V, fn: "bumpPolicyVersion", args: {}, describe: "Ghi nhận phiên bản chính sách mới" };
-  const capCall = (pid: string, raw: string): Call => {
+const keyLabel = (s: State, k: string) => s.keys[keyId(s, k)]?.label ?? k;
+/** Seed id of a key given as seed id or address. */
+export const keyId = (s: State, k: string): string => (s.keys[k] ? k : Object.values(s.keys).find((x) => x.address === k)?.id ?? k);
+/** Backend-shaped calls (`registry`/`vault`) paired with their VI sentence (`descriptionVi`). */
+export function planChange(s: State, c: ProposedChange): { calls: Call[]; descriptionVi: string[] } {
+  const bump: [Call, string] = [{ target: "vault", fn: "bumpPolicyVersion", args: {} }, "Ghi nhận phiên bản chính sách mới"];
+  const capCall = (pid: string, cap: Money): [Call, string] => {
     const old = s.principals[pid]?.dailyCap;
     const from = old ? `từ ${fmtDisplay(old)} ` : "";
-    return { target: V, fn: "setPrincipalDailyCap", args: { id: pid, cap: raw },
-      describe: `${old ? "Đổi" : "Đặt"} hạn mức chung khu ${pid} ${from}${old ? "lên " : "là "}${fmtDisplay(BigInt(raw))}/ngày` };
+    return [{ target: "vault", fn: "setPrincipalDailyCap", args: { principalId: pid, cap } },
+      `${old ? "Đổi" : "Đặt"} hạn mức chung khu ${pid} ${from}${old ? "lên " : "là "}${cap.display}/ngày`];
   };
-  const move = (k: string, to: string): Call => ({ target: R, fn: "moveKey", args: { key: k, toId: to }, describe: `Chuyển thẻ ${keyLabel(s, k)} (${k}) về khu ${to}` });
+  const move = (k: string, to: string): [Call, string] => [{ target: "registry", fn: "moveKey", args: { key: k, toId: to } }, `Chuyển thẻ ${keyLabel(s, k)} (${keyId(s, k)}) về khu ${to}`];
+  let steps: [Call, string][];
   switch (c.kind) {
-    case "consolidate": return [...c.keys.map((k) => move(k, c.into)), capCall(c.into, c.sharedCapRaw), bump];
-    case "raise_cap": return [capCall(c.principalId, c.newCapRaw), bump];
-    case "move_key": return [move(c.key, c.toPrincipal), bump];
-    case "council_district":
-      return [
-        { target: R, fn: "createPrincipal", args: { id: c.id, label: "Khu do Hội đồng sở hữu" }, describe: `Tạo khu mới ${c.id} do Hội đồng sở hữu` },
-        ...c.keys.map((k) => move(k, c.id)), capCall(c.id, c.capRaw), bump,
+    case "merge_district": steps = [...c.keys.map((k) => move(k, c.into)), capCall(c.into, c.districtCap), bump]; break;
+    case "set_district_cap": steps = [capCall(c.principalId, c.cap), bump]; break;
+    case "set_key_cap": steps = [[{ target: "vault", fn: "setKeyDailyCap", args: { key: c.key, cap: c.cap } }, `Đổi hạn mức thẻ ${keyLabel(s, c.key)} thành ${c.cap.display}/ngày`], bump]; break;
+    case "move_key": steps = [move(c.key, c.to), bump]; break;
+    case "create_district":
+      steps = [
+        [{ target: "registry", fn: "createPrincipal", args: { principalId: c.principalId, label: c.label } }, `Tạo khu mới ${c.principalId} do Hội đồng sở hữu`],
+        ...c.keys.map((k) => move(k, c.principalId)), capCall(c.principalId, c.districtCap), bump,
       ];
   }
+  return { calls: steps.map((x) => x[0]), descriptionVi: steps.map((x) => x[1]) };
 }
+export const changeToCalls = (s: State, c: ProposedChange): Call[] => planChange(s, c).calls;
 export function applyCalls(s: State, calls: Call[]): void {
   for (const c of calls) {
-    if (c.fn === "createPrincipal") s.principals[c.args.id] = { id: c.args.id, label: c.args.label, kind: "AGENT", dailyCap: null, locked: false };
-    else if (c.fn === "moveKey") { if (s.keys[c.args.key]) s.keys[c.args.key].principalId = c.args.toId; }
-    else if (c.fn === "setPrincipalDailyCap") { if (s.principals[c.args.id]) s.principals[c.args.id].dailyCap = BigInt(c.args.cap); }
+    const a = c.args as Record<string, any>;
+    if (c.fn === "createPrincipal") s.principals[a.principalId] = { id: a.principalId, label: a.label, kind: "AGENT", dailyCap: null, locked: false };
+    else if (c.fn === "moveKey") { const k = s.keys[keyId(s, a.key)]; if (k) k.principalId = a.toId; }
+    else if (c.fn === "setPrincipalDailyCap") { if (s.principals[a.principalId]) s.principals[a.principalId].dailyCap = BigInt(a.cap.raw); }
+    else if (c.fn === "setKeyDailyCap") { const k = s.keys[keyId(s, a.key)]; if (k) k.dailyCap = BigInt(a.cap.raw); }
     else if (c.fn === "bumpPolicyVersion") { s.policyVersion += 1; s.graphVersion += 1; }
   }
 }
 export function subjectOf(c: ProposedChange): string {
   switch (c.kind) {
-    case "consolidate": return c.into;
-    case "raise_cap": return c.principalId;
-    case "move_key": return c.toPrincipal;
-    case "council_district": return c.id;
+    case "merge_district": return c.into;
+    case "set_district_cap": return c.principalId;
+    case "set_key_cap": return c.key;
+    case "move_key": return c.to;
+    case "create_district": return c.principalId;
   }
 }
 export function titleOf(s: State, c: ProposedChange): string {
   switch (c.kind) {
-    case "consolidate": return `Gom ${c.keys.length + keysOf(s, c.into).length} thẻ về khu ${c.into}, hạn mức chung ${fmtDisplay(BigInt(c.sharedCapRaw))}/ngày`;
-    case "raise_cap": return `Nâng hạn mức khu ${c.principalId} lên ${fmtDisplay(BigInt(c.newCapRaw))}/ngày`;
-    case "move_key": return `Giao ${keyLabel(s, c.key)} cho khu ${c.toPrincipal}`;
-    case "council_district": return `Lập khu do Hội đồng sở hữu, hạn mức ${fmtDisplay(BigInt(c.capRaw))}/ngày`;
+    case "merge_district": return `Gom ${c.keys.length + keysOf(s, c.into).length} thẻ về khu ${c.into}, hạn mức chung ${c.districtCap.display}/ngày`;
+    case "set_district_cap": return `Nâng hạn mức khu ${c.principalId} lên ${c.cap.display}/ngày`;
+    case "set_key_cap": return `Đổi hạn mức thẻ ${keyLabel(s, c.key)} thành ${c.cap.display}/ngày`;
+    case "move_key": return `Giao ${keyLabel(s, c.key)} cho khu ${c.to}`;
+    case "create_district": return `Lập khu do Hội đồng sở hữu, hạn mức ${c.districtCap.display}/ngày`;
   }
 }
 
@@ -352,9 +360,12 @@ export function buildDistrictDetail(s: State, pid: string): DistrictDetail | nul
   const ks = keysOf(s, pid);
   return {
     principalId: pid, label: p.label, kind: p.kind, dailyCap: p.dailyCap ? money(p.dailyCap) : null,
-    spentToday: money(spentOf(s, pid)), remaining: money(remainingOf(s, pid)), locked: p.locked,
-    keys: ks.map((k) => ({ key: k.id, address: k.address, kind: k.kind, label: k.label, active: k.active, dailyCap: money(k.dailyCap), spentToday: money(k.spent) })),
-    declared: s.declared.filter((e) => e.from === pid || ks.some((k) => k.id === e.to)).map((e) => ({ from: e.from, to: e.to, relation: e.relation, note: e.note })),
+    spentToday: money(spentOf(s, pid)), remaining: money(remainingOf(s, pid)),
+    youThink: money(p.dailyCap ?? ks.reduce((a, k) => a + k.dailyCap, 0n)), locked: p.locked,
+    keys: ks.map((k) => ({ address: k.address, seedId: k.id, kind: k.kind, label: k.label, active: k.active, allowListed: k.active, dailyCap: money(k.dailyCap), spentToday: money(k.spent), remaining: money(k.dailyCap > k.spent ? k.dailyCap - k.spent : 0n) })),
+    declaredEdges: s.declared.filter((e) => e.from === pid || ks.some((k) => k.id === e.to)).map((e) => ({ id: e.id, from: e.from, to: e.to, relation: e.relation, source: "declared", note: e.note })),
+    council: [],
+    findings: computeFindings(s).filter((f) => f.principalId === pid),
   };
 }
 export type { MemberId };

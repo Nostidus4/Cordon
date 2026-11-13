@@ -2,12 +2,12 @@
 import type { Call, ChainEvent, CouncilMember, Proposal } from "../../types";
 
 /** `PolicyVault.setPrincipalDailyCap(minh, 30000000000)`: raw argument values, positional, exactly what the chain would receive. */
-export const callSymbol = (c: Call): string => `${c.target}.${c.fn}(${Object.values(c.args).join(", ")})`;
+export const callSymbol = (c: Call): string => `${c.target}.${c.fn}(${Object.values(c.args).map((v) => (v && typeof v === "object" && "display" in v ? String((v as { display: unknown }).display) : String(v))).join(", ")})`;
 
 export interface ApprovalSummary { approved: number; need: number; eligible: number; reached: boolean; stuck: boolean }
 /** `stuck` = even if every non-conflicted member approved, the threshold would not be reached. */
 export function approvalSummary(p: Pick<Proposal, "approvals" | "threshold" | "conflictedMembers">, members: Pick<CouncilMember, "id">[]): ApprovalSummary {
-  const approved = new Set(p.approvals.map((a) => a.member)).size;
+  const approved = new Set(p.approvals).size;
   const eligible = members.filter((m) => !p.conflictedMembers.includes(m.id)).length;
   return { approved, need: p.threshold, eligible, reached: approved >= p.threshold, stuck: eligible < p.threshold };
 }

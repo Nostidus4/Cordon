@@ -4,14 +4,14 @@ import type { ChainEvent } from "../../types";
 
 describe("callSymbol", () => {
   it("renders raw positional args", () => {
-    expect(callSymbol({ target: "PolicyVault", fn: "setPrincipalDailyCap", args: { id: "minh", cap: "30000000000" }, describe: "" })).toBe("PolicyVault.setPrincipalDailyCap(minh, 30000000000)");
-    expect(callSymbol({ target: "PolicyVault", fn: "bumpPolicyVersion", args: {}, describe: "" })).toBe("PolicyVault.bumpPolicyVersion()");
+    expect(callSymbol({ target: "PolicyVault", fn: "setPrincipalDailyCap", args: { principalId: "minh", cap: { raw: "30000000000", display: "30.000" } } })).toBe("PolicyVault.setPrincipalDailyCap(minh, 30.000)");
+    expect(callSymbol({ target: "PolicyVault", fn: "bumpPolicyVersion", args: {} })).toBe("PolicyVault.bumpPolicyVersion()");
   });
 });
 describe("approvalSummary", () => {
   const members = [{ id: "trang" as const }, { id: "lan" as const }, { id: "huy" as const }];
   it("counts distinct approvers against the threshold", () => {
-    const s = approvalSummary({ approvals: [{ member: "lan", at: "" }, { member: "trang", at: "" }], threshold: 2, conflictedMembers: [] }, members);
+    const s = approvalSummary({ approvals: ["lan", "trang"], threshold: 2, conflictedMembers: [] }, members);
     expect(s).toMatchObject({ approved: 2, need: 2, eligible: 3, reached: true, stuck: false });
   });
   it("is stuck when too many members are conflicted", () => {

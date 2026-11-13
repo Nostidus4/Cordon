@@ -51,25 +51,25 @@ expectTypeOf<DiffR<S["GraphEdge"], T.GraphEdge>>().toEqualTypeOf<Known<never, "n
 // GraphDistrict <-> District
 expectTypeOf<DiffR<S["GraphDistrict"], T.District>>().toEqualTypeOf<Known<never, never, never>>();
 // FindingOut <-> Finding
-expectTypeOf<DiffR<S["FindingOut"], T.Finding>>().toEqualTypeOf<Known<"proposal", "detail" | "createdAt" | "resolvedByProposal" | "suggestedChange", "data">>();
+expectTypeOf<DiffR<S["FindingOut"], T.Finding>>().toEqualTypeOf<Known<never, never, never>>();
 // SimulateResponse <-> SimResult
-expectTypeOf<DiffR<S["SimulateResponse"], T.SimResult>>().toEqualTypeOf<Known<never, never, "after" | "before" | "findings">>();
+expectTypeOf<DiffR<S["SimulateResponse"], T.SimResult>>().toEqualTypeOf<Known<never, never, "after" | "before">>();
 // Totals <-> SimTotals
 expectTypeOf<DiffR<S["Totals"], T.SimTotals>>().toEqualTypeOf<Known<never, never, never>>();
 // DistrictOut <-> DistrictDetail
-expectTypeOf<DiffR<S["DistrictOut"], T.DistrictDetail>>().toEqualTypeOf<Known<"council" | "findings" | "youThink" | "declaredEdges", "declared", "keys">>();
+expectTypeOf<DiffR<S["DistrictOut"], T.DistrictDetail>>().toEqualTypeOf<Known<never, never, never>>();
 // DistrictKey <-> DistrictKey
-expectTypeOf<DiffR<S["DistrictKey"], T.DistrictKey>>().toEqualTypeOf<Known<"remaining" | "allowListed" | "seedId", "key", never>>();
+expectTypeOf<DiffR<S["DistrictKey"], T.DistrictKey>>().toEqualTypeOf<Known<never, never, never>>();
 // EventOut <-> ChainEvent
 expectTypeOf<DiffR<S["EventOut"], T.ChainEvent>>().toEqualTypeOf<Known<never, "id" | "chain", "ts">>();
 // AttemptOut <-> Attempt
 expectTypeOf<DiffR<S["AttemptOut"], T.Attempt>>().toEqualTypeOf<Known<"token" | "block" | "source" | "to" | "amount" | "badge" | "displayTime" | "reasonTextEn" | "reasonTextVi" | "scenarioRunId" | "toLabel", "runId" | "scenarioTime", "id" | "ts" | "action">>();
 // DraftOut <-> ProposalDraft
-expectTypeOf<DiffR<S["DraftOut"], T.ProposalDraft>>().toEqualTypeOf<Known<"classification" | "descriptionVi" | "findingId" | "requiresCouncil" | "sent", "describe", "calls" | "riskReport">>();
+expectTypeOf<DiffR<S["DraftOut"], T.ProposalDraft>>().toEqualTypeOf<Known<never, never, never>>();
 // ProposalOut <-> Proposal
-expectTypeOf<DiffR<S["ProposalOut"], T.Proposal>>().toEqualTypeOf<Known<"descriptionVi" | "findingId" | "approvalCount" | "executedTxHash" | "members" | "reportBasis", "describe" | "resultingPolicyVersion", "createdAt" | "calls" | "riskReport" | "approvals" | "executedAt">>();
+expectTypeOf<DiffR<S["ProposalOut"], T.Proposal>>().toEqualTypeOf<Known<never, never, never>>();
 // ActionOut <-> ActionResult
-expectTypeOf<DiffR<S["ActionOut"], T.ActionResult>>().toEqualTypeOf<Known<"status" | "block" | "principalId" | "member", "policyVersion" | "ok", never>>();
+expectTypeOf<DiffR<S["ActionOut"], T.ActionResult>>().toEqualTypeOf<Known<never, never, never>>();
 // AssistantAnswer <-> AssistantAnswer
 expectTypeOf<DiffR<S["AssistantAnswer"], T.AssistantAnswer>>().toEqualTypeOf<Known<"numbersVerified" | "questionId", never, never>>();
 // AssistantLogOut <-> AssistantLog
@@ -113,13 +113,13 @@ expectTypeOf<DiffQ<S["PauseRequest"], T.PauseRequest>>().toEqualTypeOf<Known<nev
 // ApproveRequest <-> ApproveRequest
 expectTypeOf<DiffQ<S["ApproveRequest"], T.ApproveRequest>>().toEqualTypeOf<Known<never, never, never>>();
 // AskRequest <-> AskRequest
-expectTypeOf<DiffQ<S["AskRequest"], T.AskRequest>>().toEqualTypeOf<Known<never, never, "context">>();
+expectTypeOf<DiffQ<S["AskRequest"], T.AskRequest>>().toEqualTypeOf<Known<never, never, never>>();
 // SimulateRequest <-> SimulateRequest
 expectTypeOf<DiffQ<S["SimulateRequest"], T.SimulateRequest>>().toEqualTypeOf<Known<never, never, never>>();
 // DraftRequest <-> DraftProposalRequest
-expectTypeOf<DiffQ<S["DraftRequest"], T.DraftProposalRequest>>().toEqualTypeOf<Known<"compromised", never, never>>();
+expectTypeOf<DiffQ<S["DraftRequest"], T.DraftProposalRequest>>().toEqualTypeOf<Known<never, never, never>>();
 // ProposeRequest <-> CreateProposalRequest
-expectTypeOf<DiffQ<S["ProposeRequest"], T.CreateProposalRequest>>().toEqualTypeOf<Known<"title" | "member", "proposer", never>>();
+expectTypeOf<DiffQ<S["ProposeRequest"], T.CreateProposalRequest>>().toEqualTypeOf<Known<never, never, never>>();
 
 // SSE type list must match Backend schemas/stream.py SSE_EVENT_TYPES (API_CONTRACT §5).
 expectTypeOf<T.StreamMessageType>().toEqualTypeOf<

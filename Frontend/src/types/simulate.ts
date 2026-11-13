@@ -2,12 +2,13 @@
 import type { EdgeSource, Money } from "./common";
 import type { Finding } from "./finding";
 
-/** Input-side change; raw values are integer base-unit strings. */
+/** Backend ProposedChange (camelCase). `keys` are key addresses; amounts are Money. */
 export type ProposedChange =
-  | { kind: "consolidate"; into: string; keys: string[]; sharedCapRaw: string }
-  | { kind: "raise_cap"; principalId: string; newCapRaw: string }
-  | { kind: "move_key"; key: string; toPrincipal: string }
-  | { kind: "council_district"; id: string; keys: string[]; capRaw: string };
+  | { kind: "merge_district"; into: string; keys: string[]; districtCap: Money }
+  | { kind: "set_district_cap"; principalId: string; cap: Money }
+  | { kind: "set_key_cap"; key: string; cap: Money }
+  | { kind: "move_key"; key: string; to: string }
+  | { kind: "create_district"; principalId: string; label: string; owner: "council"; keys: string[]; districtCap: Money; protocolOnly?: boolean };
 
 export interface SimulateRequest {
   compromised: string[];

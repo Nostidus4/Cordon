@@ -22,13 +22,13 @@ export function FixScene() {
   const actions = useActions();
   const { data: findings } = useFindings();
   const { data: proposals } = useProposals();
-  const finding = findings?.find((f) => f.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && f.principalId === "minh" && f.suggestedChange);
-  const merge = useMemo(() => (proposals ?? []).filter((p) => p.change.kind === "consolidate").sort((a, b) => b.id - a.id)[0], [proposals]);
+  const finding = findings?.find((f) => f.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && f.principalId === "minh" && f.proposal);
+  const merge = useMemo(() => (proposals ?? []).filter((p) => p.change?.kind === "merge_district").sort((a, b) => b.id - a.id)[0], [proposals]);
   const { data: draft } = useQuery({ queryKey: ["stage-draft", finding?.id], queryFn: () => api.draftProposal({ findingId: finding!.id }), enabled: !!finding && !merge });
   const report = (merge ?? draft)?.riskReport;
 
   const status: "draft" | "open" | "done" = !merge ? "draft" : merge.status === "executed" ? "done" : "open";
-  const approved = new Set(merge?.approvals.map((a) => a.member) ?? []);
+  const approved = new Set(merge?.approvals ?? []);
   const [burst, setBurst] = useState(0);
   const prev = useRef(status);
   useEffect(() => {
@@ -45,7 +45,7 @@ export function FixScene() {
   const city = useMemo<Partial<CityStageProps>>(() => ({ shot: status === "done" ? "gate" : "district-minh", showDomain: true }), [status]);
   useCityProps(city);
 
-  const propose = async () => { if (!finding || busy) return; setBusy(true); try { await actions.createProposal.mutateAsync({ findingId: finding.id, proposer: "lan" }); } finally { setBusy(false); } };
+  const propose = async () => { if (!finding || busy) return; setBusy(true); try { await actions.createProposal.mutateAsync({ findingId: finding.id, member: "lan" }); } finally { setBusy(false); } };
   const approve = async (member: MemberId) => { if (!merge || busy) return; setBusy(true); try { await actions.approve.mutateAsync({ id: merge.id, member }); } finally { setBusy(false); } };
   const nextApprover = ORDER.find((m) => !approved.has(m));
   usePrimaryAction(status === "draft" ? (finding ? () => void propose() : null) : status === "open" ? (nextApprover ? () => void approve(nextApprover) : null) : () => nav("/s/incident"));
@@ -57,7 +57,7 @@ export function FixScene() {
     void (async () => {
       const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
       await wait(900); if (off) return;
-      const p = await api.createProposal({ findingId: finding.id, proposer: "lan" });
+      const p = await api.createProposal({ findingId: finding.id, member: "lan" });
       await wait(600); await api.approveProposal(p.id, "lan"); await wait(600); await api.approveProposal(p.id, "trang");
     })();
     return () => { off = true; };

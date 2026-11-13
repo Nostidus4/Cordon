@@ -9,6 +9,7 @@ import { useDistrict } from "../../hooks/useDistrict";
 import { casual, KIND_LABEL, RELATION_LABEL } from "../../graph/names";
 import { useUiStore } from "../../store/uiStore";
 import { fmtDisplay } from "../../lib/format";
+import { findingDetail } from "../../lib/findingText";
 import type { Finding, GraphSnapshot } from "../../types";
 
 export const PANEL_W = 384;
@@ -52,8 +53,8 @@ export function NodeDetailPanel({ id, snapshot, findings, onSelect, onClose, onD
     const cap = district.dailyCap ? BigInt(district.dailyCap.raw) : null;
     const keyNodes = district.keys.map((k) => snapshot.nodes.find((n) => n.id === `k:${k}`)).filter(Boolean);
     const sumCaps = keyNodes.reduce((s, n) => s + BigInt(n!.data.keyDailyCap?.raw ?? "0"), 0n);
-    const mine = findings.filter((f) => f.principalId === pid && f.resolvedByProposal == null);
-    const declared = (detail?.declared ?? []).filter((d) => d.from === pid);
+    const mine = findings.filter((f) => f.principalId === pid);
+    const declared = (detail?.declaredEdges ?? []).filter((d) => d.from === pid);
     body = (
       <>
         <Section title="Hạn mức">
@@ -74,7 +75,7 @@ export function NodeDetailPanel({ id, snapshot, findings, onSelect, onClose, onD
         <Section title="Nguồn dữ liệu">
           <div className="space-y-2">
             <OnChain>Thẻ nào thuộc khu này, hạn mức và số đã chi đều đọc từ chain.</OnChain>
-            {declared.map((d) => <Declared key={d.to} title={`${RELATION_LABEL[d.relation]} ${snapshot.nodes.find((n) => n.id === `k:${d.to}`)?.label ?? d.to}`} note={d.note} />)}
+            {declared.map((d) => <Declared key={d.to} title={`${RELATION_LABEL[d.relation]} ${(snapshot.nodes.find((n) => n.id === `p:${d.to}`) ?? snapshot.nodes.find((n) => n.id === `k:${d.to}`))?.label ?? d.to}`} note={d.note} />)}
             {declared.length === 0 ? <p className="text-[12.5px] text-muted">Khu này không khai quan hệ điều khiển nào khác.</p> : null}
           </div>
         </Section>
@@ -83,7 +84,7 @@ export function NodeDetailPanel({ id, snapshot, findings, onSelect, onClose, onD
             {mine.map((f) => (
               <div key={f.id} className="rounded-xl border border-warn/45 bg-warn-soft p-3">
                 <p className="mb-1 text-[13px] font-semibold text-warn"><span aria-hidden>▲</span> {f.title}</p>
-                <p className="mb-2.5 text-[12.5px] leading-snug text-text/85">{f.detail}</p>
+                <p className="mb-2.5 text-[12.5px] leading-snug text-text/85">{findingDetail(f)}</p>
                 <Button size="sm" variant="primary" icon={<Wand2 className="size-3.5" />} loading={drafting} onClick={() => onDraft(f)}>Tạo đề xuất sửa</Button>
               </div>
             ))}
@@ -167,7 +168,7 @@ export function NodeDetailPanel({ id, snapshot, findings, onSelect, onClose, onD
         <div className="min-w-0 flex-1 leading-tight"><h3 className="truncate text-[16px] font-bold text-text">{title}</h3><p className="mt-1 text-[12px] text-muted">{subtitle}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {district?.locked || node?.data.locked ? <StatusChip status="locked" size="sm">đã khoá</StatusChip> : null}
-            {pid && findings.some((f) => f.principalId === pid && f.resolvedByProposal == null) ? <StatusChip status="warn" size="sm">cờ vàng</StatusChip> : null}
+            {pid && findings.some((f) => f.principalId === pid) ? <StatusChip status="warn" size="sm">cờ vàng</StatusChip> : null}
           </div>
         </div>
         <IconButton size="sm" label="Đóng (Esc)" icon={<X className="size-4" />} onClick={onClose} />
