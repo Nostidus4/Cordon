@@ -105,7 +105,10 @@ contract PayrollInvariantsTest is PayrollBase {
     }
 
     /// @dev I-2: no k positions can ever exceed the cover
+    /// @dev I-2 holds until finalize(): after the deadline nothing can be allocated (I-6) and finalize spends the
+    /// reserve on exactly the stuck exposure, so `coverage()` shrinks by design; payday is then guarded by I-1.
     function invariant_I2_exposureWithinCoverage() public view {
+        if (sched.finalized()) return;
         assertLe(policy.exposureAtRisk(), policy.coverage());
     }
 

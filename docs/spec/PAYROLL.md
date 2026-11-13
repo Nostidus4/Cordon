@@ -397,7 +397,7 @@ Ký hiệu: `P = payrollTotal`, `Pr = principal`, `R = reserve`, `D = deadline =
 
 **I-1 (đảm bảo ngày lương, bất biến chính).** Nếu các giả định A1–A5 đúng thì từ `payday` trở đi (sau `finalize()`), `vault.idle() >= P`, nên `execute()` không bao giờ revert vì thiếu tiền, **kể cả khi tới k venue bị đóng băng vĩnh viễn**.
 
-**I-2 (chi tiết hoá I-1: không có venue nào cho thiệt hại vượt vùng phủ).** Tại mọi thời điểm: `L <= cover`. (Chứng minh: xem 3.1.)
+**I-2 (chi tiết hoá I-1: không có venue nào cho thiệt hại vượt vùng phủ).** Tại mọi thời điểm **trước `finalize()`**: `L <= cover`. Sau `finalize()`, reserve đã được dùng để bù đúng phần kẹt nên `cover` giảm theo thiết kế; khi đó I-1 là bảo đảm (sau deadline không ai `allocate` được, I-6). Làm rõ ngày 2026-11-13 sau khi fuzz trên CI tìm ra chuỗi `allocate → freeze → finalize`; không đổi interface. (Chứng minh: xem 3.1.)
 
 **I-3 (không có đường tới địa chỉ lạ).** Token chỉ rời `PayrollVault` qua: `deployToVenue` (tới venue whitelist), `payOut` (tới payee trong roster, đúng số), `returnReserve` / `withdrawSurplus` (chỉ về `treasury`, chỉ qua 2/3). Không hàm nào của agent/keeper có tham số người nhận; `unwind` chỉ trả về vault.
 

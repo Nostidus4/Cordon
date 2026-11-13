@@ -145,3 +145,43 @@ async def test_agent_run_uses_the_llm_only_when_asked(
         await client.post("/api/payroll/agent/run", json={"llmReport": True})
     ).status_code == 200
     assert seen == [False, False, True]
+
+
+def test_guarantee_after_the_deadline_is_payday_coverage_not_i2() -> None:
+    """CI fuzz found allocate -> freeze -> finalize: the reserve pays for the stuck venue, so coverage < exposure,
+    yet payday is covered. The UI must say "covered" then, and "not covered" only when it really is not."""
+    from guardian.domain.payroll_snapshot import PayrollSnapshot, VenueState
+    from guardian.services.payroll_service import guarantee
+
+    def snap(idle: int, reserve: int, now: int) -> PayrollSnapshot:
+        stuck = VenueState("0xb", "B", True, True, True, 8_716, 12_000, 0, 8_716)
+        return PayrollSnapshot(
+            now=now,
+            cycle_id=1,
+            payday=200,
+            deadline=100,
+            phase="deadline",
+            payroll_total=30_000,
+            principal=30_000,
+            reserve=reserve,
+            idle=idle,
+            deployed_total=8_716,
+            yield_realized=0,
+            buffer_amount=1_500,
+            ceiling_amount=0,
+            next_rung_at=0,
+            killed=True,
+            kill_reason=2,
+            coverage=3_284,
+            exposure_at_risk=8_716,
+            coverage_ok=False,
+            venues=[stuck],
+        )
+
+    assert (
+        guarantee(snap(idle=30_000, reserve=3_284, now=150))["ok"] is True
+    )  # after finalize: idle >= P
+    assert guarantee(snap(idle=20_000, reserve=3_284, now=150))["ok"] is False  # really short
+    assert (
+        guarantee(snap(idle=30_000, reserve=3_284, now=50))["ok"] is False
+    )  # before the deadline: I-2

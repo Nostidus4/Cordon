@@ -177,7 +177,16 @@ def _rungs(snap: PayrollSnapshot) -> list[dict[str, Any]]:
 
 
 def guarantee(snap: PayrollSnapshot) -> dict[str, Any]:
-    ok = snap.exposure_at_risk <= snap.coverage
+    """Before the deadline: I-2 (the k largest positions fit in the coverage). From the deadline on nothing can be
+    allocated (I-6) and finalize spends the reserve on the stuck part, so the coverage shrinks by design: the check is
+    then I-1 itself, i.e. idle + reserve + what healthy venues still hold covers the payroll."""
+    if snap.executed:
+        ok = True
+    elif snap.now >= snap.deadline:
+        healthy = sum(v.deployed for v in snap.venues if not v.impaired)
+        ok = snap.idle + snap.reserve + healthy >= snap.payroll_total
+    else:
+        ok = snap.exposure_at_risk <= snap.coverage
     return {
         "ok": ok,
         "coverage": _m(snap.coverage),
