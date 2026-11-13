@@ -20,14 +20,24 @@ services:
       - api
     restart: unless-stopped
 
-  # Postgres (later): enable with `docker compose --profile db up`, then point the api at it.
-  # db:
-  #   image: postgres:16
-  #   profiles: [db]
-  #   environment:
-  #     POSTGRES_USER: guardian
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
-  #     POSTGRES_DB: guardian
-  #   volumes: [pgdata:/var/lib/postgresql/data]
-# volumes:
-#   pgdata:
+  # Postgres: `make db-up` (= docker compose --profile db up -d db), then `make db-migrate`.
+  db:
+    image: postgres:16
+    profiles: [db]
+    environment:
+      POSTGRES_USER: guardian
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: guardian
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U guardian -d guardian"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+volumes:
+  pgdata:
