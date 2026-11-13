@@ -13,7 +13,6 @@ import { sleep } from "./actions";
 import { SCENES, TOUR_STEPS, type TourStep } from "./steps";
 import { START_TOUR_EVENT, startTour, useTourStore } from "./tourStore";
 import { useTargetRect, type Rect } from "./useTargetRect";
-import { runDevState } from "./devHooks";
 
 const CARD_W = 420;
 const PAD = 10;
@@ -70,7 +69,7 @@ export function TourOverlay() {
     const sp = new URLSearchParams(window.location.search);
     const t = sp.get("tour");
     if (t) { sp.delete("tour"); const q = sp.toString(); nav(loc.pathname + (q ? `?${q}` : ""), { replace: true }); start({ auto: t === "auto", index: Number(sp.get("tourstep")) || 0 }); }
-    if (import.meta.env.DEV) void runDevState(nav, sp);
+    if (import.meta.env.DEV) void import("./devHooks").then((m) => m.runDevState(nav, sp));
     const on = () => startTour();
     window.addEventListener(START_TOUR_EVENT, on);
     return () => window.removeEventListener(START_TOUR_EVENT, on);

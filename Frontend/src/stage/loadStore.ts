@@ -14,7 +14,7 @@ export type Gate = "wait" | "open";
 export function initialGate(): Gate {
   try {
     const q = new URLSearchParams(location.search);
-    if (q.has("autoplay") || q.get("gate") === "0" || q.get("lite") === "1") return "open";
+    if ((import.meta.env.DEV && q.has("autoplay")) || q.get("gate") === "0" || q.get("lite") === "1") return "open";
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return "open";
   } catch { /* no DOM */ }
   return "wait";

@@ -18,7 +18,6 @@ import { isStageScene, neighborScene, SCENE_META, sceneFromPath, scenePath, type
 import { useStageStore } from "./stageStore";
 import { useLoadStore } from "./loadStore";
 import { TopBar } from "./TopBar";
-import { useStageDevHooks } from "./devHooks";
 import { useEnsureScene } from "./useEnsureScene";
 import { forgetRequestNumbers, useRememberRequestNumbers } from "./requestMemory";
 import { ToyCard } from "./ui";
@@ -54,7 +53,7 @@ export default function StagePage() {
   const autoNight = useStageStore((s) => s.autoNight);
   const cardsReady = useLoadStore((s) => s.assembled); // stepper + overlay cards pop in once the city has assembled (or 3D is off)
   const reset = useDemoReset();
-  useStageDevHooks();
+  useEffect(() => { if (import.meta.env.DEV) void import("./devHooks").then((m) => m.runStageDevHooks()); }, []);
   useRememberRequestNumbers();
   const { preparing } = useEnsureScene(scene);
   useEffect(() => { useStageStore.getState().setPreparing(preparing); }, [preparing]);

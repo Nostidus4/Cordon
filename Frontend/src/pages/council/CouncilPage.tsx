@@ -1,4 +1,5 @@
 // Council (spec §10.6): members + their districts, history of tighten/loosen actions, "Dừng cả kho" (demoMode), vault status.
+import { useEffect } from "react";
 import { Activity, PauseCircle } from "lucide-react";
 import { Money, StatusChip } from "../../components/ui";
 import { useGraph } from "../../hooks/useGraph";
@@ -9,7 +10,6 @@ import { ActionHistory } from "./ActionHistory";
 import { MemberList } from "./MemberList";
 import { PauseAllButton } from "./PauseAllButton";
 import { Principle } from "./Principle";
-import { useDevAutoplay } from "../incident/devAutoplay";
 import { policyLabel } from "../../lib/policy";
 
 function VaultStatus() {
@@ -39,7 +39,7 @@ function VaultStatus() {
 }
 
 export default function CouncilPage() {
-  useDevAutoplay();
+  useEffect(() => { if (import.meta.env.DEV) void import("../incident/devAutoplay").then((m) => m.runDevAutoplay()); }, []);
   return (
     <div className="-mb-6 -mt-4 flex flex-col gap-3 pb-2" style={{ height: "calc(100vh - var(--chrome-h) - 9px)" }}>
       <div className="flex items-baseline gap-3">

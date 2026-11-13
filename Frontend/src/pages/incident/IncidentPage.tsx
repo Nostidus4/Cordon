@@ -17,14 +17,13 @@ import { NextPulse } from "./NextPulse";
 import { ReplayBar } from "./ReplayBar";
 import { WithGuardianPane } from "./WithGuardianPane";
 import { WithoutGuardianPane } from "./WithoutGuardianPane";
-import { useDevAutoplay } from "./devAutoplay";
 import { deriveView } from "./incidentView";
 import { leftStateAtStep, leftStepFromAttempts } from "./leftSimulation";
 import { pickReplayRun, useReplayPlayer } from "./replay";
 import { policyLabel } from "../../lib/policy";
 
 export default function IncidentPage() {
-  useDevAutoplay();
+  useEffect(() => { if (import.meta.env.DEV) void import("./devAutoplay").then((m) => m.runDevAutoplay()); }, []);
   const reduce = useReducedMotion();
   const mode = useUiStore((s) => s.mode);
   const demoMode = useUiStore((s) => s.demoMode);
