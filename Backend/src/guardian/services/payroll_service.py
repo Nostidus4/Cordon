@@ -346,8 +346,10 @@ def _agent_run_out(rec: PayrollAgentRun, run_id: int) -> dict[str, Any]:
     }
 
 
-def run_agent(rt: Runtime, untrusted_input: str | None = None) -> dict[str, Any]:
-    """One agent round. A `Kill` decision (tighten only) is executed as an automation kill through the first
+def run_agent(
+    rt: Runtime, untrusted_input: str | None = None, *, llm_report: bool = False
+) -> dict[str, Any]:
+    """One agent round. The CFO report uses the LLM only when `llm_report` is asked for explicitly. A `Kill` decision (tighten only) is executed as an automation kill through the first
     Council member's tighten path (the port has no separate automation key)."""
     first_member = rt.snapshot().council[0].address
 
@@ -359,7 +361,7 @@ def run_agent(rt: Runtime, untrusted_input: str | None = None) -> dict[str, Any]
         rt.payroll.agent,
         params=DEFAULT_PARAMS,
         untrusted_input=untrusted_input,
-        rt=rt,
+        rt=rt if llm_report else None,
         on_kill=on_kill,
     )
     st = _state(rt)

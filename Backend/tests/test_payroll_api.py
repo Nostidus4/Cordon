@@ -123,3 +123,25 @@ async def test_demo_endpoints_refused_without_demo_mode(
     ]:
         r = await c.post(url, json=body)
         assert r.status_code in (403, 409, 503), (url, r.status_code, r.text)
+
+
+async def test_agent_run_uses_the_llm_only_when_asked(
+    client: httpx.AsyncClient, monkeypatch: Any
+) -> None:
+    """A compressed month runs the agent once per virtual day: the CFO report must not be a paid call each time."""
+    from guardian.agent_float import runner
+
+    seen: list[bool] = []
+    real = runner.write_report
+
+    def spy(facts: Any, rt: Any = None, untrusted_input: str | None = None) -> Any:
+        seen.append(rt is not None)
+        return real(facts, None, untrusted_input)
+
+    monkeypatch.setattr(runner, "write_report", spy)
+    assert (await client.post("/api/payroll/agent/run", json={})).status_code == 200
+    assert (await client.post("/api/payroll/agent/run")).status_code == 200
+    assert (
+        await client.post("/api/payroll/agent/run", json={"llmReport": True})
+    ).status_code == 200
+    assert seen == [False, False, True]

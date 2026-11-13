@@ -120,7 +120,9 @@ async def demo_reset(rt: RuntimeDep):  # type: ignore[no-untyped-def]
     dependencies=[Depends(demo_signing("payroll.agent_run"))],
 )
 async def agent_run(rt: RuntimeDep, body: PayrollAgentRunRequest | None = None):  # type: ignore[no-untyped-def]
-    return ps.run_agent(rt, body.untrusted_input if body else None)
+    return ps.run_agent(
+        rt, body.untrusted_input if body else None, llm_report=bool(body and body.llm_report)
+    )
 
 
 @router.post(

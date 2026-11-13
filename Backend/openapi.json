@@ -2450,6 +2450,11 @@
       },
       "PayrollAgentRunRequest": {
         "properties": {
+          "llmReport": {
+            "default": false,
+            "title": "Llmreport",
+            "type": "boolean"
+          },
           "untrustedInput": {
             "anyOf": [
               {

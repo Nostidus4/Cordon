@@ -179,4 +179,5 @@ export interface PayrollProposeRequest {
 }
 export interface PayrollAgentRunRequest {
   untrustedInput?: string | null;
+  llmReport: boolean; // default false on the server: template CFO report, no paid call
 }

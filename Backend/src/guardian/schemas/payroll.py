@@ -189,6 +189,8 @@ class PayrollProposeRequest(CamelModel):
 
 class PayrollAgentRunRequest(CamelModel):
     untrusted_input: str | None = None
+    # False (default): the CFO report is the template, so a compressed month never makes one paid call per day
+    llm_report: bool = False
 
 
 class PayrollDemoOut(CamelModel):

@@ -1700,6 +1700,11 @@ export interface components {
         };
         /** PayrollAgentRunRequest */
         PayrollAgentRunRequest: {
+            /**
+             * Llmreport
+             * @default false
+             */
+            llmReport: boolean;
             /** Untrustedinput */
             untrustedInput?: string | null;
         };
