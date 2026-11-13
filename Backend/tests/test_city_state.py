@@ -118,7 +118,7 @@ async def test_conflicted_approval_is_incident_and_assistant_warning(
     from guardian.services.runtime import AssistantLogRec
 
     rtm = client._transport.app.state.runtime  # type: ignore[attr-defined]
-    rtm.stores.assistant_logs.append(AssistantLogRec(99, 0, "x", "x", "x", False))
+    rtm.stores.assistant_logs.add(AssistantLogRec(99, 0, "x", "x", "x", False))
     assert (await city(client))["B02"]["state"] == "warning"
 
 

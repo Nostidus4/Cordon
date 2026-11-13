@@ -51,7 +51,11 @@ def pg_schema() -> None:
 async def truncate_pg() -> None:
     engine = create_async_engine(TEST_DB)
     async with engine.begin() as c:
-        await c.execute(text("TRUNCATE events, attempts, scenario_runs, meta"))
+        await c.execute(
+            text(
+                "TRUNCATE events, attempts, scenario_runs, meta, proposals, findings, sim_runs, agent_runs, assistant_logs"
+            )
+        )
     await engine.dispose()
 
 

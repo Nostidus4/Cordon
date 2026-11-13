@@ -253,7 +253,7 @@ async def test_lifecycle_every_transition(started: Callable[..., Any]) -> None:
     }
     assert rt.snapshot().principals["minh"].locked is True
     assert inc.proposal_id is not None
-    prop = rt.stores.proposals[inc.proposal_id]
+    prop = rt.stores.proposals.get(inc.proposal_id)
     assert prop.proposer == "trang"  # a member outside the district
     assert [c["fn"] for c in prop.calls] == [
         "deactivateKey",
@@ -396,7 +396,7 @@ async def test_agent_incident_tightens_cap_and_proposes_to_restore(
     (inc,) = rt.stores.incidents
     assert inc.building == "B06" and inc.status == "awaiting_council"
     assert rt.key_by_seed("key_agent_rebalance").daily_cap == 0  # tightened
-    prop = rt.stores.proposals[inc.proposal_id]
+    prop = rt.stores.proposals.get(inc.proposal_id)
     call = prop.calls[0]
     assert call["fn"] == "setKeyDailyCap" and call["args"]["cap"] == str(old)
     for m in ("trang", "lan"):
@@ -414,7 +414,7 @@ async def test_paused_incident_unpause_only_through_the_council(
     (inc,) = rt.stores.incidents
     assert inc.building == "B03" and inc.status == "awaiting_council"
     assert step_status(inc)["contain"] == "done" and rt.snapshot().paused is True
-    assert [c["fn"] for c in rt.stores.proposals[inc.proposal_id].calls] == [
+    assert [c["fn"] for c in rt.stores.proposals.get(inc.proposal_id).calls] == [
         "unpauseAll",
         "bumpPolicyVersion",
     ]

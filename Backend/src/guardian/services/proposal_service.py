@@ -161,19 +161,21 @@ def propose(
     if res.proposal_id is None:
         raise ChainRevert(res.error_raw or "reverted", res.reason_code)
     pid = res.proposal_id
-    rt.stores.proposals[pid] = ProposalRec(
-        id=pid,
-        title=title or d["title"],
-        subject_principal=d["subject"],
-        change=dict(change),
-        calls=d["calls"],
-        description_vi=d["description_vi"],
-        risk_report=d["report"],
-        risk_report_hash=d["hash"],
-        proposer=member,
-        created_at=rt.now(),
-        finding_id=finding_id,
-        report_basis=report_basis,
+    rt.stores.proposals.add(
+        ProposalRec(
+            id=pid,
+            title=title or d["title"],
+            subject_principal=d["subject"],
+            change=dict(change),
+            calls=d["calls"],
+            description_vi=d["description_vi"],
+            risk_report=d["report"],
+            risk_report_hash=d["hash"],
+            proposer=member,
+            created_at=rt.now(),
+            finding_id=finding_id,
+            report_basis=report_basis,
+        )
     )
     rt.notify_state_changed((pid,), graph=False)
     return proposal_out(rt, pid)
@@ -212,17 +214,19 @@ def propose_calls(
     if res.proposal_id is None:
         raise ChainRevert(res.error_raw or "reverted", res.reason_code)
     pid = res.proposal_id
-    rt.stores.proposals[pid] = ProposalRec(
-        id=pid,
-        title=title,
-        subject_principal=subject,
-        change=None,
-        calls=calls,
-        description_vi=chg.describe_vi(calls, snap),
-        risk_report=report,
-        risk_report_hash=h,
-        proposer=member,
-        created_at=rt.now(),
+    rt.stores.proposals.add(
+        ProposalRec(
+            id=pid,
+            title=title,
+            subject_principal=subject,
+            change=None,
+            calls=calls,
+            description_vi=chg.describe_vi(calls, snap),
+            risk_report=report,
+            risk_report_hash=h,
+            proposer=member,
+            created_at=rt.now(),
+        )
     )
     rt.notify_state_changed((pid,), graph=False)
     return proposal_out(rt, pid)
@@ -251,12 +255,15 @@ def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
     if cp.executed and rec.executed_at is None:
         rec.executed_at = rt.now()
         rec.executed_tx_hash = res.tx_hash
+        rt.stores.proposals.save(rec)
     rt.notify_state_changed((proposal_id,), graph=cp.executed)
     return proposal_out(rt, proposal_id)
 
 
 def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
-    rec = rt.stores.proposals[proposal_id]
+    rec = rt.stores.proposals.get(proposal_id)
+    if rec is None:
+        raise ApiError(404, "PROPOSAL_NOT_FOUND", f"Không có đề xuất #{proposal_id}.")
     cp = rt.chain.proposal_state(proposal_id)
     snap = rt.snapshot()
     by_addr = {m.address: m.id for m in snap.council}
@@ -317,4 +324,4 @@ def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
 
 
 def list_proposals(rt: Runtime) -> list[dict[str, Any]]:
-    return [proposal_out(rt, i) for i in sorted(rt.stores.proposals, reverse=True)]
+    return [proposal_out(rt, p.id) for p in reversed(rt.stores.proposals.all())]
