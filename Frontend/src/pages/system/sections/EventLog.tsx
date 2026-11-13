@@ -1,4 +1,5 @@
 // Section 4: chain event log (spec §8.2 events): compact virtualized table, filters by contract / event name / search, pause, JSON expand.
+import { eventKey, isoOfSec } from "../../../lib/dto";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight, Pause, Play, Search } from "lucide-react";
@@ -35,9 +36,9 @@ export function EventLog() {
   // Rows that arrived after the first load slide in (and get a teal wash) for ~1.6 s.
   useEffect(() => {
     const prev = known.current;
-    known.current = new Set(live.map((e) => e.id));
+    known.current = new Set(live.map(eventKey));
     if (!prev) return;
-    const added = live.filter((e) => !prev.has(e.id)).map((e) => e.id);
+    const added = live.filter((e) => !prev.has(eventKey(e))).map(eventKey);
     if (!added.length) return;
     setFresh((f) => new Set([...f, ...added]));
     const t = setTimeout(() => setFresh((f) => { const n = new Set(f); for (const id of added) n.delete(id); return n; }), 1600);
@@ -49,7 +50,7 @@ export function EventLog() {
   const byName = useMemo(() => countBy(contracts.size ? base.filter((e) => contracts.has(contractOf(e.name))) : base, (e) => e.name), [base, contracts]);
   const rows = useMemo(() => filterEvents(base, { contracts, names, q }), [base, contracts, names, q]);
 
-  const heights = rows.map((e) => ROW + (open.has(e.id) ? jsonHeight(e) : 0));
+  const heights = rows.map((e) => ROW + (open.has(eventKey(e)) ? jsonHeight(e) : 0));
   const offsets: number[] = []; let acc = 0;
   for (const h of heights) { offsets.push(acc); acc += h; }
   let first = 0; while (first < rows.length - 1 && offsets[first] + heights[first] < top) first++;
@@ -101,14 +102,14 @@ export function EventLog() {
                 <div className="sx-scroll" style={{ height: Math.min(VIEW, acc + 2), overflowY: "auto", position: "relative" }} onScroll={(e) => setTop(e.currentTarget.scrollTop)} role="table" aria-label="Sự kiện chain" aria-rowcount={rows.length}>
                   <div style={{ height: acc, position: "relative" }}>
                     {rows.slice(first, last + 1).map((e, k) => {
-                      const i = first + k, isOpen = open.has(e.id), isNew = fresh.has(e.id) && !paused, c = contractMeta(contractOf(e.name));
+                      const i = first + k, isOpen = open.has(eventKey(e)), isNew = fresh.has(eventKey(e)) && !paused, c = contractMeta(contractOf(e.name));
                       const cell: CSSProperties = { lineHeight: `${ROW}px` };
                       return (
-                        <motion.div key={e.id} className={`sx-vrow${isNew ? " sx-new" : ""}`} data-open={isOpen} role="row"
+                        <motion.div key={eventKey(e)} className={`sx-vrow${isNew ? " sx-new" : ""}`} data-open={isOpen} role="row"
                           initial={isNew && !reduced ? { opacity: 0, x: -36 } : false} animate={{ opacity: 1, x: 0 }} transition={{ type: "spring", stiffness: 260, damping: 26 }}
                           style={{ top: offsets[i], height: heights[i], gridTemplateColumns: COLS, gap: 8, alignContent: "start", paddingTop: 0, borderLeft: `4px solid ${c.color}` }}>
                           <span className="mono tnum" style={cell}>{e.block}</span>
-                          <span className="tnum" style={{ ...cell, color: "var(--ink-2)" }}>{fmtClock(e.ts)}</span>
+                          <span className="tnum" style={{ ...cell, color: "var(--ink-2)" }}>{fmtClock(isoOfSec(e.ts))}</span>
                           <span style={cell}><Hash value={e.txHash} head={6} tail={4} /></span>
                           <span className="mono tnum" style={cell}>{e.logIndex}</span>
                           <span style={cell}>
@@ -117,11 +118,11 @@ export function EventLog() {
                           <span className="mono" style={{ ...cell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={JSON.stringify(e.payload)}>
                             {summarize(e).map(([k, v], j) => <span key={k}>{j ? <span style={{ color: "#cbb98f" }}>  ·  </span> : null}<span style={{ color: "var(--ink-2)" }}>{k}=</span>{v}</span>)}
                           </span>
-                          <button type="button" aria-expanded={isOpen} aria-label={isOpen ? "Thu gọn JSON" : "Mở JSON"} onClick={() => setOpen(toggle(open, e.id))}
+                          <button type="button" aria-expanded={isOpen} aria-label={isOpen ? "Thu gọn JSON" : "Mở JSON"} onClick={() => setOpen(toggle(open, eventKey(e)))}
                             style={{ border: 0, background: "transparent", cursor: "pointer", height: ROW, color: "var(--ink-2)", display: "grid", placeItems: "center" }}>
                             <ChevronRight size={16} style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 120ms" }} />
                           </button>
-                          {isOpen ? <div className="json"><JsonView value={{ id: e.id, chain: e.chain, contract: c.label, block: e.block, txHash: e.txHash, simulated: e.simulated, logIndex: e.logIndex, name: e.name, payload: e.payload, ts: e.ts }} maxHeight={240} /></div> : null}
+                          {isOpen ? <div className="json"><JsonView value={{ contract: c.label, block: e.block, txHash: e.txHash, simulated: e.simulated, logIndex: e.logIndex, name: e.name, payload: e.payload, ts: e.ts }} maxHeight={240} /></div> : null}
                         </motion.div>
                       );
                     })}

@@ -61,9 +61,9 @@ expectTypeOf<DiffR<S["DistrictOut"], T.DistrictDetail>>().toEqualTypeOf<Known<ne
 // DistrictKey <-> DistrictKey
 expectTypeOf<DiffR<S["DistrictKey"], T.DistrictKey>>().toEqualTypeOf<Known<never, never, never>>();
 // EventOut <-> ChainEvent
-expectTypeOf<DiffR<S["EventOut"], T.ChainEvent>>().toEqualTypeOf<Known<never, "id" | "chain", "ts">>();
+expectTypeOf<DiffR<S["EventOut"], T.ChainEvent>>().toEqualTypeOf<Known<never, never, never>>();
 // AttemptOut <-> Attempt
-expectTypeOf<DiffR<S["AttemptOut"], T.Attempt>>().toEqualTypeOf<Known<"token" | "block" | "source" | "to" | "amount" | "badge" | "displayTime" | "reasonTextEn" | "reasonTextVi" | "scenarioRunId" | "toLabel", "runId" | "scenarioTime", "id" | "ts" | "action">>();
+expectTypeOf<DiffR<S["AttemptOut"], T.Attempt>>().toEqualTypeOf<Known<never, never, never>>();
 // DraftOut <-> ProposalDraft
 expectTypeOf<DiffR<S["DraftOut"], T.ProposalDraft>>().toEqualTypeOf<Known<never, never, never>>();
 // ProposalOut <-> Proposal
@@ -71,13 +71,13 @@ expectTypeOf<DiffR<S["ProposalOut"], T.Proposal>>().toEqualTypeOf<Known<never, n
 // ActionOut <-> ActionResult
 expectTypeOf<DiffR<S["ActionOut"], T.ActionResult>>().toEqualTypeOf<Known<never, never, never>>();
 // AssistantAnswer <-> AssistantAnswer
-expectTypeOf<DiffR<S["AssistantAnswer"], T.AssistantAnswer>>().toEqualTypeOf<Known<"numbersVerified" | "questionId", never, never>>();
+expectTypeOf<DiffR<S["AssistantAnswer"], T.AssistantAnswer>>().toEqualTypeOf<Known<never, never, never>>();
 // AssistantLogOut <-> AssistantLog
-expectTypeOf<DiffR<S["AssistantLogOut"], T.AssistantLog>>().toEqualTypeOf<Known<"ts" | "flaggedUntrusted" | "questionId" | "screen", "createdAt" | "toolCalls" | "checks" | "uncovered", "id" | "answer">>();
+expectTypeOf<DiffR<S["AssistantLogOut"], T.AssistantLog>>().toEqualTypeOf<Known<never, never, never>>();
 // AgentRunOut <-> AgentRun
-expectTypeOf<DiffR<S["AgentRunOut"], T.AgentRun>>().toEqualTypeOf<Known<"ts" | "attemptId" | "balances", "simulated" | "createdAt" | "inputs", "id" | "injectionIgnored" | "steps" | "untrustedInput">>();
+expectTypeOf<DiffR<S["AgentRunOut"], T.AgentRun>>().toEqualTypeOf<Known<never, never, never>>();
 // ScenarioRunOut <-> ScenarioRun
-expectTypeOf<DiffR<S["ScenarioRunOut"], T.ScenarioRun>>().toEqualTypeOf<Known<"policyVersion" | "attempts" | "delay" | "error", "name" | "attemptCount", "finishedAt" | "startedAt">>();
+expectTypeOf<DiffR<S["ScenarioRunOut"], T.ScenarioRun>>().toEqualTypeOf<Known<never, never, never>>();
 // CityStates <-> CityStates
 expectTypeOf<DiffR<S["CityStates"], T.CityStates>>().toEqualTypeOf<Known<never, never, never>>();
 // Building <-> CityBuildingStatus

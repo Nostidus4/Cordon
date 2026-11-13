@@ -2,6 +2,7 @@
 import { Bot, Lock, Server, User } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import type { KeyKind } from "../../types";
+import { stepOf } from "../../lib/dto";
 import { reasonVi } from "../../shared/reasonCodes";
 import { cn } from "../../components/ui";
 import type { Tile } from "./incidentView";
@@ -17,7 +18,7 @@ export function CardTile({ tile, index }: { tile: Tile; index: number }) {
   const { meta, last, status, rejected } = tile;
   const locked = status === "locked";
   const ok = status === "ok", blocked = status === "blocked";
-  const amount = last?.action.amount?.display;
+  const amount = last?.amount?.display;
   return (
     <motion.div
       key={`${last?.id ?? "none"}-${status}`}
@@ -53,7 +54,7 @@ export function CardTile({ tile, index }: { tile: Tile; index: number }) {
             {rejected ? <p className="mt-0.5 font-semibold text-bad"><span aria-hidden>✕</span> bị chain từ chối</p> : null}
           </>
         ) : status === "idle" ? <p className="text-faint">chưa có lần thử</p>
-          : ok ? <p className="text-ok"><span aria-hidden>✓</span> {verb(last?.action.kind)} {amount ? <b className="tnum">{amount}</b> : "được"}{last?.step === 0 ? " · buổi sáng" : ""}</p>
+          : ok ? <p className="text-ok"><span aria-hidden>✓</span> {verb(last?.action)} {amount ? <b className="tnum">{amount}</b> : "được"}{last && stepOf(last) === 0 ? " · buổi sáng" : ""}</p>
           : <p className="text-bad"><span aria-hidden>✕</span> {reasonVi(last?.reasonCode)}</p>}
       </div>
     </motion.div>

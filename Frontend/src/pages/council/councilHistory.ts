@@ -1,4 +1,5 @@
 // Council history built from indexed chain events (spec §10.6): emergency lock / pause (siết, 1 người), proposals executed (nới, 2/3).
+import { eventKey, isoOfSec } from "../../lib/dto";
 import type { ChainEvent, CouncilMember } from "../../types";
 
 export type HistoryKind = "tighten" | "loosen" | "propose" | "vote";
@@ -21,7 +22,7 @@ export function buildHistory(events: ChainEvent[], members: CouncilMember[], bas
   let policy: number | undefined;
   for (const e of events) {
     const p = e.payload;
-    const base = { id: e.id, ts: e.ts, txHash: e.txHash, simulated: e.simulated };
+    const base = { id: eventKey(e), ts: isoOfSec(e.ts), txHash: e.txHash, simulated: e.simulated };
     switch (e.name) {
       case "EmergencyAction": {
         const lock = p.action === "lockPrincipal";

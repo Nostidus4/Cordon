@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockApi, mockConfig, ApiError, subscribe } from "./server";
 import { computeFindings, seedState } from "./core";
+import { stepOf } from "../dto";
 import { SCENE4_STEPS } from "../../shared/scenario4";
 import type { Attempt, StreamMessage } from "../../types";
 
@@ -69,7 +70,7 @@ describe("scene 4 (spec §4.3 table)", () => {
     await mockApi.runScene4();
     await wait(60);
     const at = (await mockApi.getAttempts()) as Attempt[];
-    const by = (n: number) => at.find((a) => a.step === n)!;
+    const by = (n: number) => at.find((a) => stepOf(a) === n)!;
     for (const st of SCENE4_STEPS.filter((s) => s.step <= 5)) {
       expect(by(st.step).outcome, `step ${st.step}`).toBe(st.expect);
       expect(by(st.step).reasonCode ?? undefined, `reason ${st.step}`).toBe(st.reason);
@@ -94,11 +95,11 @@ describe("scene 4 (spec §4.3 table)", () => {
   });
   it("agent: swap 5.000 first, CARD_DAILY_CAP after the card is exhausted", async () => {
     const r1 = await mockApi.runAgentOnce();
-    expect(r1.outcome).toBe("ok"); expect(r1.decision.amountIn!.display).toBe("5.000");
+    expect(r1.outcome).toBe("swapped"); expect(r1.decision!.amountIn.display).toBe("5.000");
     for (let i = 0; i < 3; i++) await mockApi.runAgentOnce();
     // card cap 20.000 spent; share still <15% only if vault allows - force by checking next outcome
     const r5 = await mockApi.runAgentOnce();
-    expect(["blocked", "noop"]).toContain(r5.outcome);
+    expect(["blocked", "no_action"]).toContain(r5.outcome);
     if (r5.outcome === "blocked") expect(r5.reasonCode).toBe("CARD_DAILY_CAP");
   });
   it("pause blocks everything and lights city B03", async () => {

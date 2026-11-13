@@ -1,5 +1,6 @@
 // View-model of the right pane. Every number comes from an attempt/event field; nothing is summed on the client (spec §10.5).
 import type { Attempt } from "../../types";
+import { byStep, stepOf } from "../../lib/dto";
 import { KEY_ORDER, type KeyMeta } from "./leftSimulation";
 
 export type TileStatus = "idle" | "ok" | "blocked" | "locked";
@@ -23,31 +24,31 @@ export interface IncidentView {
   attackDone: boolean;
 }
 
-export const sortAttempts = (a: Attempt[]) => [...a].sort((x, y) => x.step - y.step || x.ts.localeCompare(y.ts));
+export const sortAttempts = (a: Attempt[]) => [...a].sort(byStep);
 
 export function deriveView(raw: Attempt[], districtLocked: boolean): IncidentView {
   const attempts = sortAttempts(raw);
-  const lockAttempt = attempts.find((a) => a.action.kind === "lock" && a.outcome === "ok") ?? null;
+  const lockAttempt = attempts.find((a) => a.action === "lock" && a.outcome === "ok") ?? null;
   const locked = districtLocked || !!lockAttempt;
-  const step7 = [...attempts].reverse().find((a) => a.step === 7) ?? null;
+  const step7 = [...attempts].reverse().find((a) => stepOf(a) === 7) ?? null;
   let sharedSpent: bigint | null = null;
   for (const a of attempts) if (a.principalSpentAfter) sharedSpent = BigInt(a.principalSpentAfter.raw);
-  const step0 = attempts.find((a) => a.step === 0 && a.principalSpentAfter);
+  const step0 = attempts.find((a) => stepOf(a) === 0 && a.principalSpentAfter);
   const agentBase = step0?.principalSpentAfter ? BigInt(step0.principalSpentAfter.raw) : 0n;
   const attackerSpent = sharedSpent !== null && sharedSpent > agentBase ? sharedSpent - agentBase : 0n;
-  const ghost = [...attempts].reverse().find((a) => a.reasonCode === "DISTRICT_DAILY_CAP" && a.action.amount) ?? null;
+  const ghost = [...attempts].reverse().find((a) => a.reasonCode === "DISTRICT_DAILY_CAP" && a.amount) ?? null;
   const tiles: Tile[] = KEY_ORDER.map((meta) => {
     const mine = attempts.filter((a) => a.signer === meta.id);
     const last = mine.length ? mine[mine.length - 1] : null;
-    const rejected = mine.find((a) => a.step === 7) ?? null;
+    const rejected = mine.find((a) => stepOf(a) === 7) ?? null;
     const status: TileStatus = locked ? "locked" : !last ? "idle" : last.outcome === "ok" ? "ok" : "blocked";
     return { meta, last, status, rejected };
   });
   return {
     attempts, tiles, sharedSpent, agentBase, attackerSpent, ghost, lockAttempt, step7, locked,
     lastAttempt: attempts.length ? attempts[attempts.length - 1] : null,
-    maxStep: attempts.reduce((m, a) => Math.max(m, a.step), -1),
-    attackDone: attempts.some((a) => a.step >= 5),
+    maxStep: attempts.reduce((m, a) => Math.max(m, stepOf(a)), -1),
+    attackDone: attempts.some((a) => stepOf(a) >= 5),
   };
 }
 

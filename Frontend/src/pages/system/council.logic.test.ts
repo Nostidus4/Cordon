@@ -31,14 +31,14 @@ describe("conflictCheck", () => {
   });
 });
 describe("emergencyActions", () => {
-  const ev = (id: string, ts: string, name: string, payload: Record<string, unknown>): ChainEvent => ({ id, chain: "l1", block: 1, txHash: "0x" + id, simulated: true, logIndex: 0, name, payload, ts });
+  const ev = (id: string, ts: number, name: string, payload: Record<string, unknown>): ChainEvent => ({ block: 1, txHash: "0x" + id, simulated: true, logIndex: 0, name, payload, ts });
   it("keeps only EmergencyAction, newest first, with VI labels", () => {
     const r = emergencyActions([
-      ev("a", "2026-01-01T00:00:01Z", "EmergencyAction", { member: "lan", action: "lockPrincipal", subject: "minh" }),
-      ev("b", "2026-01-01T00:00:02Z", "PrincipalLocked", {}),
-      ev("c", "2026-01-01T00:00:03Z", "EmergencyAction", { member: "trang", action: "pauseAll" }),
+      ev("a", 1, "EmergencyAction", { member: "lan", action: "lockPrincipal", subject: "minh" }),
+      ev("b", 2, "PrincipalLocked", {}),
+      ev("c", 3, "EmergencyAction", { member: "trang", action: "pauseAll" }),
     ]);
-    expect(r.map((x) => x.id)).toEqual(["c", "a"]);
+    expect(r.map((x) => x.id)).toEqual(["0xc:0", "0xa:0"]);
     expect(r.map((x) => x.label)).toEqual(["Dừng cả kho", "Khoá khu minh"]);
   });
 });
