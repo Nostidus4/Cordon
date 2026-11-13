@@ -29,7 +29,7 @@ Event là nguồn sự thật cho UI: số "đã dùng chung" ở màn Incident 
 
 ## Trạng thái hiện tại
 
-`workers/indexer.py` đã cài đặt (IDX-001): `Indexer` (poll theo `L1_POLL_INTERVAL_SECONDS`, đọc lại cửa sổ `INDEXER_REORG_WINDOW` block, mặc định 5; `INDEXER_CONFIRMATIONS`, mặc định 0), `EventSink` (Protocol: `write`, `last_block`, `set_last_block`, `events_in_range`, `remove`), `InMemoryEventSink`, `L1ChainSource` (bọc `L1Chain.events_since`), `IndexerStatus` (`last_block_l1`, `head_l1`, `lag_blocks`) cho `/api/health`. Sink rỗng thì backfill từ `deployBlock`. Lỗi RPC không làm cursor tiến, chu kỳ sau thử lại với back-off. Chỉ event mới của sink được đẩy ra SSE. `guardian-worker` chạy indexer khi `CHAIN_MODE=l1`.
+`workers/indexer.py` đã cài đặt (IDX-001): `Indexer` (poll theo `L1_POLL_INTERVAL_SECONDS`, đọc lại cửa sổ `INDEXER_REORG_WINDOW` block, mặc định 5; `INDEXER_CONFIRMATIONS`, mặc định 0), `EventSink` (Protocol: `write`, `last_block`, `set_last_block`, `events_in_range`, `remove`), `InMemoryEventSink`, `L1ChainSource` (bọc `L1Chain.events_since`), `IndexerStatus` (`last_block_l1`, `head_l1`, `lag_blocks`) cho `/api/health`. Sink rỗng thì backfill từ `deployBlock`. Lỗi RPC không làm cursor tiến, chu kỳ sau thử lại với back-off. Chỉ event mới của sink được đẩy ra SSE. `guardian-worker` chạy indexer khi `CHAIN_MODE=l1` (ở `sim` slot indexer rảnh), đồng thời chạy graph worker (registry/policy event → tăng `graphVersion`, phát `graph_updated`). Process dừng sạch khi nhận SIGTERM. API vẫn chạy indexer riêng trong process khi `l1` đến khi DB-002 có bus/sink chung.
 
 Chưa làm: index `TopUpRecorded` trên C-Chain (`last_block_c`, chưa có adapter đọc C-Chain); sink Postgres (DB-002); ws subscribe (adapter L1 poll qua HTTP).
 

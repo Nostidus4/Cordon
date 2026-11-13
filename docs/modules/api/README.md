@@ -26,7 +26,7 @@ Danh sách endpoint, SSE, payload event: [API_CONTRACT.md](../../spec/API_CONTRA
 
 ## Trạng thái hiện tại
 
-Routes ở `Backend/src/guardian/api/routes/*` (15 module), services ở `services/*`, schema ở `schemas/*`, 69 test pass (`Backend/tests/test_api.py`…). `workers/main.py` và `workers/graph_worker.py` rỗng. `/api/health` có `indexer_lag_blocks` nhưng chưa có cảnh báo stall. Thiếu `GET /api/agent/runs`, `GET /api/assistant/logs` (frontend đã gọi, xem `Frontend/src/lib/api/endpoints.ts`).
+Routes ở `Backend/src/guardian/api/routes/*` (15 module), services ở `services/*`, schema ở `schemas/*`, 69 test pass (`Backend/tests/test_api.py`…). `guardian-worker` (API-004) đã chạy graph worker và slot indexer, dừng sạch khi SIGTERM, log JSON. `/api/health` có thêm `lastBlockAt`, `blockStalled`, `warnings` và `eventToSse` (xem mục 4.3 của spec). Thiếu `GET /api/agent/runs`, `GET /api/assistant/logs` (frontend đã gọi, xem `Frontend/src/lib/api/endpoints.ts`).
 
 ## Issue
 

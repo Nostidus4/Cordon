@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pydantic import Field
+
 from guardian.schemas.common import CamelModel
 
 
@@ -7,6 +9,12 @@ class AgentStatus(CamelModel):
     status: str
     last_run_at: int | None = None
     last_outcome: str | None = None
+
+
+class SseLatency(CamelModel):
+    last_ms: float | None = None
+    max_ms: float | None = None
+    samples: int = 0
 
 
 class HealthOut(CamelModel):
@@ -21,3 +29,7 @@ class HealthOut(CamelModel):
     policy_label: int
     graph_version: int
     agent: AgentStatus
+    last_block_at: int | None = None
+    block_stalled: bool = False
+    warnings: list[str] = Field(default_factory=list)
+    event_to_sse: SseLatency = Field(default_factory=SseLatency)
