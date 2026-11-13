@@ -210,7 +210,7 @@ def test_propose_errors_match_the_sim(l1: L1Chain, env: Env) -> None:
 def test_unknown_signer_and_missing_council(l1: L1Chain, env: Env) -> None:
     with pytest.raises(SignerError):
         l1.pay("vendor_cloud", "tUSDC", "vendor_cloud", 1)  # an address we hold no key for
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):  # unknown id, not hex: rejected at the port boundary
         l1.pay("nobody", "tUSDC", "vendor_cloud", 1)
     empty = L1Chain(env.w3, env.dep, env.seed, signers=SignerRegistry())
     with pytest.raises(SignerError):
