@@ -20,7 +20,9 @@ Chủ trì: therealtunguyen · Issue: `AGT-001`, `AGT-002` · Spec: [../../spec/
 
 ## Trạng thái hiện tại
 
-Đã có `rule_engine.py` (+ `tests/test_agent_rule_engine.py`), `config.py`, `reason_writer.py` (chỉ mẫu, comment TODO cho LLM), `services/agent_service.py` (chạy trong API trên sim). `agent_rebalance/runner.py` và `main.py` là stub một dòng: chưa có service riêng và lịch chạy.
+Đã có `rule_engine.py`, `config.py`, `reason_writer.py` (LLM + mẫu) và `runner.py` (`run_once`: một vòng duy nhất, dùng chung cho `POST /api/agent/run-once` qua `services/agent_service.py` và cho tiến trình riêng). Lịch chạy xong (`AGT-002`): `uv run guardian-agent [--interval-seconds S] [--cycles N]`, chu kỳ mặc định `RebalanceConfig.interval_minutes`; mỗi vòng log một dòng (kết quả, số tiền, reason code); SIGTERM/SIGINT dừng ngay, exit 0; khoá `GUARDIAN_AGENT_LOCK` (mặc định trong thư mục tạm) chặn chạy hai bản. Khi chain từ chối (vd. hết hạn mức thẻ) runner ghi attempt `blocked` và không gửi gì. Test: `tests/test_agent_runner.py`.
+
+Lưu ý: ở `CHAIN_MODE=sim` tiến trình agent có chain trong bộ nhớ riêng (không chung với API); ở `l1` cả hai cùng một chain. `agent_runs` vẫn lưu trong bộ nhớ, lưu DB chờ `DB-003` (#19).
 
 ## Issue
 
