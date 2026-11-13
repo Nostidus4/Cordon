@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import BuildingPanel from "../../city3d/BuildingPanel";
 import CityCanvas from "../../city3d/CityCanvas";
 import { useCityStore } from "../../city3d/cityStore";
@@ -7,12 +7,13 @@ import type { ScenarioId } from "../../city3d/scenarios";
 import LiveSync from "../../city3d/LiveSync";
 import { useTitle } from "../../hooks/useTitle";
 import { api } from "../../lib/api";
-import StageHarness from "./StageHarness";
 import Sky from "../../city3d/Sky";
 import "./city.css";
 
+const StageHarness = import.meta.env.DEV ? lazy(() => import("./StageHarness")) : null;
+
 export default function CityPage() {
-  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("harness") === "1") return <StageHarness />;
+  if (StageHarness && new URLSearchParams(window.location.search).get("harness") === "1") return <Suspense fallback={null}><StageHarness /></Suspense>;
   return <CityPageInner />;
 }
 
