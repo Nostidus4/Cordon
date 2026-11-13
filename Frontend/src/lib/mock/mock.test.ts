@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockApi, mockConfig, ApiError, subscribe } from "./server";
 import { computeFindings, seedState } from "./core";
+import { stepOf } from "../dto";
 import { SCENE4_STEPS } from "../../shared/scenario4";
 import type { Attempt, StreamMessage } from "../../types";
 
@@ -35,7 +36,7 @@ describe("simulateCompromise (spec §8.4 table)", () => {
     expect(p12.riskReport.before.enforced.display).toBe("30.000");
     expect(p12.riskReport.after.enforced.display).toBe("130.000");
     expect(p12.riskReport.after.percentOfMainTreasury).toBe(6.5);
-    const sim = await mockApi.simulate({ compromised: ["minh"], change: p12.change });
+    const sim = await mockApi.simulate({ compromised: ["minh"], change: p12.change! });
     expect([sim.totals.enforced.display, sim.totals.estimated.display]).toEqual(["130.000", "130.000"]);
   });
 });
@@ -43,7 +44,7 @@ describe("simulateCompromise (spec §8.4 table)", () => {
 describe("proposals", () => {
   it("R1 draft goes 100.000 -> 30.000; 2/3 approvals execute; huy blocked on conflict", async () => {
     const f = (await mockApi.getFindings())[0];
-    const p = await mockApi.createProposal({ findingId: f.id, proposer: "trang" });
+    const p = await mockApi.createProposal({ findingId: f.id, member: "trang" });
     expect(p.riskReport.before.estimated.display).toBe("100.000");
     expect(p.riskReport.after.estimated.display).toBe("30.000");
     await mockApi.approveProposal(p.id, "lan");
@@ -69,7 +70,7 @@ describe("scene 4 (spec §4.3 table)", () => {
     await mockApi.runScene4();
     await wait(60);
     const at = (await mockApi.getAttempts()) as Attempt[];
-    const by = (n: number) => at.find((a) => a.step === n)!;
+    const by = (n: number) => at.find((a) => stepOf(a) === n)!;
     for (const st of SCENE4_STEPS.filter((s) => s.step <= 5)) {
       expect(by(st.step).outcome, `step ${st.step}`).toBe(st.expect);
       expect(by(st.step).reasonCode ?? undefined, `reason ${st.step}`).toBe(st.reason);
@@ -82,29 +83,30 @@ describe("scene 4 (spec §4.3 table)", () => {
     const d = await mockApi.getDistrict("minh");
     expect(d.locked).toBe(true);
     expect(d.keys.every((k) => !k.active)).toBe(true);
-    const s7 = await mockApi.runScene4Step7();
+    const s7 = (await mockApi.runScene4Step7()).attempts.find((x) => x.step === 7)!;
     expect(s7.outcome).toBe("blocked_at_protocol");
     expect(s7.txHash).toBeNull();
     expect(s7.reasonCode).toBe("BLOCKED_AT_PROTOCOL");
     const city = await mockApi.getCityStates();
-    expect(city.B05.state).toBe("recovery");
-    expect(city.B04.state).toBe("incident");
+    const st = (id: string) => city.buildings.find((b) => b.id === id)?.state;
+    expect(st("B05")).toBe("recovery");
+    expect(st("B04")).toBe("incident");
     un();
   });
   it("agent: swap 5.000 first, CARD_DAILY_CAP after the card is exhausted", async () => {
     const r1 = await mockApi.runAgentOnce();
-    expect(r1.outcome).toBe("ok"); expect(r1.decision.amountIn!.display).toBe("5.000");
+    expect(r1.outcome).toBe("swapped"); expect(r1.decision!.amountIn.display).toBe("5.000");
     for (let i = 0; i < 3; i++) await mockApi.runAgentOnce();
     // card cap 20.000 spent; share still <15% only if vault allows - force by checking next outcome
     const r5 = await mockApi.runAgentOnce();
-    expect(["blocked", "noop"]).toContain(r5.outcome);
+    expect(["blocked", "no_action"]).toContain(r5.outcome);
     if (r5.outcome === "blocked") expect(r5.reasonCode).toBe("CARD_DAILY_CAP");
   });
   it("pause blocks everything and lights city B03", async () => {
     await mockApi.pauseAll({ member: "lan" });
     const r = await mockApi.runAgentOnce();
     expect(r.reasonCode).toBe("VAULT_PAUSED");
-    expect((await mockApi.getCityStates()).B03.state).toBe("incident");
+    expect((await mockApi.getCityStates()).buildings.find((b) => b.id === "B03")?.state).toBe("incident");
   });
   it("assistant numbers come from state", async () => {
     const a = await mockApi.askAssistant({ question: "Nếu anh Huy cũng bị chiếm thì sao?", context: { screen: "simulate" } });
@@ -123,7 +125,8 @@ describe("findings parity with the backend", () => {
     expect(f.map((x) => x.severity)).toEqual(["HIGH", "MEDIUM"]);
     expect((f[0].data!.suggestedDistrictCap as { display: string }).display).toBe("30.000");
     expect(f[0].data!.keys).toHaveLength(5);
-    expect(f[1].suggestedChange).toMatchObject({ kind: "consolidate", into: "minh", keys: ["key_svc_payment"], sharedCapRaw: U(30000) });
+    expect(f[1].proposal).toMatchObject({ kind: "merge_district", into: "minh", districtCap: { raw: U(30000).toString(), display: "30.000" } });
+    expect((f[1].proposal as { keys: string[] }).keys).toHaveLength(1);
   });
   it("R2 fires per live agent/service key only when no recipient is allow-listed", () => {
     const s = seedState();

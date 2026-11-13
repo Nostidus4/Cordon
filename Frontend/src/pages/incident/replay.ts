@@ -3,15 +3,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type { Attempt, ScenarioRun } from "../../types";
+import { byStep } from "../../lib/dto";
 import { qk } from "../../hooks/queryKeys";
 
 export const REPLAY_STEP_MS = 3000;
-const sortAttempts = (a: Attempt[]) => [...a].sort((x, y) => x.step - y.step || x.ts.localeCompare(y.ts));
+const sortAttempts = (a: Attempt[]) => [...a].sort(byStep);
 
 /** Prefer the recorded take; otherwise the newest finished run with attempts. */
 export function pickReplayRun(runs: ScenarioRun[] | undefined): string | null {
   if (!runs?.length) return null;
-  return (runs.find((r) => r.status === "recorded") ?? [...runs].reverse().find((r) => r.attemptCount > 0 && r.status !== "running") ?? null)?.id ?? null;
+  return (runs.find((r) => r.status === "recorded") ?? [...runs].reverse().find((r) => r.attempts.length > 0 && r.status !== "running") ?? null)?.id ?? null;
 }
 
 /** DEV only: `?replayMs=400` speeds the replay up for screenshots. */

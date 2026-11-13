@@ -7,6 +7,7 @@ import type {
   ScenarioRun, SimResult, SimulateRequest, StreamListener,
   BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident, PreparedTxInput, TxCheck,
 } from "../../types";
+import { useConnStore } from "../../store/connStore";
 import { connectSse } from "../sse";
 import { http } from "./client";
 import { mockApi } from "../mock/server";
@@ -29,7 +30,7 @@ export interface Api {
   askAssistant(req: AskRequest): Promise<AssistantAnswer>;
   runAgentOnce(): Promise<AgentRun>;
   runScene4(): Promise<ScenarioRun>;
-  runScene4Step7(): Promise<Attempt>;
+  runScene4Step7(): Promise<ScenarioRun>;
   applyPolicyV2(): Promise<ActionResult>;
   resetDemo(): Promise<ActionResult>;
   getCityStates(): Promise<CityStates>;
@@ -91,7 +92,7 @@ const liveApi: Api = {
   getTxCheck: (id) => http("GET", `/txguard/checks/${id}`),
   sendTx: (id) => http("POST", `/txguard/checks/${id}/send`),
   rejectTx: (id) => http("POST", `/txguard/checks/${id}/reject`),
-  subscribe: (l) => connectSse(l),
+  subscribe: (l) => connectSse(l, (open) => useConnStore.getState().setSse(open)),
 };
 
 export const api: Api = env.apiMode === "live" ? liveApi : (mockApi as Api);

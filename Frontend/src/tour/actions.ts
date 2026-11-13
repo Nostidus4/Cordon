@@ -14,7 +14,7 @@ export function clickInTarget(name: string, pick: (btns: HTMLButtonElement[]) =>
   return !!btn;
 }
 
-const isMerge = (p: Proposal) => p.change.kind === "consolidate";
+const isMerge = (p: Proposal) => p.change?.kind === "merge_district";
 
 export async function findMergeProposal(): Promise<Proposal | undefined> {
   return (await api.getProposals()).filter(isMerge).sort((a, b) => b.id - a.id)[0];
@@ -23,9 +23,9 @@ export async function findMergeProposal(): Promise<Proposal | undefined> {
 export async function createMerge(ctx: TourCtx): Promise<void> {
   let p = await findMergeProposal();
   if (!p) {
-    const f = (await api.getFindings()).find((x) => x.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && x.principalId === "minh" && x.suggestedChange);
+    const f = (await api.getFindings()).find((x) => x.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && x.principalId === "minh" && x.proposal);
     if (!f) return;
-    p = await api.createProposal({ findingId: f.id, proposer: "lan" });
+    p = await api.createProposal({ findingId: f.id, member: "lan" });
   }
   ctx.nav(`/chi-tiet/requests?id=${p.id}`);
 }
@@ -37,7 +37,7 @@ export async function approveMerge(ctx: TourCtx): Promise<void> {
   ctx.nav(`/chi-tiet/requests?id=${p.id}`);
   await sleep(600);
   for (const m of ["lan", "trang"] as MemberId[]) {
-    if (p.approvals.some((a) => a.member === m)) continue;
+    if (p.approvals.includes(m)) continue;
     await api.approveProposal(p.id, m);
     await sleep(1300);
   }

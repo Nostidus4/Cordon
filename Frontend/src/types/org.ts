@@ -9,8 +9,15 @@ export interface CouncilMember {
 }
 
 export interface Org {
-  company: { name: string; fictional: boolean };
-  mainTreasury: { label: string; balance: Money; token: string };
-  vault: { label: string; usdc: Money; tkb: Money };
-  council: { members: CouncilMember[]; threshold: number };
+  id: string;
+  name: string;
+  fictional: boolean;
+  mainTreasury: { label: string; balance: Money };
+  /** `tkb` is not sent by the backend yet (only `balance` = tUSDC); the mock fills it, the UI shows it when present. */
+  vault: { label: string; address?: string; balance: Money; paused?: boolean; tkb?: Money };
+  council: CouncilMember[];
+  threshold: number;
+  policyVersion: number;
+  /** See `GraphSnapshot.policyLabel`. */
+  policyLabel: number;
 }

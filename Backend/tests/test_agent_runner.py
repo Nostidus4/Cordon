@@ -59,7 +59,7 @@ def test_blocked_when_cap_used_up_then_day_rollover(rt: Runtime, chain: SimChain
         chain.balance(chain.vault_addr, chain._addr("tTKB")),
     ) == before
     assert rt.snapshot().principals["agent_rebalance"].spent_today == spent
-    last = rt.stores.attempts[-1]
+    last = rt.stores.attempts.all()[-1]
     assert (last.outcome, last.source, last.reason_code) == ("blocked", "agent", "CARD_DAILY_CAP")
     chain.advance_day(1)
     o2 = runner.run_once(rt, llm_reason=False)

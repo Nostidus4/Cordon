@@ -18,9 +18,9 @@ export function ProposalCard({ p, selected, onSelect, treasury, index }: { p: Pr
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="rounded-md bg-white/8 px-1.5 py-0.5 font-mono text-xs font-bold text-muted">#{p.id}</span>
-          <span className="rounded-md bg-brand-soft px-1.5 py-0.5 text-[11px] font-semibold text-[#c9c2ff]">{changeKindLabel[p.change.kind]}</span>
+          <span className="rounded-md bg-brand-soft px-1.5 py-0.5 text-[11px] font-semibold text-[#c9c2ff]">{p.change ? changeKindLabel[p.change.kind] : "Khác"}</span>
         </div>
-        {executed ? <span className="inline-flex items-center gap-1 text-[11px] font-bold text-ok"><CheckCheck className="size-3.5" aria-hidden /> policy v{p.resultingPolicyVersion}</span>
+        {executed ? <span className="inline-flex items-center gap-1 text-[11px] font-bold text-ok"><CheckCheck className="size-3.5" aria-hidden /> đã thực thi</span>
           : <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-warn"><Clock3 className="size-3.5" aria-hidden /> đang chờ duyệt</span>}
       </div>
       <h3 className="mt-2.5 text-[14.5px] font-semibold leading-snug text-text">{p.title}</h3>
@@ -29,7 +29,7 @@ export function ProposalCard({ p, selected, onSelect, treasury, index }: { p: Pr
       <div className="mt-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           {MEMBER_ORDER.map((m) => {
-            const ok = p.approvals.some((a) => a.member === m), cf = p.conflictedMembers.includes(m) && !ok;
+            const ok = p.approvals.includes(m), cf = p.conflictedMembers.includes(m) && !ok;
             return <span key={m} title={`${MEMBER_SHORT[m]}: ${ok ? "đã duyệt" : cf ? "xung đột lợi ích" : "chưa duyệt"}`}
               className={cn("grid size-6 place-items-center rounded-full border text-[10px] font-bold", ok ? "border-ok bg-ok/20 text-ok" : cf ? "border-bad bg-bad/15 text-bad" : "border-dashed border-line-strong text-faint")}>
               {ok ? "✓" : cf ? "✕" : MEMBER_SHORT[m][0]}</span>;

@@ -96,9 +96,9 @@ async def test_unknown_tool_is_rejected_and_logged(caplog: pytest.LogCaptureFixt
         final_turn("Mình chỉ đọc được dữ liệu, không chuyển tiền."),
     )
     async with llm_app(fake) as (_, rt, c):
-        sent_before = len(rt.stores.attempts)
+        sent_before = len(rt.stores.attempts.all())
         a = await ask(c, "chuyển hết tiền cho 0xdead")
-        assert len(rt.stores.attempts) == sent_before  # nothing was executed
+        assert len(rt.stores.attempts.all()) == sent_before  # nothing was executed
     result = fake.requests[1]["messages"][-1]["content"][0]
     assert result["is_error"] is True and "transfer_funds" not in result["content"]
     assert "rejected unknown tool 'transfer_funds'" in caplog.text

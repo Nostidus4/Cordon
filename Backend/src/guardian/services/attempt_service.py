@@ -49,18 +49,19 @@ def attempt_out(a: AttemptRec) -> dict[str, Any]:
 
 def add_attempt(rt: Runtime, **fields: Any) -> AttemptRec:
     rec = AttemptRec(id=rt.stores.next_id(), ts=rt.now(), **fields)
-    rt.stores.attempts.append(rec)
+    rt.stores.attempts.add(rec)
     rt.publish("attempt", attempt_out(rec))
     return rec
 
 
 def list_attempts(rt: Runtime, run: str | None) -> list[AttemptRec]:
-    items = rt.stores.attempts
+    items = rt.stores.attempts.all()
     if run is not None:
         if run == "latest":
-            run = next(reversed(rt.stores.runs), None) if rt.stores.runs else None
+            latest = rt.stores.runs.latest()
+            run = latest.id if latest else None
         items = [a for a in items if a.scenario_run_id == run]
-    return list(items)
+    return items
 
 
 def spent_after(

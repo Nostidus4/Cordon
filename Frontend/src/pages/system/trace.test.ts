@@ -4,8 +4,8 @@ import { SCENE4_STEPS } from "../../shared/scenario4";
 import { REASONS, type ReasonCode } from "../../shared/reasonCodes";
 import type { Attempt } from "../../types";
 
-const mk = (kind: Attempt["action"]["kind"], outcome: Attempt["outcome"], reasonCode: ReasonCode | null): Pick<Attempt, "action" | "outcome" | "reasonCode"> =>
-  ({ action: { kind, label: "x" }, outcome, reasonCode });
+const mk = (action: Attempt["action"], outcome: Attempt["outcome"], reasonCode: ReasonCode | null): Pick<Attempt, "action" | "outcome" | "reasonCode"> =>
+  ({ action, outcome, reasonCode });
 const statuses = (a: ReturnType<typeof mk>) => traceAttempt(a).stages.map((s) => s.status[0]).join("");
 
 describe("traceAttempt follows spec §6.3 order", () => {
@@ -54,6 +54,6 @@ describe("traceAttempt follows spec §6.3 order", () => {
     for (const c of Object.keys(REASONS) as ReasonCode[]) if (REASONS[c].error) expect(errorName(c)).toMatch(/\(\)$/);
   });
   it("call signature", () => {
-    expect(callSignature({ signer: "key_minh", action: { kind: "pay", label: "", token: "tUSDC", to: "vendor_cloud", amount: { raw: "1", display: "10.000" } } })).toBe("PolicyVault.pay(tUSDC, vendor_cloud, 10.000)");
+    expect(callSignature({ signer: "key_minh", action: "pay", token: "tUSDC", to: "vendor_cloud", amount: { raw: "1", display: "10.000" } })).toBe("PolicyVault.pay(tUSDC, vendor_cloud, 10.000)");
   });
 });

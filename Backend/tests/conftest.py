@@ -3,18 +3,26 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import subprocess
+import sys
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 import httpx
+import pytest
 import pytest_asyncio
 from fastapi import FastAPI
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from guardian.chain.sim import SimChain
 from guardian.core.config import Settings
 from guardian.main import create_app
 from guardian.services.runtime import Runtime
 
+# a separate var from DATABASE_URL so a dev's app DB is never truncated by pytest
+TEST_DB = os.environ.get("TEST_DATABASE_URL", "")
 T0 = 1_800_000_000 - 1_800_000_000 % 86400 + 3600  # 01:00 UTC, fixed day for the sim chain
 
 
@@ -24,13 +32,39 @@ def make_settings(**kw: Any) -> Settings:
         "rate_limit_per_minute": 100_000,
         "scenario_delay_seconds": 0.0,
         "llm_enabled": False,  # never reach a real provider from the suite, whatever the dev's env holds
+        "database_url": "",  # memory unless a test asks for Postgres (ignore DATABASE_URL in the env)
     }
     return Settings(**{**base, **kw})
 
 
-@pytest_asyncio.fixture
-async def app() -> AsyncIterator[FastAPI]:
-    settings = make_settings()
+@pytest.fixture(scope="session")
+def pg_schema() -> None:
+    """Schema at head, once per session (test_db_migrations leaves it at head too)."""
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=os.path.dirname(os.path.dirname(__file__)),
+        check=True,
+        env={**os.environ, "DATABASE_URL": TEST_DB},
+    )
+
+
+async def truncate_pg() -> None:
+    engine = create_async_engine(TEST_DB)
+    async with engine.begin() as c:
+        await c.execute(text("TRUNCATE events, attempts, scenario_runs, meta"))
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture(params=["memory", "postgres"])
+async def app(request: pytest.FixtureRequest) -> AsyncIterator[FastAPI]:
+    kw: dict[str, Any] = {}
+    if request.param == "postgres":
+        if not TEST_DB:
+            pytest.skip("TEST_DATABASE_URL not set")
+        request.getfixturevalue("pg_schema")
+        await truncate_pg()
+        kw["database_url"] = TEST_DB
+    settings = make_settings(**kw)
     rt = Runtime(settings, chain=SimChain(clock=lambda: T0))
     application = create_app(settings, rt)
     async with application.router.lifespan_context(application):

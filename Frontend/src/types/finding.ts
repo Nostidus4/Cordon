@@ -1,4 +1,4 @@
-// Finding (spec §8.5).
+// Finding (spec §8.5), backend shape. UI text beyond `title` is derived from `data` (see lib/findingText.ts).
 import type { Severity } from "./common";
 import type { ProposedChange } from "./simulate";
 
@@ -9,15 +9,14 @@ export type RuleId =
   | "R4_COUNCIL_CONCENTRATION";
 
 export interface Finding {
+  /** `<ruleId>:<subject>`, e.g. `R1_MULTI_KEY_NO_SHARED_CAP:minh`. */
   id: string;
   ruleId: RuleId;
   severity: Severity;
   principalId: string;
   title: string; // VI
-  detail: string; // VI
-  createdAt: string;
-  resolvedByProposal: number | null;
+  /** Rule facts (R1: keys, districts, maxKeyDailyCap, suggestedDistrictCap, ...). */
+  data: Record<string, unknown>;
   /** Auto-generated fix (spec §8.5): feed to api.draftProposal({findingId}) or ({change}). */
-  suggestedChange?: ProposedChange;
-  data?: Record<string, unknown>;
+  proposal: ProposedChange | null;
 }

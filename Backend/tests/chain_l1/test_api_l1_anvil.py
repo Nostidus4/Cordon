@@ -102,7 +102,7 @@ async def test_reset_on_l1_reloads_the_new_deployment(
     )
     old_vault = rt.chain.dep.vault
     events_before = len(rt.event_log)
-    assert events_before > 0 and rt.stores.attempts
+    assert events_before > 0 and rt.stores.attempts.all()
 
     # what `make demo-reset` does: a fresh set on the same node (a baseline of 1: nothing bumped it)
     env2 = deploy_may_labs(env.anvil)

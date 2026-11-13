@@ -38,7 +38,7 @@ def lock(rt: Runtime, member: str, principal_id: str) -> dict[str, Any]:
     res = rt.chain.emergency_lock(rt.addr(member), principal_id)
     _raise_if_failed(res)
     run = next(
-        (r for r in reversed(rt.stores.runs.values()) if r.status in ("running", "waiting_lock")),
+        (r for r in reversed(rt.stores.runs.all()) if r.status in ("running", "waiting_lock")),
         None,
     )
     if run is not None and principal_id == SCENARIO4_DISTRICT:

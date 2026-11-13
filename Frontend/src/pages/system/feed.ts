@@ -26,9 +26,9 @@ export function routeFor(m: StreamMessage): Route[] {
   switch (m.type) {
     case "attempt": {
       const a = m.data;
-      const source: Hop[] = a.action.kind === "lock" ? [{ e: "web-api" }, { e: "api-chain" }] : a.signer === "key_agent_rebalance" && a.step === 0 ? [{ e: "agent-chain" }] : [{ e: "attacker-chain" }];
+      const source: Hop[] = a.action === "lock" ? [{ e: "web-api" }, { e: "api-chain" }] : a.signer === "key_agent_rebalance" && a.source === "agent" ? [{ e: "agent-chain" }] : [{ e: "attacker-chain" }];
       const color = a.outcome === "ok" ? COLOR.ok : a.outcome === "reverted" ? COLOR.bad : COLOR.amber;
-      const targets: EdgeId[] = a.outcome === "blocked_at_protocol" ? ["chain-allow"] : a.action.kind === "lock" ? ["chain-council"] : a.action.kind === "swap" ? ["chain-vault", "chain-dex"] : a.action.kind === "approve" ? ["chain-tokens"] : ["chain-vault"];
+      const targets: EdgeId[] = a.outcome === "blocked_at_protocol" ? ["chain-allow"] : a.action === "lock" ? ["chain-council"] : a.action === "swap" ? ["chain-vault", "chain-dex"] : (a.action === "approve" || a.action === "raw_call") ? ["chain-tokens"] : ["chain-vault"];
       return targets.map((t) => ({ hops: [...source, { e: t }, ...up], color }));
     }
     case "event": return (EVENT_TARGETS[m.data.name] ?? ["chain-vault"]).map((t) => ({ hops: [{ e: t, rev: true }, ...up], color: COLOR.event }));
@@ -69,7 +69,7 @@ const describe = (m: StreamMessage): string => {
     case "attempt": return `${m.data.signerLabel} · ${m.data.outcome === "ok" ? "OK" : m.data.reasonCode ?? m.data.outcome}`;
     case "event": return `${m.data.name} @${m.data.block}`;
     case "proposal_updated": return `#${m.data.proposalId} ${m.data.status} (${m.data.approvals}/2)`;
-    case "agent_run": return `${m.data.decision.action} · ${m.data.outcome}`;
+    case "agent_run": return `${m.data.decision ? "swap" : "none"} · ${m.data.outcome}`;
     case "graph_updated": return `v${m.data.policyLabel ?? m.data.policyVersion} · block ${m.data.block}`;
     case "city_updated": return "8 tòa nhà";
     case "incident_updated": return `sự cố #${m.data.id} · ${m.data.status}`;

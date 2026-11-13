@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { approvalSummary, callSymbol, conflictCheck, emergencyActions } from "./council.logic";
-import type { ChainEvent } from "../../types";
+import type { ChainEvent, CouncilMember } from "../../types";
 
 describe("callSymbol", () => {
   it("renders raw positional args", () => {
-    expect(callSymbol({ target: "PolicyVault", fn: "setPrincipalDailyCap", args: { id: "minh", cap: "30000000000" }, describe: "" })).toBe("PolicyVault.setPrincipalDailyCap(minh, 30000000000)");
-    expect(callSymbol({ target: "PolicyVault", fn: "bumpPolicyVersion", args: {}, describe: "" })).toBe("PolicyVault.bumpPolicyVersion()");
+    expect(callSymbol({ target: "PolicyVault", fn: "setPrincipalDailyCap", args: { principalId: "minh", cap: { raw: "30000000000", display: "30.000" } } })).toBe("PolicyVault.setPrincipalDailyCap(minh, 30.000)");
+    expect(callSymbol({ target: "PolicyVault", fn: "bumpPolicyVersion", args: {} })).toBe("PolicyVault.bumpPolicyVersion()");
   });
 });
 describe("approvalSummary", () => {
   const members = [{ id: "trang" as const }, { id: "lan" as const }, { id: "huy" as const }];
   it("counts distinct approvers against the threshold", () => {
-    const s = approvalSummary({ approvals: [{ member: "lan", at: "" }, { member: "trang", at: "" }], threshold: 2, conflictedMembers: [] }, members);
+    const s = approvalSummary({ approvals: ["lan", "trang"], threshold: 2, conflictedMembers: [] }, members);
     expect(s).toMatchObject({ approved: 2, need: 2, eligible: 3, reached: true, stuck: false });
   });
   it("is stuck when too many members are conflicted", () => {
@@ -31,14 +31,19 @@ describe("conflictCheck", () => {
   });
 });
 describe("emergencyActions", () => {
-  const ev = (id: string, ts: string, name: string, payload: Record<string, unknown>): ChainEvent => ({ id, chain: "l1", block: 1, txHash: "0x" + id, simulated: true, logIndex: 0, name, payload, ts });
+  const ev = (id: string, ts: number, name: string, payload: Record<string, unknown>): ChainEvent => ({ block: 1, txHash: "0x" + id, simulated: true, logIndex: 0, name, payload, ts });
   it("keeps only EmergencyAction, newest first, with VI labels", () => {
     const r = emergencyActions([
-      ev("a", "2026-01-01T00:00:01Z", "EmergencyAction", { member: "lan", action: "lockPrincipal", subject: "minh" }),
-      ev("b", "2026-01-01T00:00:02Z", "PrincipalLocked", {}),
-      ev("c", "2026-01-01T00:00:03Z", "EmergencyAction", { member: "trang", action: "pauseAll" }),
+      ev("a", 1, "EmergencyAction", { member: "lan", action: "lockPrincipal", subject: "minh" }),
+      ev("b", 2, "PrincipalLocked", {}),
+      ev("c", 3, "EmergencyAction", { member: "trang", action: "pauseAll" }),
     ]);
-    expect(r.map((x) => x.id)).toEqual(["c", "a"]);
+    expect(r.map((x) => x.id)).toEqual(["0xc:0", "0xa:0"]);
     expect(r.map((x) => x.label)).toEqual(["Dừng cả kho", "Khoá khu minh"]);
+  });
+  it("maps the live member address (API_CONTRACT §2) to the member id", () => {
+    const members: CouncilMember[] = [{ id: "lan", label: "Chị Lan", address: "0xB3A84cD8AA6FAF7F24C3BE62E4c2A8bbec0438F4", principalId: "lan" }];
+    const r = emergencyActions([ev("a", 1, "EmergencyAction", { member: "0xb3a84cd8aa6faf7f24c3be62e4c2a8bbec0438f4", action: "lockPrincipal", subject: "minh" })], members);
+    expect(r[0].member).toBe("lan");
   });
 });

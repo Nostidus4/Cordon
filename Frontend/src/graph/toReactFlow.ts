@@ -72,8 +72,10 @@ export function toReactFlow(snap: GraphSnapshot, boxes: Record<string, TweenBox>
   const dim = (id: string) => v.dimUnreached && anyRed && !v.redNodes.has(id) && id !== "treasury";
 
   // who (declared) controls a key -> small "tự khai" tag + panel text
+  // live backend points declared edges at a principal (p:x); mock points at its key. Draw both onto the key node.
+  const declTo = (to: string) => { const k = to.startsWith("p:") ? snap.districts.find((d) => `p:${d.principalId}` === to)?.keys[0] : undefined; return k ? `k:${k}` : to; };
   const declaredBy = new Map<string, string>();
-  for (const e of snap.edges) if (e.source !== "onchain" && (e.type === "CONTROLS" || e.type === "ADMINS")) declaredBy.set(e.to, e.from.replace(/^p:/, ""));
+  for (const e of snap.edges) if (e.source !== "onchain" && (e.type === "CONTROLS" || e.type === "ADMINS")) declaredBy.set(declTo(e.to), e.from.replace(/^p:/, ""));
 
   // districts first (render under keys)
   for (const d of snap.districts) {
@@ -122,7 +124,7 @@ export function toReactFlow(snap: GraphSnapshot, boxes: Record<string, TweenBox>
     const [sh, th] = kind === "funds" && v.mode === "simulate" ? ["sr", "l"] : HANDLES[kind];
     edges.push({ id, source: from, target: to, sourceHandle: sh, targetHandle: th, type: "flow", data, zIndex: red || amber ? 20 : 1, selectable: false, focusable: false });
   };
-  const declTargets = snap.edges.filter((e) => KIND_OF_EDGE(e) === "decl" && e.source !== "onchain").map((e) => e.to);
+  const declTargets = snap.edges.filter((e) => KIND_OF_EDGE(e) === "decl" && e.source !== "onchain").map((e) => declTo(e.to));
   const laneOf = (to: string) => [...new Set(declTargets)].sort((a, b) => (boxes[a]?.x ?? 0) - (boxes[b]?.x ?? 0)).indexOf(to);
   for (const e of snap.edges) {
     const kind = KIND_OF_EDGE(e);
@@ -131,11 +133,11 @@ export function toReactFlow(snap: GraphSnapshot, boxes: Record<string, TweenBox>
     if (kind === "approve" && v.mode !== "map") continue;
     // a declared edge inside the district that already holds the key on-chain adds nothing visually
     if (kind === "decl") {
-      const key = nodeById.get(e.to);
+      const key = nodeById.get(declTo(e.to));
       const owner = key?.data.principalId;
       if (owner && e.from === `p:${owner}`) continue;
     }
-    push(e.id, e.from, e.to, kind, e.source, e.type, e.source !== "onchain" && kind === "decl" ? { label: "tự khai", note: e.note, lane: laneOf(e.to) } : {});
+    push(e.id, e.from, kind === "decl" ? declTo(e.to) : e.to, kind, e.source, e.type, e.source !== "onchain" && kind === "decl" ? { label: "tự khai", lane: laneOf(e.to) } : {});
   }
   for (const d of snap.districts) push(busEdgeId(d.principalId), "vault", `p:${d.principalId}`, "bus", "onchain");
   if (v.mode === "map") push("x:council-vault", "council", "vault", "gov", "onchain");

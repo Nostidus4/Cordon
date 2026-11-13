@@ -36,13 +36,13 @@ const stageForReason = (code: ReasonCode): CheckId | null => CHECKS.find((c) => 
 
 export function traceAttempt(a: Pick<Attempt, "action" | "outcome" | "reasonCode">): AttemptTrace {
   const blank = (status: StageStatus): CheckStage[] => CHECKS.map((c) => ({ ...c, status }));
-  if (a.action.kind === "lock") {
+  if (a.action === "lock") {
     return { route: "council", gate: "pass", stages: blank("skip"), failId: null, summary: "GuardianCouncil.emergencyLock → PolicyVault.lockPrincipal + TxAllowList.setNone cho từng thẻ (siết: 1 người đủ)" };
   }
   if (a.outcome === "blocked_at_protocol") {
-    return { route: a.action.kind === "approve" ? "direct" : "vault", gate: "fail", stages: blank("skip"), failId: null, summary: "Node từ chối trước khi vào block (không có trong Tx AllowList): không có tx hash, không có event" };
+    return { route: a.action === "approve" || a.action === "raw_call" ? "direct" : "vault", gate: "fail", stages: blank("skip"), failId: null, summary: "Node từ chối trước khi vào block (không có trong Tx AllowList): không có tx hash, không có event" };
   }
-  if (a.action.kind === "approve") {
+  if (a.action === "approve" || a.action === "raw_call") {
     return { route: "direct", gate: "pass", stages: blank("skip"), failId: null, summary: "Gọi thẳng contract token, không đi qua PolicyVault: chỉ Tx AllowList đứng chắn" };
   }
   if (a.outcome === "ok") {
@@ -55,13 +55,12 @@ export function traceAttempt(a: Pick<Attempt, "action" | "outcome" | "reasonCode
 }
 
 /** Human-readable call, e.g. PolicyVault.pay(tUSDC, vendor_cloud, 10.000) */
-export function callSignature(a: Pick<Attempt, "action" | "signer"> & { principalId?: string | null }): string {
-  const k = a.action;
-  switch (k.kind) {
-    case "pay": return `PolicyVault.pay(${k.token ?? "tUSDC"}, ${k.to ?? "?"}, ${k.amount?.display ?? "?"})`;
-    case "swap": return `PolicyVault.swap(${k.dex ?? "?"}, ${k.token ?? "tUSDC"} → tTKB, ${k.amount?.display ?? "?"})`;
+export function callSignature(a: Pick<Attempt, "action" | "signer" | "token" | "to" | "amount"> & { principalId?: string | null }): string {
+  switch (a.action) {
+    case "pay": return `PolicyVault.pay(${a.token ?? "tUSDC"}, ${a.to ?? "?"}, ${a.amount?.display ?? "?"})`;
+    case "swap": return `PolicyVault.swap(${a.to ?? "?"}, ${a.token ?? "tUSDC"} → tTKB, ${a.amount?.display ?? "?"})`;
     case "lock": return `GuardianCouncil.emergencyLock(${a.principalId ?? "id"})`;
-    case "approve": return `${k.token ?? "token"}.approve(…)`;
+    default: return `${a.token ?? "token"}.approve(…)`;
   }
 }
 

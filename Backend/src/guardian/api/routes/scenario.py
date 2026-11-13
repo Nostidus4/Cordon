@@ -37,7 +37,7 @@ async def step7(rt: RuntimeDep):  # type: ignore[no-untyped-def]
 
 @router.get("/runs", response_model=list[ScenarioRunOut])
 async def runs(rt: RuntimeDep):  # type: ignore[no-untyped-def]
-    return [sc.run_out(rt, r) for r in rt.stores.runs.values()]
+    return [sc.run_out(rt, r) for r in rt.stores.runs.all()]
 
 
 @router.get("/runs/{run_id}", response_model=ScenarioRunOut)

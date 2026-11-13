@@ -156,7 +156,7 @@ describe("scene 5 numbers on deep link and after playing 1-4 (never 0 / post-loc
     const [a, b] = await pick();
     expectStory(requestNumbers(a, b, false, null));
     await ensureV2(); // idempotent
-    expect((await mockApi.getProposals()).filter((p) => p.change.kind === "consolidate")).toHaveLength(1);
+    expect((await mockApi.getProposals()).filter((p) => p.change?.kind === "merge_district")).toHaveLength(1);
   });
 
   it("after scenes 1-4 (agent, attack, lock): the live report collapses to 0, the remembered snapshot still tells the story", async () => {
@@ -177,7 +177,7 @@ describe("scene 5 numbers on deep link and after playing 1-4 (never 0 / post-loc
 
   it("a half-finished merge (proposed, Lan approved) is completed by ensureV2", async () => {
     const f = (await mockApi.getFindings())[0];
-    const p = await mockApi.createProposal({ findingId: f.id, proposer: "lan" });
+    const p = await mockApi.createProposal({ findingId: f.id, member: "lan" });
     await mockApi.approveProposal(p.id, "lan");
     await ensureV2();
     const [a, b] = await pick();

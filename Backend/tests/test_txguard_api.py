@@ -49,7 +49,7 @@ async def _reset(client: httpx.AsyncClient) -> None:
 async def test_a_whitelisted_payment_is_safe_and_makes_no_change(
     client: httpx.AsyncClient, rt: Runtime
 ) -> None:
-    attempts, events = len(rt.stores.attempts), len(rt.event_log)
+    attempts, events = len(rt.stores.attempts.all()), len(rt.event_log)
     block = rt.snapshot().block
     out = await check(client, body(rt))
     assert out["level"] == "safe" and out["findings"] == [] and out["status"] == "pending"
@@ -61,7 +61,7 @@ async def test_a_whitelisted_payment_is_safe_and_makes_no_change(
     assert out["explanationSource"] == "template" and out["numbersVerified"] is True
     assert out["sentTx"] is None
     # a check only reads
-    assert (len(rt.stores.attempts), len(rt.event_log), rt.snapshot().block) == (
+    assert (len(rt.stores.attempts.all()), len(rt.event_log), rt.snapshot().block) == (
         attempts,
         events,
         block,
@@ -149,12 +149,12 @@ async def test_reject_never_sends_and_blocks_a_later_send(
 ) -> None:
     out = await check(client, body(rt))
     vault = rt.chain.balance(rt.chain.vault_addr, rt.addr("tUSDC"))
-    attempts, events, block = len(rt.stores.attempts), len(rt.event_log), rt.snapshot().block
+    attempts, events, block = len(rt.stores.attempts.all()), len(rt.event_log), rt.snapshot().block
     spent = rt.snapshot().principals["minh"].spent_today
     done = await post(client, f"/api/txguard/checks/{out['id']}/reject")
     assert done["status"] == "rejected" and done["sentTx"] is None
     assert rt.chain.balance(rt.chain.vault_addr, rt.addr("tUSDC")) == vault
-    assert (len(rt.stores.attempts), len(rt.event_log), rt.snapshot().block) == (
+    assert (len(rt.stores.attempts.all()), len(rt.event_log), rt.snapshot().block) == (
         attempts,
         events,
         block,
@@ -171,12 +171,12 @@ async def test_send_signs_through_the_normal_spend_path(
     client: httpx.AsyncClient, rt: Runtime
 ) -> None:
     out = await check(client, body(rt))
-    attempts = len(rt.stores.attempts)
+    attempts = len(rt.stores.attempts.all())
     sent = await post(client, f"/api/txguard/checks/{out['id']}/send")
     assert sent["status"] == "sent" and sent["sentTx"]["ok"] is True
     assert sent["sentTx"]["txHash"] and sent["sentTx"]["simulated"] is True
-    assert len(rt.stores.attempts) == attempts + 1
-    assert rt.stores.attempts[-1].amount["raw"] == str(to_base(1_000))
+    assert len(rt.stores.attempts.all()) == attempts + 1
+    assert rt.stores.attempts.all()[-1].amount["raw"] == str(to_base(1_000))
     r = await client.post(f"/api/txguard/checks/{out['id']}/send")
     assert r.status_code == 409
 
