@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockApi, mockConfig, ApiError, subscribe } from "./server";
+import { computeFindings, seedState } from "./core";
 import { SCENE4_STEPS } from "../../shared/scenario4";
 import type { Attempt, StreamMessage } from "../../types";
 
@@ -110,5 +111,44 @@ describe("scene 4 (spec §4.3 table)", () => {
     expect(a.answer).toContain("140.000");
     expect(a.numbers.some((n) => n.value === "140.000")).toBe(true);
     void U;
+  });
+});
+
+describe("findings parity with the backend", () => {
+  const ids = async () => (await mockApi.getFindings()).map((f) => f.id);
+  const seedIds = ["R1_MULTI_KEY_NO_SHARED_CAP:minh", "R3_ADMIN_IS_OPERATOR:e:minh-admins-svc_payment"];
+  it("seed: exactly R1 (HIGH) then R3 (MEDIUM); R2 stays quiet", async () => {
+    const f = await mockApi.getFindings();
+    expect(f.map((x) => x.id)).toEqual(seedIds);
+    expect(f.map((x) => x.severity)).toEqual(["HIGH", "MEDIUM"]);
+    expect((f[0].data!.suggestedDistrictCap as { display: string }).display).toBe("30.000");
+    expect(f[0].data!.keys).toHaveLength(5);
+    expect(f[1].suggestedChange).toMatchObject({ kind: "consolidate", into: "minh", keys: ["key_svc_payment"], sharedCapRaw: U(30000) });
+  });
+  it("R2 fires per live agent/service key only when no recipient is allow-listed", () => {
+    const s = seedState();
+    expect(computeFindings(s).some((f) => f.ruleId === "R2_AGENT_NO_ALLOWLIST")).toBe(false);
+    s.recipients = [];
+    const r2 = computeFindings(s).filter((f) => f.ruleId === "R2_AGENT_NO_ALLOWLIST");
+    expect(r2).toHaveLength(4);
+    expect(r2[0]).toMatchObject({ id: `R2_AGENT_NO_ALLOWLIST:${s.keys.key_agent_data.address}`, severity: "MEDIUM", principalId: "agent_data" });
+  });
+  it("a lock does not drop findings", async () => {
+    await mockApi.lockDistrict({ principalId: "minh", member: "lan" });
+    expect(await ids()).toEqual(seedIds);
+  });
+  it("policy v2: proposal #11 by lan executed, no findings; lock then emits 5 role-0 events in the lock tx", async () => {
+    await mockApi.applyPolicyV2();
+    const p11 = (await mockApi.getProposals()).find((p) => p.id === 11)!;
+    expect(p11.proposer).toBe("lan");
+    expect(p11.status).toBe("executed");
+    expect(await ids()).toEqual([]);
+    await mockApi.lockDistrict({ principalId: "minh", member: "lan" });
+    expect(await ids()).toEqual([]);
+    const ev = await mockApi.getEvents();
+    const locked = ev.find((e) => e.name === "PrincipalLocked")!;
+    const roles = ev.filter((e) => e.name === "AllowListRoleSet");
+    expect(roles).toHaveLength(5);
+    expect(roles.every((e) => e.payload.role === 0 && e.txHash === locked.txHash)).toBe(true);
   });
 });

@@ -17,7 +17,7 @@ const EVENT_TARGETS: Record<string, EdgeId[]> = {
   Paid: ["chain-vault", "chain-tokens"], Swapped: ["chain-vault", "chain-dex"],
   Proposed: ["chain-council"], Approved: ["chain-council"], Executed: ["chain-council"], Cancelled: ["chain-council"], EmergencyAction: ["chain-council"],
   PrincipalLocked: ["chain-vault", "chain-allow"], PrincipalUnlocked: ["chain-vault", "chain-allow"],
-  KeyMoved: ["chain-registry"], PrincipalCreated: ["chain-registry"],
+  AllowListRoleSet: ["chain-allow"], KeyMoved: ["chain-registry"], PrincipalCreated: ["chain-registry"],
 };
 const up: Hop[] = [{ e: "api-chain", rev: true }, { e: "web-api", rev: true }]; // indexer -> API -> SSE -> web
 

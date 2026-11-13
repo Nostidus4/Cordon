@@ -96,6 +96,21 @@ describe("F05 incident lifecycle (mock)", () => {
     expect(seen).toContain("detected"); expect(seen).toContain("contained"); expect(seen).toContain("awaiting_council"); expect(seen).toContain("recovering"); expect(seen[seen.length - 1]).toBe("resolved");
     un();
   });
+  it("unlock re-allows only the keys that are still active, in one tx", async () => {
+    await mockApi.applyPolicyV2();
+    const r = await mockApi.injectFault("F05_KEY_LEAK");
+    const w = await until(async () => { const i = await byId(r.incidentId!); return i.status === "awaiting_council" ? i : null; });
+    await mockApi.approveProposal(w.proposalId!, "trang"); await mockApi.approveProposal(w.proposalId!, "lan");
+    await until(async () => { const i = await byId(r.incidentId!); return i.status === "resolved" ? i : null; });
+    const d = await mockApi.getDistrict("minh");
+    const activeAddrs = d.keys.filter((k) => k.active).map((k) => k.address);
+    const ev = await mockApi.getEvents();
+    const roles = ev.filter((e) => e.name === "AllowListRoleSet" && e.payload.role === 1);
+    expect(activeAddrs).toHaveLength(4);
+    expect(roles.map((e) => e.payload.key).sort()).toEqual([...activeAddrs].sort());
+    expect(new Set(roles.map((e) => e.txHash)).size).toBe(1);
+    expect(roles[0].txHash).toBe(ev.find((e) => e.name === "PrincipalUnlocked")!.txHash);
+  });
   it("demo reset clears every incident", async () => {
     await mockApi.injectFault("F05_KEY_LEAK");
     await mockApi.resetDemo();
