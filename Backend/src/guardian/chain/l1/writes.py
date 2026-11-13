@@ -32,6 +32,7 @@ from guardian.chain.errors import (
     RevertInfo,
     decode_revert,
     is_blocked_at_protocol,
+    require_hex,
     rpc_error_tag,
 )
 from guardian.chain.l1.calls import (
@@ -164,7 +165,8 @@ class L1Writes:
         )
 
     def _addr(self, ref: str) -> str:
-        """Hex address or seed id (`key_minh`, `lan`, `council_lan`, `tUSDC`, `evil_dex`...)."""
+        """Seed-driven paths only (the call encoder, `apply_policy_v2`): hex or seed id (`key_minh`, `lan`...).
+        Public ChainPort arguments go through `require_hex` (CHN-004)."""
         if ref.startswith("0x"):
             return to_checksum_address(ref)
         try:
@@ -208,7 +210,7 @@ class L1Writes:
         return est * GAS_BUFFER_NUM // GAS_BUFFER_DEN
 
     def _transact(self, sender_ref: str, to: str, data: str | bytes) -> TxResult:
-        sender = self._addr(sender_ref)
+        sender = require_hex(sender_ref)
         signer = self.signers.get(sender)
         payload = data if isinstance(data, str) else "0x" + data.hex()
         call = {"from": sender, "to": to_checksum_address(to), "data": payload}
@@ -259,13 +261,13 @@ class L1Writes:
         return TxResult("reverted", info.reason, tx_hash, block, [], info.raw, False)
 
     def _simulate(self, sender_ref: str, to: str, data: str) -> ReasonCode | None:
-        call = {"from": self._addr(sender_ref), "to": to_checksum_address(to), "data": data}
+        call = {"from": require_hex(sender_ref), "to": to_checksum_address(to), "data": data}
         return self._dry_run(call).reason
 
     # ---------------------------------------------------------------- spend
     def _pay_data(self, token: str, to: str, amount: int, memo: str) -> str:
         return self.vault.encode_abi(
-            "pay", args=[self._addr(token), self._addr(to), int(amount), keccak(text=memo)]
+            "pay", args=[require_hex(token), require_hex(to), int(amount), keccak(text=memo)]
         )
 
     def _swap_data(
@@ -281,10 +283,10 @@ class L1Writes:
         return self.vault.encode_abi(
             "swap",
             args=[
-                self._addr(dex),
+                require_hex(dex),
                 bytes.fromhex(selector.removeprefix("0x")),
-                self._addr(token_in),
-                self._addr(token_out),
+                require_hex(token_in),
+                require_hex(token_out),
                 int(amount_in),
                 int(min_out),
                 keccak(text=reason),
@@ -328,7 +330,7 @@ class L1Writes:
     def raw_call(self, signer: str, target: str, data: str) -> TxResult:
         """Arbitrary tx to any contract (the Tx AllowList is the gate that matters)."""
         return self._transact(
-            signer, self._addr(target), data if data.startswith("0x") else "0x" + data
+            signer, require_hex(target), data if data.startswith("0x") else "0x" + data
         )
 
     # -------------------------------------------------------------- council
@@ -349,7 +351,7 @@ class L1Writes:
 
     def lower_key_cap(self, member: str, key: str, new_cap: int) -> TxResult:
         return self._council_tx(
-            member, "lowerCap", 0, address_to_bytes32(self._addr(key)), int(new_cap)
+            member, "lowerCap", 0, address_to_bytes32(require_hex(key)), int(new_cap)
         )
 
     def lower_district_cap(self, member: str, principal_id: str, new_cap: int) -> TxResult:
@@ -358,7 +360,7 @@ class L1Writes:
     def revoke_allow(
         self, member: str, kind: str, subject: str, selector: str | None = None
     ) -> TxResult:
-        addr = self._addr(subject)
+        addr = require_hex(subject)
         sel = selector
         if kind == "protocol" and not sel:
             sel = self._selectors.get(addr)
@@ -368,7 +370,7 @@ class L1Writes:
         )
 
     def deactivate_key(self, member: str, key: str) -> TxResult:
-        return self._council_tx(member, "deactivateKey", self._addr(key))
+        return self._council_tx(member, "deactivateKey", require_hex(key))
 
     def propose(
         self,
@@ -411,7 +413,7 @@ class L1Writes:
         """Seed policy v2 via propose + the approvals listed in the seed (same as `SimChain`)."""
         v2 = self._seed["policy_v2"]
         prop = self.propose(
-            v2["approvers"][0],
+            self._addr(v2["approvers"][0]),
             v2["title"],
             v2["subject_principal"],
             v2["calls"],
@@ -419,4 +421,4 @@ class L1Writes:
         )
         pid = prop.proposal_id
         assert pid is not None, prop.error_raw
-        return [self.approve(m, pid) for m in v2["approvers"]]
+        return [self.approve(self._addr(m), pid) for m in v2["approvers"]]

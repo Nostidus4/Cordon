@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from guardian.chain.sim.engine import load_seed
+from guardian.chain.factory import load_seed
 from guardian.services import views
 from guardian.services.runtime import Runtime
 

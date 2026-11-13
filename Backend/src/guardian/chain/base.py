@@ -57,10 +57,8 @@ class ProposalState:
 
 
 class ChainPort(Protocol):
-    """Chain boundary. Contract (API-001): signer/member/key/to are hex addresses only.
-
-    shortcut: app code still passes seed ids ("key_minh", "tUSDC", "lan"); both sim and the L1
-    adapter (`_addr`/`_need_member`) resolve them. Converting at the call sites is CHN-004 (#53).
+    """Chain boundary. Contract (API-001): signer/member/key/to are hex addresses only; app code converts
+    ids at the call site (`Runtime.addr`, CHN-004), an adapter rejects anything else.
     Sync on purpose: an L1 adapter runs web3 calls off the event loop behind one lock.
     """
 
@@ -132,7 +130,8 @@ class ChainPort(Protocol):
 
 class DemoControls(Protocol):
     """Sim-only extra that app code calls (`demo_reset`, guarded by `not rt.is_l1`; L1 reloads a fresh
-    deployment instead). `balance` is already on ChainPort and implemented by both."""
+    deployment instead). `reset` rewinds to seed policy v1 and leaves the Council counter so the next proposal id is
+    the seed request #12 (like the L1 demo-reset script). `balance` is already on ChainPort and implemented by both."""
 
     def reset(self) -> None: ...
 

@@ -18,6 +18,7 @@ from guardian.chain.errors import ERROR_TO_REASON, OTHER_ERRORS, REASON_TO_ERROR
 from guardian.chain.sim import SimChain
 from guardian.shared.money import to_base
 from guardian.shared.reason_codes import REASON_TABLE, ReasonCode
+from tests.idport import IdPort
 
 REPO = Path(__file__).resolve().parents[2]
 ABI_DIR = REPO / "Backend" / "src" / "guardian" / "chain" / "abis"
@@ -148,7 +149,7 @@ def test_every_chain_event_has_a_contract_event_or_is_off_chain():
 
 
 def _sim_events() -> list[Any]:
-    c = SimChain(clock=lambda: 1_800_000_000 - 1_800_000_000 % 86400 + 3600)
+    c = IdPort(SimChain(clock=lambda: 1_800_000_000 - 1_800_000_000 % 86400 + 3600))
     c.apply_policy_v2()
     sel = c._meta[c._addr("mock_dex")]["selector"]
     c.pay("key_minh", "tUSDC", "vendor_cloud", to_base(1))

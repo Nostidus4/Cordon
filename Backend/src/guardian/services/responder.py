@@ -613,12 +613,12 @@ def _contain(rt: Runtime, inc: IncidentRec, res: ReactResult) -> None:
         return
     inc.internal["member"] = member
     if inc.kind == "attempts":
-        tx: TxResult = rt.chain.emergency_lock(member, inc.principal_id or "")
+        tx: TxResult = rt.chain.emergency_lock(rt.addr(member), inc.principal_id or "")
         what = f"Khoá khu {label}"
     else:
         ks = snap.keys[inc.key or ""]
         inc.internal["old_key_cap"] = ks.daily_cap
-        tx = rt.chain.lower_key_cap(member, ks.address, 0)
+        tx = rt.chain.lower_key_cap(rt.addr(member), ks.address, 0)
         what = f"Hạ hạn mức thẻ {ks.label} về 0"
     res.chain_touched = True
     if tx.status != "ok":

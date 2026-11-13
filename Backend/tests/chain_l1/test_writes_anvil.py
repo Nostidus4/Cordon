@@ -13,6 +13,7 @@ from guardian.chain.l1.signers import LocalSigner, SignerError, SignerRegistry
 from guardian.shared.money import to_base
 from guardian.shared.reason_codes import ReasonCode as R
 from tests.chain_l1.anvil_env import Env
+from tests.idport import IdPort
 
 SEL = "0x10b84623"  # MockDEX swap selector in the seed
 u = to_base
@@ -210,9 +211,9 @@ def test_propose_errors_match_the_sim(l1: L1Chain, env: Env) -> None:
 def test_unknown_signer_and_missing_council(l1: L1Chain, env: Env) -> None:
     with pytest.raises(SignerError):
         l1.pay("vendor_cloud", "tUSDC", "vendor_cloud", 1)  # an address we hold no key for
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):  # unknown id, not hex: rejected at the port boundary
         l1.pay("nobody", "tUSDC", "vendor_cloud", 1)
-    empty = L1Chain(env.w3, env.dep, env.seed, signers=SignerRegistry())
+    empty = IdPort(L1Chain(env.w3, env.dep, env.seed, signers=SignerRegistry()))
     with pytest.raises(SignerError):
         empty.pay("key_minh", "tUSDC", "vendor_cloud", 1)
     with pytest.raises(ChainWriteError):

@@ -185,7 +185,7 @@ def _f01(rt: Runtime) -> list[dict[str, Any]]:
         target = (out["id"], member.id)
     pid, member_id = target
     label = next(m.label for m in snap.council if m.id == member_id)
-    res = rt.chain.approve(member_id, pid)
+    res = rt.chain.approve(rt.addr(member_id), pid)
     reason = "CONFLICT_OF_INTEREST" if res.error_raw == "ConflictOfInterest" else None
     if res.status != "ok" and reason:
         ps.record_conflict(rt, member_id, pid)
@@ -216,7 +216,7 @@ def _f02(rt: Runtime) -> list[dict[str, Any]]:
 
 def _f03(rt: Runtime) -> list[dict[str, Any]]:
     _require_usable_key(rt, "key_minh")
-    balance = rt.chain.balance("vault", "tUSDC")
+    balance = rt.chain.balance(rt.addr("vault"), rt.addr("tUSDC"))
     if balance <= 0:
         raise _not_applicable("Kho không còn tUSDC để rút.")
     a = att.run_spend(
@@ -297,7 +297,7 @@ def _f06(rt: Runtime) -> list[dict[str, Any]]:
             "reasonCode": run["reasonCode"],
         }
     ]
-    amount = min(rt.chain.balance("vault", "tUSDC"), to_base(20_000))
+    amount = min(rt.chain.balance(rt.addr("vault"), rt.addr("tUSDC")), to_base(20_000))
     a = att.run_spend(
         rt,
         agent_service.AGENT_SEED,

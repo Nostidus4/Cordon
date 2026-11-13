@@ -6,10 +6,12 @@ the tx result's reason wins, else the pre-flight simulation's reason when the tx
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from guardian.chain.base import ChainPort, TxResult
+from guardian.domain.address_book import build_address_book
 from guardian.shared.reason_codes import ReasonCode
 from guardian.shared.scenario4 import SCENARIO4_STEPS, Scenario4Step
 
@@ -75,7 +77,15 @@ def _selector(chain: ChainPort, dex: str) -> str:
     return next(p.selector for p in chain.snapshot().protocols if p.seed_id == dex)
 
 
-def execute_step(chain: ChainPort, s: Scenario4Step, *, dry_run: bool = False) -> StepReport:
+def address_resolver(chain: ChainPort) -> Callable[[str], str]:
+    """Scenario ids (`key_minh`, `tUSDC`, `evil_dex`...) -> the hex addresses of this chain."""
+    book = build_address_book(chain.snapshot(), chain.vault_addr)
+    return lambda ref: book[ref]
+
+
+def execute_step(
+    chain: ChainPort, s: Scenario4Step, addr: Callable[[str], str], *, dry_run: bool = False
+) -> StepReport:
     """Dry-run for the reason, then (unless `dry_run`) send the real tx even when it will revert."""
     p = s.params
     sim: ReasonCode | None = None
@@ -84,17 +94,19 @@ def execute_step(chain: ChainPort, s: Scenario4Step, *, dry_run: bool = False) -
     amount = p.get("amount", p.get("amount_in"))
     if s.action == "pay":
         to = p["to"]
-        sim = chain.simulate_pay(s.signer, p["token"], to, p["amount"])
+        sim = chain.simulate_pay(addr(s.signer), addr(p["token"]), addr(to), p["amount"])
         if not dry_run:
-            res = chain.pay(s.signer, p["token"], to, p["amount"], p.get("memo", ""))
+            res = chain.pay(
+                addr(s.signer), addr(p["token"]), addr(to), p["amount"], p.get("memo", "")
+            )
     elif s.action == "swap":
         to = p["dex"]
         args = (
-            s.signer,
-            to,
+            addr(s.signer),
+            addr(to),
             _selector(chain, to),
-            p["token_in"],
-            p["token_out"],
+            addr(p["token_in"]),
+            addr(p["token_out"]),
             p["amount_in"],
             p.get("min_out", 0),
         )
@@ -104,7 +116,7 @@ def execute_step(chain: ChainPort, s: Scenario4Step, *, dry_run: bool = False) -
     elif s.action == "raw_call":
         to = p["target"]  # ChainPort cannot simulate an arbitrary call: send (or skip on dry-run)
         if not dry_run:
-            res = chain.raw_call(s.signer, to, p["data"])
+            res = chain.raw_call(addr(s.signer), addr(to), p["data"])
     else:
         raise ValueError(f"attacker cannot execute action {s.action!r}")
     rep = StepReport(

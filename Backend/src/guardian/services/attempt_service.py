@@ -98,19 +98,21 @@ def run_spend(
     amount_m: dict[str, str] | None = None
     token: str | None = params.get("token") or params.get("token_in")
     to_seed: str | None = None
+    s_addr = rt.addr(signer)
     if action == "pay":
         to_seed = params["to"]
-        sim_reason = chain.simulate_pay(signer, params["token"], to_seed, params["amount"])
-        res = chain.pay(signer, params["token"], to_seed, params["amount"], params.get("memo", ""))
+        pay_args = (s_addr, rt.addr(params["token"]), rt.addr(to_seed), params["amount"])
+        sim_reason = chain.simulate_pay(*pay_args)
+        res = chain.pay(*pay_args, params.get("memo", ""))
     elif action == "swap":
         sel = next(p.selector for p in snap.protocols if p.seed_id == params["dex"])
         to_seed = params["dex"]
         args = (
-            signer,
-            params["dex"],
+            s_addr,
+            rt.addr(params["dex"]),
             sel,
-            params["token_in"],
-            params["token_out"],
+            rt.addr(params["token_in"]),
+            rt.addr(params["token_out"]),
             params["amount_in"],
             params.get("min_out", 0),
         )
@@ -118,7 +120,7 @@ def run_spend(
         res = chain.swap(*args, reason=params.get("reason", ""))
     elif action == "raw_call":
         to_seed = params["target"]
-        res = chain.raw_call(signer, params["target"], params["data"])
+        res = chain.raw_call(s_addr, rt.addr(params["target"]), params["data"])
     else:
         raise ValueError(f"unsupported spend action {action}")
     if token and action in ("pay", "swap"):

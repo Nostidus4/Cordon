@@ -28,8 +28,8 @@ def chain(rt: Runtime) -> SimChain:
 
 
 def test_first_run_swaps_5000(rt: Runtime) -> None:
-    assert rt.chain.balance("vault", "tUSDC") == to_base(200_000)
-    assert rt.chain.balance("vault", "tTKB") == 0
+    assert rt.chain.balance(rt.addr("vault"), rt.addr("tUSDC")) == to_base(200_000)
+    assert rt.chain.balance(rt.addr("vault"), rt.addr("tTKB")) == 0
     out = runner.run_once(rt, llm_reason=False)
     assert out["outcome"] == "swapped"
     assert out["decision"]["amountIn"]["raw"] == str(to_base(5_000))
@@ -46,12 +46,18 @@ def test_blocked_when_cap_used_up_then_day_rollover(rt: Runtime, chain: SimChain
     for _ in range(20):
         if runner.run_once(rt, llm_reason=False)["outcome"] != "swapped":
             break
-    before = (chain.balance("vault", "tUSDC"), chain.balance("vault", "tTKB"))
+    before = (
+        chain.balance(chain.vault_addr, chain._addr("tUSDC")),
+        chain.balance(chain.vault_addr, chain._addr("tTKB")),
+    )
     spent = rt.snapshot().principals["agent_rebalance"].spent_today
     out = runner.run_once(rt, llm_reason=False)
     assert out["outcome"] == "blocked" and out["reasonCode"] == "CARD_DAILY_CAP"
     assert out["txHash"] is None
-    assert (chain.balance("vault", "tUSDC"), chain.balance("vault", "tTKB")) == before
+    assert (
+        chain.balance(chain.vault_addr, chain._addr("tUSDC")),
+        chain.balance(chain.vault_addr, chain._addr("tTKB")),
+    ) == before
     assert rt.snapshot().principals["agent_rebalance"].spent_today == spent
     last = rt.stores.attempts[-1]
     assert (last.outcome, last.source, last.reason_code) == ("blocked", "agent", "CARD_DAILY_CAP")

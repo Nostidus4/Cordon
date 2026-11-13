@@ -123,7 +123,9 @@ def test_recorded_sender_rejection_on_send_is_blocked_at_protocol() -> None:
     acct = Account.create()
     node = FakeNode(reject_in="eth_sendRawTransaction")
     chain = _chain(node, SignerRegistry([LocalSigner(acct.key.hex())]))
-    r = chain.pay(acct.address, "tUSDC", "vendor_cloud", 1)  # dry run passes, node rejects the send
+    r = chain.pay(
+        acct.address, chain._addr("tUSDC"), chain._addr("vendor_cloud"), 1
+    )  # dry run passes, node rejects the send
     assert r.status == "blocked_at_protocol" and r.reason_code == R.BLOCKED_AT_PROTOCOL
     assert r.tx_hash is None and r.block is None and r.events == []
     assert r.error_raw == REJECTED_SENDER and r.simulated is False
@@ -134,11 +136,14 @@ def test_recorded_sender_rejection_in_eth_call_skips_the_send() -> None:
     acct = Account.create()
     node = FakeNode(reject_in="eth_call", message=REJECTED_SENDER_CAST)
     chain = _chain(node, SignerRegistry([LocalSigner(acct.key.hex())]))
-    r = chain.raw_call(acct.address, "tUSDC", "0x095ea7b3")
+    r = chain.raw_call(acct.address, chain._addr("tUSDC"), "0x095ea7b3")
     assert r.status == "blocked_at_protocol" and r.tx_hash is None
     assert "non-allow listed address" in (r.error_raw or "")
     assert "eth_sendRawTransaction" not in node.sent
-    assert chain.simulate_pay(acct.address, "tUSDC", "vendor_cloud", 1) == R.BLOCKED_AT_PROTOCOL
+    assert (
+        chain.simulate_pay(acct.address, chain._addr("tUSDC"), chain._addr("vendor_cloud"), 1)
+        == R.BLOCKED_AT_PROTOCOL
+    )
 
 
 def test_other_send_errors_are_write_errors_not_results() -> None:
@@ -148,14 +153,17 @@ def test_other_send_errors_are_write_errors_not_results() -> None:
     )
     chain = _chain(node, SignerRegistry([LocalSigner(acct.key.hex())]))
     with pytest.raises(ChainWriteError, match="nonce too low"):
-        chain.pay(acct.address, "tUSDC", "vendor_cloud", 1)
+        chain.pay(acct.address, chain._addr("tUSDC"), chain._addr("vendor_cloud"), 1)
 
 
 def test_allow_list_precompile_message_is_kept_as_error_raw_in_dry_run() -> None:
     acct = Account.create()
     node = FakeNode(reject_in="eth_call", message=REJECTED_MODIFY)
     chain = _chain(node, SignerRegistry([LocalSigner(acct.key.hex())]))
-    assert chain.simulate_pay(acct.address, "tUSDC", "vendor_cloud", 1) is None  # no reason code
+    assert (
+        chain.simulate_pay(acct.address, chain._addr("tUSDC"), chain._addr("vendor_cloud"), 1)
+        is None
+    )  # no reason code
     d = chain._dry_run({"from": acct.address, "to": chain.dep.vault, "data": "0x"})
     assert d.info and d.info.name == "AllowListModifyDenied" and d.info.raw == REJECTED_MODIFY
 

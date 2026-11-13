@@ -26,6 +26,7 @@ from guardian.attacker.steps import (
     STEP7,
     STEP_BY_NUMBER,
     StepReport,
+    address_resolver,
     execute_step,
 )
 from guardian.chain.base import ChainPort
@@ -72,7 +73,8 @@ def build_sim_chain(prepare: bool = True) -> ChainPort:
     chain = SimChain()
     if prepare:
         chain.apply_policy_v2()
-        execute_step(chain, SCENARIO4_STEPS[0])  # agent step: primes the 5.000 already spent
+        # agent step: primes the 5.000 already spent
+        execute_step(chain, SCENARIO4_STEPS[0], address_resolver(chain))
     return chain
 
 
@@ -193,12 +195,13 @@ def run_scene4(
 ) -> tuple[list[StepReport], bool]:
     """Returns (reports, lock_seen). Prints each step as it happens, then the table."""
     reports: list[StepReport] = []
+    addr = address_resolver(chain)
     if simulate_lock and not dry_run and steps and steps[0].step == STEP7.step:
-        chain.emergency_lock(_STEP6.signer, _STEP6.params["principal_id"])  # step 6 stand-in
+        chain.emergency_lock(addr(_STEP6.signer), _STEP6.params["principal_id"])  # step 6 stand-in
     for i, s in enumerate(steps):
         if i and delay > 0:
             sleep(delay)
-        r = execute_step(chain, s, dry_run=dry_run)
+        r = execute_step(chain, s, addr, dry_run=dry_run)
         reports.append(r)
         if r.sent and reporter:
             reporter.report(r)
@@ -207,7 +210,7 @@ def run_scene4(
     lock_seen = True
     if not dry_run and steps and steps[-1].step == 5:
         if simulate_lock:  # sim only: stand in for the council member (step 6)
-            chain.emergency_lock(_STEP6.signer, _STEP6.params["principal_id"])
+            chain.emergency_lock(addr(_STEP6.signer), _STEP6.params["principal_id"])
         elif wait_lock:
             print(
                 f"waiting for the council to lock '{SCENARIO4_DISTRICT}'...", file=out, flush=True

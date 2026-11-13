@@ -23,6 +23,7 @@ from guardian.chain import contracts as cx
 from guardian.chain import precompiles
 from guardian.chain.base import ChainEvent, ProposalState
 from guardian.chain.client import ChainReadError, make_web3
+from guardian.chain.errors import require_hex
 from guardian.chain.l1.deployments import Deployments, load_deployments
 from guardian.chain.l1.events import EventDecoder, bytes32_to_id
 from guardian.chain.l1.signers import SignerRegistry, signer_env
@@ -215,9 +216,9 @@ class L1Chain(L1Writes):
         return self.dep.vault
 
     def balance(self, holder: str, token: str) -> int:
-        """ERC-20 balance of `holder` (hex address or seed id such as `vault`) in `token` (seed id/address)."""
+        """ERC-20 balance of `holder` in `token` (hex addresses only)."""
         return int(
-            cx.erc20(self.w3, self._addr(token)).functions.balanceOf(self._addr(holder)).call()
+            cx.erc20(self.w3, require_hex(token)).functions.balanceOf(require_hex(holder)).call()
         )
 
     def proposal_state(self, proposal_id: int) -> ProposalState:

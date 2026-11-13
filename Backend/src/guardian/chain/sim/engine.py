@@ -18,7 +18,12 @@ from typing import Any
 from eth_utils import keccak, to_checksum_address
 
 from guardian.chain.base import ChainEvent, ProposalState, TxResult
-from guardian.chain.errors import ChainRevert, is_blocked_at_protocol, revert_for_reason
+from guardian.chain.errors import (
+    ChainRevert,
+    is_blocked_at_protocol,
+    require_hex,
+    revert_for_reason,
+)
 from guardian.chain.sim.allowlist import TxAllowList
 from guardian.chain.sim.council import (
     ALLOWED_TARGETS,
@@ -32,6 +37,7 @@ from guardian.chain.sim.dex import MockDEX
 from guardian.chain.sim.registry import Registry
 from guardian.chain.sim.tokens import Ledger
 from guardian.chain.sim.vault import PolicyVault
+from guardian.domain.address_book import ADDR_ARGS
 from guardian.domain.snapshot import (
     CouncilMember,
     DeclaredEdge,
@@ -153,8 +159,10 @@ class SimChain:
                 self.vault.protocol_allowed.add((p["address"], p["selector"].lower()))
 
     def reset(self) -> None:
-        """Back to seed policy v1 (subscribers are kept)."""
+        """Back to seed policy v1 (subscribers are kept). The Council counter is left so the next
+        proposal gets the seed request #12 id, like the L1 demo-reset script."""
         self._load()
+        self.council.next_id = self._seed["request_12"]["id"]
 
     # --------------------------------------------------------------- helpers
     def _addr(self, x: str) -> str:
@@ -188,7 +196,7 @@ class SimChain:
         self._day_offset += days
 
     def balance(self, holder: str, token: str) -> int:
-        return self.ledger.balance(self._addr(holder), self._addr(token))
+        return self.ledger.balance(require_hex(holder), require_hex(token))
 
     def topup(self, amount: int) -> TxResult:
         """Simulated treasury -> vault top-up (spec §6.8)."""
@@ -220,7 +228,7 @@ class SimChain:
         return res
 
     def _transact(self, sender: str, fn: str, body: Callable[[_Tx], None]) -> TxResult:
-        sender = self._addr(sender)
+        sender = require_hex(sender)
         if not self.txallow.is_allowed(sender):
             assert is_blocked_at_protocol(BLOCKED_MSG)
             return TxResult(
@@ -286,7 +294,7 @@ class SimChain:
 
     def simulate_pay(self, signer: str, token: str, to: str, amount: int) -> ReasonCode | None:
         """eth_call: reason or None, no state change (eth_call ignores the Tx AllowList)."""
-        return self._pay_reason(self._addr(signer), self._addr(token), self._addr(to), amount)
+        return self._pay_reason(require_hex(signer), require_hex(token), require_hex(to), amount)
 
     def simulate_swap(
         self,
@@ -299,11 +307,11 @@ class SimChain:
         min_out: int,
     ) -> ReasonCode | None:
         return self._swap_reason(
-            self._addr(signer),
-            self._addr(dex),
+            require_hex(signer),
+            require_hex(dex),
             selector,
-            self._addr(token_in),
-            self._addr(token_out),
+            require_hex(token_in),
+            require_hex(token_out),
             amount_in,
             min_out,
         )
@@ -317,7 +325,7 @@ class SimChain:
         return pid, day, v.key_spent[(key, day)], v.principal_spent[(pid, day)]
 
     def pay(self, signer: str, token: str, to: str, amount: int, memo: str = "") -> TxResult:
-        token, to = self._addr(token), self._addr(to)
+        token, to = require_hex(token), require_hex(to)
 
         def body(tx: _Tx) -> None:
             reason = self._pay_reason(tx.sender, token, to, amount)
@@ -353,7 +361,7 @@ class SimChain:
         min_out: int,
         reason: str = "",
     ) -> TxResult:
-        dex, t_in, t_out = self._addr(dex), self._addr(token_in), self._addr(token_out)
+        dex, t_in, t_out = require_hex(dex), require_hex(token_in), require_hex(token_out)
 
         def body(tx: _Tx) -> None:
             r = self._swap_reason(tx.sender, dex, selector, t_in, t_out, amount_in, min_out)
@@ -387,7 +395,7 @@ class SimChain:
 
     def raw_call(self, signer: str, target: str, data: str) -> TxResult:
         """Arbitrary tx to any contract: only the Tx AllowList gate matters in the sim."""
-        self._addr(target)
+        require_hex(target)
         return self._transact(signer, "raw_call", lambda tx: None)
 
     # -------------------------------------------------------------- council
@@ -445,7 +453,7 @@ class SimChain:
                 {"member": tx.sender, "action": call["fn"], "subject": self._subject(call)},
             )
 
-        return self._transact(self._member(member), call["fn"], body)
+        return self._transact(require_hex(member), call["fn"], body)
 
     def emergency_lock(self, member: str, principal_id: str) -> TxResult:
         return self._direct(member, _c("vault", "lockPrincipal", principal_id=principal_id))
@@ -455,7 +463,9 @@ class SimChain:
 
     def lower_key_cap(self, member: str, key: str, new_cap: int) -> TxResult:
         return self._direct(
-            member, _c("vault", "setKeyDailyCap", key=key, cap=new_cap), "NotTightening"
+            member,
+            _c("vault", "setKeyDailyCap", key=require_hex(key), cap=new_cap),
+            "NotTightening",
         )
 
     def lower_district_cap(self, member: str, principal_id: str, new_cap: int) -> TxResult:
@@ -473,13 +483,13 @@ class SimChain:
             "protocol": "setProtocolAllowed",
             "recipient": "setRecipientAllowed",
         }[kind]
-        args: dict[str, Any] = {"subject": subject, "allowed": False}
+        args: dict[str, Any] = {"subject": require_hex(subject), "allowed": False}
         if selector:
             args["selector"] = selector
         return self._direct(member, _c("vault", fn, **args))
 
     def deactivate_key(self, member: str, key: str) -> TxResult:
-        return self._direct(member, _c("registry", "deactivateKey", key=key))
+        return self._direct(member, _c("registry", "deactivateKey", key=require_hex(key)))
 
     def proposal_state(self, proposal_id: int) -> ProposalState:
         p = self.council.proposals[proposal_id]  # KeyError: never proposed
@@ -494,8 +504,9 @@ class SimChain:
         )
 
     def direct_call(self, member: str, call: dict[str, Any]) -> TxResult:
-        """Member calls any admin fn directly (loosening => reverts NeedsThreshold)."""
-        return self._direct(member, call)
+        """Test helper, not on ChainPort: member (id or address) calls any admin fn directly
+        (loosening => reverts NeedsThreshold)."""
+        return self._direct(self._member(member), call)
 
     def propose(
         self,
@@ -506,6 +517,11 @@ class SimChain:
         risk_report_hash: str,
     ) -> TxResult:
         """TxResult with `proposal_id` on success; a revert (non-member, T11) is returned, not raised."""
+        member = require_hex(member)
+        for c in calls:
+            for k, v in c.get("args", {}).items():
+                if k in ADDR_ARGS:
+                    require_hex(v)
         box: list[int] = []
 
         def body(tx: _Tx) -> None:
@@ -545,7 +561,7 @@ class SimChain:
                 },
             )
 
-        res = self._transact(self._member(member), "propose", body)
+        res = self._transact(member, "propose", body)
         if res.status == "ok":
             res.proposal_id = box[0]
         return res
@@ -574,7 +590,7 @@ class SimChain:
                 p.executed = True
                 tx.emit("Executed", {"id": p.id})
 
-        return self._transact(self._member(member), "approve", body)
+        return self._transact(require_hex(member), "approve", body)
 
     def cancel(self, member: str, proposal_id: int) -> TxResult:
         def body(tx: _Tx) -> None:
@@ -589,7 +605,7 @@ class SimChain:
             p.cancelled = True
             tx.emit("Cancelled", {"id": p.id})
 
-        return self._transact(self._member(member), "cancel", body)
+        return self._transact(require_hex(member), "cancel", body)
 
     # ---------------------------------------------------- symbolic call exec
     def _set_role(self, tx: _Tx, key: str, role: int) -> None:
@@ -706,11 +722,24 @@ class SimChain:
         """Policy v2 via propose + 2 approvals (lan, trang)."""
         v2 = self._seed["policy_v2"]
         prop = self.propose(
-            v2["approvers"][0], v2["title"], v2["subject_principal"], v2["calls"], _h("policy_v2")
+            self._member(v2["approvers"][0]),
+            v2["title"],
+            v2["subject_principal"],
+            self.resolve_calls(v2["calls"]),
+            _h("policy_v2"),
         )
         pid = prop.proposal_id
         assert pid is not None, prop.error_raw
-        return [self.approve(m, pid) for m in v2["approvers"]]
+        return [self.approve(self._member(m), pid) for m in v2["approvers"]]
+
+    def resolve_calls(self, calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Seed-driven calls carry ids (`key_minh`, `mock_dex`): resolve them to the hex `propose` wants."""
+        out = copy.deepcopy(calls)
+        for c in out:
+            a = c.get("args", {})
+            for k in ADDR_ARGS & a.keys():
+                a[k] = self._addr(a[k])
+        return out
 
     # ------------------------------------------------------------- snapshot
     def snapshot(self) -> PolicySnapshot:

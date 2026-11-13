@@ -6,10 +6,12 @@ so there is exactly one place that formats money.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from guardian.chain.base import ChainEvent
 from guardian.core.errors import ApiError
+from guardian.domain.address_book import ADDR_ARGS
 from guardian.graph import changes as chg
 from guardian.shared.money import money
 
@@ -143,9 +145,12 @@ def calls_out(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def chain_calls(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def chain_calls(
+    calls: list[dict[str, Any]], addr: Callable[[str], str] | None = None
+) -> list[dict[str, Any]]:
     """graph.changes.to_calls vocabulary (toId/principalId/cap:str) -> SimChain vocabulary
-    (to/principal_id/cap:int). TODO(owner of graph/changes.py): unify the two vocabularies."""
+    (to/principal_id/cap:int); `addr` turns address-bearing args (key, token...) into hex for ChainPort.
+    `to`/`principal_id` stay principal ids. TODO(owner of graph/changes.py): unify the two vocabularies."""
     out = []
     for c in calls:
         a = dict(c["args"])
@@ -155,6 +160,8 @@ def chain_calls(calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
             a["principal_id"] = a.pop("principalId")
         if "cap" in a:
             a["cap"] = int(a["cap"])
+        for k in ADDR_ARGS & a.keys() if addr else ():
+            a[k] = addr(a[k])
         if c["fn"] == "createPrincipal":
             a.setdefault("kind", "SERVICE")
         out.append({"target": c["target"], "fn": c["fn"], "args": a})

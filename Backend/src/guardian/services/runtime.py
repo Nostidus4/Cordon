@@ -20,10 +20,13 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from eth_utils import to_checksum_address
+
 from guardian.chain.base import ChainEvent, DemoChain
-from guardian.chain.sim import SimChain
+from guardian.chain.factory import new_sim_chain
 from guardian.core.config import Settings
 from guardian.core.demo_guard import DemoGuard, ensure_test_chain
+from guardian.domain.address_book import build_address_book
 from guardian.domain.snapshot import KeyState, PolicySnapshot
 from guardian.graph.findings import compute_findings
 from guardian.services import views
@@ -197,7 +200,7 @@ class Runtime:
 
                 chain = build_l1_chain(settings)  # L1StartupError: clear, no traceback to read
             else:
-                chain = SimChain()
+                chain = new_sim_chain()
         self.chain: Any = chain  # ChainPort + the extras both implementations have (balance...)
         if self.is_l1:
             ensure_test_chain(settings, int(self.chain.w3.eth.chain_id))
@@ -206,6 +209,7 @@ class Runtime:
         self.stores = Stores()
         self.llm_client: Any = None  # built lazily by core.llm.open_session; tests inject a fake
         self.graph_version = 1
+        self._book: dict[str, str] | None = None
         self.scenario_tasks: dict[str, asyncio.Task[None]] = {}
         self.event_log: deque[ChainEvent] = deque(maxlen=EVENT_LOG_SIZE)
         self.indexer: Indexer | None = None
@@ -260,6 +264,7 @@ class Runtime:
         self._live = False
         self.chain = new_chain
         self._last_city = None
+        self._book = None  # L1 addresses change with the deployment
         close = getattr(old, "close", None)
         if close is not None:
             close()
@@ -303,6 +308,16 @@ class Runtime:
 
     def snapshot(self) -> PolicySnapshot:
         return self.chain.snapshot()
+
+    def addr(self, ref: str) -> str:
+        """Id (`key_minh`, `lan`, `tUSDC`, `vault`...) or hex -> the checksum address ChainPort wants (CHN-004)."""
+        if ref.startswith("0x") and len(ref) == 42:
+            return to_checksum_address(ref)
+        if self._book is None or ref not in self._book:  # (re)build: a key may be added at runtime
+            self._book = build_address_book(self.chain.snapshot(), self.chain.vault_addr)
+        if ref in self._book:
+            return self._book[ref]
+        raise KeyError(f"unknown address ref {ref!r}")
 
     def findings(self) -> list[dict[str, Any]]:
         return compute_findings(self.snapshot())

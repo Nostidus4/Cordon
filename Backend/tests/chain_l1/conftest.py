@@ -19,6 +19,7 @@ from tests.chain_l1.anvil_env import (
     deploy_may_labs,
     find_binary,
 )
+from tests.idport import IdPort
 
 SKIP_MSG = (
     "Foundry is not installed (needs `anvil` and `forge`, see https://getfoundry.sh); "
@@ -53,7 +54,7 @@ def env(anvil_binary: str, built_contracts: None) -> Iterator[Env]:
 
 
 @pytest.fixture
-def l1(env: Env) -> Iterator[L1Chain]:
+def l1(env: Env) -> Iterator[IdPort]:
     """`L1Chain` on the seeded anvil with write access: every seed key and Council member is a
     node-held (impersonated) signer, and sends from a role-0 address get the node's rejection."""
     env.fund_and_impersonate_all()
@@ -62,6 +63,6 @@ def l1(env: Env) -> Iterator[L1Chain]:
     signers = SignerRegistry([NodeSigner(e["address"]) for e in (*seed["keys"], *seed["council"])])
     chain = L1Chain(w3, env.dep, seed, signers=signers)
     try:
-        yield chain
+        yield IdPort(chain)  # tests speak seed ids, the adapter takes hex only (CHN-004)
     finally:
         chain.close()

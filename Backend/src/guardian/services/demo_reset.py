@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from guardian.chain.factory import load_seed, reference_v2_snapshot
 from guardian.chain.l1.startup import L1StartupError
-from guardian.chain.sim.engine import load_seed
 from guardian.core.errors import ApiError
 from guardian.graph.findings import R1
 from guardian.services import proposal_service as ps
@@ -72,14 +72,13 @@ def _seed_request_12(rt: Runtime) -> None:
     reset time is still v1."""
     r12 = load_seed()["request_12"]
     cap = next(c["args"]["cap"] for c in r12["calls"] if c["fn"] == "setPrincipalDailyCap")
-    rt.chain.council.next_id = r12["id"]
     ps.propose(
         rt,
         REQUEST_PROPOSER,
         None,
         {"kind": "set_district_cap", "principalId": r12["subject_principal"], "cap": cap},
         r12["title"],
-        snap=ps.reference_v2_snapshot(),
+        snap=reference_v2_snapshot(),
         report_basis="policy_v2_reference",
     )
     seed_request_13(rt)
@@ -97,7 +96,7 @@ def _seed_request_12_l1(rt: Runtime) -> int | None:
             None,
             {"kind": "set_district_cap", "principalId": r12["subject_principal"], "cap": cap},
             r12["title"],
-            snap=ps.reference_v2_snapshot(),
+            snap=reference_v2_snapshot(),
             report_basis="policy_v2_reference",
         )
     except Exception:  # reset must not fail on the seeded request

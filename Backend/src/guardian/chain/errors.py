@@ -10,9 +10,19 @@ from dataclasses import dataclass
 
 from eth_abi import decode
 from eth_abi.exceptions import DecodingError
-from eth_utils import keccak
+from eth_utils import keccak, to_checksum_address
 
 from guardian.shared.reason_codes import REASON_TABLE, ReasonCode
+
+_HEX_ADDR = re.compile(r"^0x[0-9a-fA-F]{40}$")
+
+
+def require_hex(ref: str) -> str:
+    """ChainPort boundary: only hex addresses cross it (ids are resolved by the app, CHN-004)."""
+    if not isinstance(ref, str) or not _HEX_ADDR.match(ref):
+        raise ValueError(f"expected hex address, got {ref!r}")
+    return to_checksum_address(ref)
+
 
 ERROR_TO_REASON: dict[str, ReasonCode] = {
     info.error: code for code, info in REASON_TABLE.items() if info.error is not None
