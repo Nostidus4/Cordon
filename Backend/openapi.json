@@ -128,6 +128,28 @@
             ],
             "title": "Reasonhash"
           },
+          "reasonHashOnChain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasonhashonchain"
+          },
+          "reasonHashVerified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasonhashverified"
+          },
           "reasonSource": {
             "anyOf": [
               {
@@ -149,6 +171,17 @@
               }
             ],
             "title": "Reasontext"
+          },
+          "rejectedReasonText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejectedreasontext"
           },
           "steps": {
             "anyOf": [
@@ -4071,6 +4104,100 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "ViolationOut": {
+        "description": "One call the vault policy refused (docs/spec/CITY_OPS.md §9). Derived from the recorded attempts.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "keyLabel": {
+            "title": "Keylabel",
+            "type": "string"
+          },
+          "principalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principalid"
+          },
+          "reasonCode": {
+            "title": "Reasoncode",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "agent",
+              "attacker",
+              "fault",
+              "copilot",
+              "other"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          },
+          "txHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txhash"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "source",
+          "key",
+          "keyLabel",
+          "action",
+          "reasonCode",
+          "simulated",
+          "ref"
+        ],
+        "title": "ViolationOut",
+        "type": "object"
+      },
       "WarningOut": {
         "properties": {
           "code": {
@@ -5729,6 +5856,56 @@
         "summary": "Send",
         "tags": [
           "txguard"
+        ]
+      }
+    },
+    "/api/violations": {
+      "get": {
+        "description": "Every refused call (reason code as the chain returned it), newest first. Read-only.",
+        "operationId": "list_violations_api_violations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ViolationOut"
+                  },
+                  "title": "Response List Violations Api Violations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Violations",
+        "tags": [
+          "violations"
         ]
       }
     }

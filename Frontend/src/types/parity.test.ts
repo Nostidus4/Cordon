@@ -152,6 +152,8 @@ expectTypeOf<DiffR<S["EvalAccuracy"], T.CopilotEvalAccuracy>>().toEqualTypeOf<Kn
 expectTypeOf<DiffQ<S["CopilotRequest"], T.CopilotRequest>>().toEqualTypeOf<Known<never, never, never>>();
 expectTypeOf<DiffQ<S["ConfirmRequest"], T.CopilotConfirmRequest>>().toEqualTypeOf<Known<never, never, never>>();
 
+// ViolationOut <-> Violation (CITY-005)
+expectTypeOf<DiffR<S["ViolationOut"], T.Violation>>().toEqualTypeOf<Known<never, never, never>>();
 // SSE type list must match Backend schemas/stream.py SSE_EVENT_TYPES (API_CONTRACT §5).
 expectTypeOf<T.StreamMessageType>().toEqualTypeOf<
   "event" | "attempt" | "graph_updated" | "proposal_updated" | "agent_run" | "city_updated" | "incident_updated" | "reset"

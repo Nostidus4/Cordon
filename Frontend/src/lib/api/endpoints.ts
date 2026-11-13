@@ -6,7 +6,7 @@ import type {
   DraftProposalRequest, Finding, GraphSnapshot, Health, LockRequest, MemberId, Org, PauseRequest, Proposal, ProposalDraft,
   ScenarioRun, SimResult, SimulateRequest, StreamListener,
   BuildingDetail, BuildingInfo, FaultDef, FaultResult, Incident, PreparedTxInput, TxCheck,
-  CopilotDraft, CopilotEval, CopilotReply,
+  CopilotDraft, CopilotEval, CopilotReply, Violation,
 } from "../../types";
 import { useConnStore } from "../../store/connStore";
 import { connectSse } from "../sse";
@@ -48,6 +48,8 @@ export interface Api {
   injectFault(id: string): Promise<FaultResult>;
   getIncidents(status?: "open" | "all"): Promise<Incident[]>;
   getIncident(id: number): Promise<Incident>;
+  /** CITY-005: every refused call, newest first (derived from attempts). */
+  getViolations(limit?: number): Promise<Violation[]>;
   /** Copilot (B02, CITY-004; docs/spec/CITY_OPS.md §8): prepare-only chat, drafts, the single confirm path, latest eval. */
   askCopilot(message: string): Promise<CopilotReply>;
   getCopilotDrafts(): Promise<CopilotDraft[]>;
@@ -95,6 +97,7 @@ const liveApi: Api = {
   injectFault: (id) => http("POST", `/faults/${encodeURIComponent(id)}/inject`),
   getIncidents: (status = "all") => http("GET", `/incidents?status=${status}`),
   getIncident: (id) => http("GET", `/incidents/${id}`),
+  getViolations: (limit = 50) => http("GET", `/violations?limit=${limit}`),
   askCopilot: (message) => http("POST", "/assistant/copilot", { message }),
   getCopilotDrafts: () => http("GET", "/assistant/copilot/drafts"),
   confirmCopilotDraft: (id, acknowledgeRisk) => http("POST", `/assistant/copilot/drafts/${id}/confirm`, { acknowledgeRisk }),

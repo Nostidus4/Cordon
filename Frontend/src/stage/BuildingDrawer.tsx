@@ -19,6 +19,8 @@ import { CopilotPanel } from "./CopilotPanel";
 import { useStageStore, type DrawerTab } from "./stageStore";
 import { TxGuardPanel } from "./TxGuardPanel";
 import { CheckIcon, CrossIcon, FaceAvatar, ToyButton, ToyCard } from "./ui";
+import { AgentGuardPanel } from "./AgentGuardPanel";
+import { ViolationsPanel } from "./ViolationsPanel";
 
 export const STATE_TONE: Record<RuleState, { dot: string; soft: string; ink: string }> = {
   normal: { dot: "var(--green)", soft: "var(--teal-soft)", ink: "var(--teal-ink)" },
@@ -63,6 +65,8 @@ function Overview({ d, summary, module, topic, run }: { d: BuildingDetail; summa
           ))}
         </div>
       ) : null}
+      {d.id === "B06" ? <AgentGuardPanel /> : null}
+      {d.id === "B03" || d.id === "B07" ? <ViolationsPanel /> : null}
       <div>
         <div className="toy-eyebrow" style={{ fontSize: 13.5 }}>Vừa xảy ra</div>
         {d.recent.length === 0 ? <p className="toy-body m-0" style={{ fontSize: 13 }}>Chưa có gì.</p> : (

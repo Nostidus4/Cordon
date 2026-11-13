@@ -228,3 +228,24 @@ Mỗi nháp được đưa qua một `Checkpoint` (`assistant/copilot/checkpoint
 
 ### 8.4 Eval (30 câu VI/EN)
 `make copilot-eval` (hoặc `cd Backend && uv run python scripts/copilot_eval.py`) chạy `Backend/tests/fixtures/copilot_eval.json` trên sim chain từ trạng thái reset, theo đúng thứ tự file, không LLM, không timestamp, nên cùng lệnh cho cùng số. Mỗi nháp được xác nhận như người dùng thật nhưng **không** gửi `acknowledgeRisk`. Báo cáo: độ chính xác ý định, "giao dịch sai bị chặn x/y" (tách theo từ chối / luật chain / trạm soi), lệnh hợp lệ gửi được, câu đọc có số đã kiểm chứng. Ghi ra `docs/reports/copilot_eval.json` và `.md`; hiện ở panel B02 trong ngăn kéo của tòa.
+## 9. Guardrail cho agent (CITY-005)
+Đề UniHack #12: agent chỉ giữ session key, mọi lệnh qua luật của kho, văn bản lạ không đổi được quyết định, mọi vi phạm có trên một bảng. Chỉ **thêm**, không đổi field cũ.
+
+**Prompt injection (F06).** Văn bản lạ vào prompt của bộ viết lý do (khối `untrusted_data`), nhưng `rule_engine.decide` không đọc nó: số tiền, token, DEX giống hệt có hay không có văn bản. Câu LLM viết chỉ được nhận khi có đúng số tiền của quyết định và không có số, token, địa chỉ, link nào khác; không thì dùng câu mẫu. Lệnh `pay` thẳng tới ví lạ vẫn bị hợp đồng chặn `RECIPIENT_NOT_ALLOWED`.
+
+**Trường mới (tuỳ chọn) trong `AgentRunOut`** (`GET /api/agent/runs`, `POST /api/agent/run-once`, SSE `agent_run`):
+- `rejectedReasonText: string | null`: câu LLM bị bỏ vì không qua kiểm tra (khi đó `reasonText` là câu mẫu).
+- `reasonHashOnChain: string | null`: `reasonHash` trong event `Swapped` của giao dịch; `null` nếu không gửi giao dịch.
+- `reasonHashVerified: boolean | null`: `keccak(reasonText) == reasonHashOnChain`; `null` khi chưa có event để so. UI hiện nhãn "đã khớp" / "không khớp".
+
+**Bảng vi phạm.** `GET /api/violations?limit=` (mặc định 50, tối đa 500) → `ViolationOut[]`, mới nhất trước, suy ra từ `attempts` có `outcome != ok` và có `reasonCode` (không có danh sách riêng); `reasonCode` chép nguyên từ kết quả chain:
+```json
+{ "id": 12, "ts": 0, "source": "agent", "key": "key_agent_rebalance", "keyLabel": "Trợ lý Cân đối",
+  "principalId": "minh", "district": "Anh Minh", "action": "pay", "reasonCode": "RECIPIENT_NOT_ALLOWED",
+  "txHash": "0x…", "simulated": true, "ref": "attempt:12" }
+```
+`source`: `agent` (khoá agent), `fault` (lệnh do `POST /faults/{id}/inject` tạo), `attacker` (kịch bản 4 hoặc CLI ngoài), `copilot` (dành cho #63), `other`. `action`: `pay | swap | raw | …`. `txHash` là `null` khi lệnh bị chặn trước khi gửi.
+
+**UI.** `ViolationsPanel` trong ngăn kéo B03 và B07; `AgentGuardPanel` trong B06 (văn bản lạ, "đã bỏ qua", quyết định không đổi, lệnh chuyển thẳng bị chặn, nhãn hash).
+
+**Hoãn.** Timelock đổi luật (hiện ở B01) cần quyết định interface contract mới, tách thành issue riêng; chưa làm ở đây.

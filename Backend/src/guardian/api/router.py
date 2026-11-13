@@ -23,6 +23,7 @@ from guardian.api.routes import (
     simulate,
     stream,
     txguard,
+    violations,
 )
 
 api_router = APIRouter()
@@ -44,5 +45,6 @@ api_router.include_router(demo.router)
 api_router.include_router(buildings.router)
 api_router.include_router(faults.router)
 api_router.include_router(incidents.router)
+api_router.include_router(violations.router)
 api_router.include_router(copilot.router)
 api_router.include_router(txguard.router)

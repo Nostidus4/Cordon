@@ -7,7 +7,7 @@ const m = (n: number) => money(toBase(n));
 const run = (o: Partial<AgentRun> & { s?: number; k?: number; d?: number | null } = {}): AgentRun => {
   const { s, k, d, ...rest } = o;
   return {
-    id: 1, ts: 1_794_000_000, outcome: "swapped", reasonText: "", reasonSource: "template", reasonHash: null, txHash: null, reasonCode: null, attemptId: null, steps: null, untrustedInput: null, injectionIgnored: null,
+    id: 1, ts: 1_794_000_000, outcome: "swapped", reasonText: "", reasonSource: "template", reasonHash: null, txHash: null, reasonCode: null, attemptId: null, steps: null, reasonHashOnChain: null, reasonHashVerified: null, rejectedReasonText: null, untrustedInput: null, injectionIgnored: null,
     decision: { tokenIn: "tUSDC", tokenOut: "tTKB", amountIn: m(5000), gap: m(s ?? 20000), ttkbWeightBps: 0, targetBps: 2000, totalValue: m(100000) },
     balances: { vaultTusdc: m(100000), vaultTtkb: m(0), ttkbValueInTusdc: m(0), keyRemaining: m(k ?? 20000), districtRemaining: d === null ? null : m(d ?? 30000) },
     ...rest,
