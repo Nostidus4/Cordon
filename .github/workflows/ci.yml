@@ -89,3 +89,36 @@ jobs:
         run: |
           contracts/scripts/export-abis.sh
           git diff --exit-code -- Backend/src/guardian/chain/abis
+
+  db:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: guardian
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: guardian
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U guardian -d guardian"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    defaults:
+      run:
+        working-directory: Backend
+    env:
+      DATABASE_URL: postgresql+asyncpg://guardian:ci-only@localhost:5432/guardian
+      TEST_DATABASE_URL: postgresql+asyncpg://guardian:ci-only@localhost:5432/guardian
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync
+      - name: alembic upgrade head / downgrade base exit 0
+        run: uv run alembic upgrade head && uv run alembic downgrade base
+      - name: Schema, unique (tx_hash, log_index), clean downgrade
+        run: uv run pytest -q -rs tests/test_db_migrations.py

@@ -46,7 +46,7 @@ meta(key PK, value)    -- policy_version, last_block_l1, last_block_c, graph_ver
 
 ## Trạng thái hiện tại
 
-Model SQLAlchemy đã phác ở `Backend/src/guardian/models/*` (14 file) và `db/{base,session}.py`; `Backend/alembic/env.py` có, `alembic/versions/` rỗng; `docker-compose.yml` chỉ có khối `db` bị comment. Mọi dữ liệu runtime đang ở `Stores` trong RAM.
+Đủ model SQLAlchemy ở `Backend/src/guardian/models/*`, migration baseline `Backend/alembic/versions/0001_baseline.py` (upgrade/downgrade chạy trong job CI `db`). Postgres local: đặt `POSTGRES_PASSWORD` trong `.env` ở gốc repo, `make db-up` rồi `make db-migrate`. `DATABASE_URL` (Backend) rỗng thì API chạy với `Stores` trong RAM như cũ; chưa có repository nào ghi DB (DB-002, DB-003).
 
 ## Issue
 
