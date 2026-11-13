@@ -1,4 +1,4 @@
-"""POST /api/assistant/ask: fixed questions answered from templates + tool numbers (verified)."""
+"""POST /api/assistant/ask: fixed questions from templates; free text only through the verified LLM path."""
 
 from fastapi import APIRouter, Query
 

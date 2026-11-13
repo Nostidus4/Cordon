@@ -1,6 +1,6 @@
 """agent-rebalance, one round (spec §7.1): balances -> rule engine -> simulate -> swap or BLOCKED.
 
-The LLM never touches amount/token/DEX: `write_reason` only phrases the sentence (template now).
+The LLM never touches amount/token/DEX: `write_reason` only phrases the sentence (LLM, else template); `decision` is final before it runs.
 """
 
 from __future__ import annotations
@@ -124,7 +124,7 @@ def run_once(rt: Runtime, untrusted_input: str | None = None) -> dict[str, Any]:
             **decision_out(decision),  # type: ignore[arg-type]
         )
     )
-    text, source = write_reason(decision)
+    text, source = write_reason(decision, rt, untrusted_input)
     rh = reason_hash(text)
     explain = _step(
         "explain", "Giải thích", "ok", reasonText=text, reasonSource=source, reasonHash=rh

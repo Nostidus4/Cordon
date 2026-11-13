@@ -24,3 +24,19 @@ CHAIN_MODE=l1 DEMO_MODE=true uv run guardian-api  # API on a Guardian L1: see do
 | `src/guardian/attacker` | CLI kịch bản cảnh 4 (§7.2) |
 | `src/guardian/shared` | Reason codes, tiền tệ, kịch bản cảnh 4 |
 | `seed/`, `deployments/` | Dữ liệu Mây Labs, địa chỉ contract |
+
+## LLM (trợ lý câu tự do + lý do của agent)
+
+Mặc định không gọi LLM: câu cố định và lý do của agent dùng mẫu. LLM chỉ **đọc** (tool chỉ đọc) và **viết lời**; không bao giờ quyết định số tiền, token, sàn hay người nhận, và không có gì tự động nới chính sách.
+
+| Biến môi trường | Ý nghĩa |
+|---|---|
+| `ANTHROPIC_API_KEY` | Khóa Anthropic (SDK còn đọc `ANTHROPIC_AUTH_TOKEN`). Không bao giờ được log. |
+| `LLM_ENABLED` | `true`/`false`. Bỏ trống = bật khi có khóa, tắt khi không có. |
+| `LLM_MODEL` | Mặc định `claude-opus-5-5`. |
+| `LLM_TIMEOUT_SECONDS` | Ngân sách cứng cho mọi lần gọi của một request, mặc định `8`. |
+| `LLM_MAX_TOOL_CALLS` | Số lần gọi tool tối đa mỗi câu hỏi, mặc định `4`. |
+
+- Bật LLM thì `POST /api/assistant/ask` nhận câu tự do: mọi số trong câu trả lời phải qua `verifier.verify`, nếu không trả câu mặc định với `numbersVerified=false`. Lỗi, timeout, từ chối đều rơi về mẫu. Tắt LLM thì câu ngoài danh sách cố định vẫn trả 422.
+- Đổi nhà cung cấp: cài một `LlmClient` mới (`core/llm.py`) rồi gán `rt.llm_client`; không phải sửa trợ lý hay agent.
+- Test dùng client giả, không cần khóa: `uv run pytest`. Đo độ ổn định với API thật (không chạy trong CI, tự bỏ qua khi không có khóa): `ANTHROPIC_API_KEY=... uv run python scripts/llm_reliability.py [--runs 10]`.

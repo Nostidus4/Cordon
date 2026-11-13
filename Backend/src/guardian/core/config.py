@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     )
     scenario_delay_seconds: float = 3.0
     rate_limit_per_minute: int = 120
+
+    # LLM (assistant free text + agent reason). Credentials come from the SDK chain (ANTHROPIC_API_KEY, ...).
+    # None = "decide from credentials": on when an API key is present, off otherwise (templates only).
+    llm_enabled: bool | None = None
+    llm_model: str = "claude-opus-5-5"
+    llm_timeout_seconds: float = 8.0  # hard budget for ALL LLM calls of one request
+    llm_max_tool_calls: int = 4
+    anthropic_api_key: SecretStr | None = None  # also read from the process env by the SDK
 
     # CITY_OPS responder (docs/spec/CITY_OPS.md §4): detection always on when enabled; signing containment
     # needs DEMO_MODE. None = "decide from demo mode".

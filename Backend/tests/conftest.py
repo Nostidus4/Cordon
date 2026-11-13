@@ -23,6 +23,7 @@ def make_settings(**kw: Any) -> Settings:
         "demo_mode": True,
         "rate_limit_per_minute": 100_000,
         "scenario_delay_seconds": 0.0,
+        "llm_enabled": False,  # never reach a real provider from the suite, whatever the dev's env holds
     }
     return Settings(**{**base, **kw})
 
