@@ -18,3 +18,7 @@ npm run build
 | `src/shared` | Reason codes, kịch bản cảnh 4 |
 | `src/graph` | Bố cục cố định, chuyển snapshot sang React Flow |
 | `src/hooks`, `src/store` | Gọi API, trạng thái UI (Live/Replay, demoMode) |
+
+## Live mode
+
+`make dev-live` (repo root) starts the sim API (demo mode) and Vite with `VITE_API_MODE=live` together; Ctrl-C stops both. Vite proxies `/api` to `localhost:8000`. If the API/stream drops, a small banner shows "Đang dùng dữ liệu đã lưu lúc HH:MM:SS" and everything refetches when the stream reconnects. Live smoke test: `LIVE_API=1 VITE_API_MODE=live VITE_API_BASE=http://localhost:8000/api npx vitest run src/lib/api/live.walkthrough.test.ts`.
