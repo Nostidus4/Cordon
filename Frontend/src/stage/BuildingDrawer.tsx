@@ -207,7 +207,7 @@ function Faults({ building, faults }: { building: BuildingId; faults: FaultDef[]
   );
 }
 
-const TAB_LABEL: Record<DrawerTab, string> = { overview: "Tổng quan", rules: "Luật", incident: "Sự cố", faults: "Thử gây sự cố" };
+const TAB_LABEL: Record<DrawerTab, string> = { overview: "Tổng quan", rules: "Luật", incident: "Sự cố", faults: "Thử lỗi" };
 
 export function BuildingDrawer({ code }: { code: BuildingId }) {
   const infos = useBuildingInfos();
@@ -239,7 +239,7 @@ export function BuildingDrawer({ code }: { code: BuildingId }) {
 
   return (
     <div className="stage-drawer" data-slot="drawer" data-building-drawer={code}>
-      <ToyCard className="flex h-full w-full flex-col overflow-hidden p-3.5" label={`Bên trong ${info.name}`} key={code}>
+      <ToyCard className="flex w-full flex-col overflow-hidden p-3.5" label={`Bên trong ${info.name}`} key={code}>
         <div className="flex items-center gap-2.5">
           <span className="size-4 shrink-0 rounded-full" style={{ background: tone.dot, boxShadow: "0 0 0 3px #fff" }} aria-hidden />
           <div className="min-w-0 flex-1 truncate font-toy text-[20px] font-bold leading-tight" style={{ color: "var(--ink)" }}>{info.name}</div>
@@ -258,7 +258,7 @@ export function BuildingDrawer({ code }: { code: BuildingId }) {
             : tab === "overview" ? <Overview d={d} summary={info.summaryVi} module={info.module} topic={info.topic} run={run.data ?? null} />
             : tab === "rules" ? <Rules d={d} />
             : tab === "incident" && inc ? <IncidentTab inc={inc} demo={demo} />
-            : <Faults building={code} faults={faults} />}
+            : <><div className="toy-eyebrow mb-1.5" style={{ fontSize: 14 }}>Thử gây sự cố</div><Faults building={code} faults={faults} /></>}
         </div>
       </ToyCard>
     </div>

@@ -205,3 +205,12 @@
 @media (max-width: 1099px), (max-height: 699px) {
   .stage[data-drawer="open"] [data-slot="scene-left"][data-intro] { display: none; }
 }
+
+.stage-topbar-in, .stage-topbar-in button, .stage-topbar-in a { white-space: nowrap; }
+.stage-topbar-in .toy-pill-toggle button { white-space: nowrap; }
+.stage-drawer [role="tablist"] { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.stage-drawer [role="tablist"] button { flex: 1 1 auto; white-space: nowrap; }
+.stage-drawer { align-items: flex-start; }
+.stage-drawer > .toy-card { height: auto; max-height: 100%; }
+
+@media (max-width: 639px) { [data-slot="top-bar"] nav { padding: 4px; gap: 0; } [data-slot="top-bar"] nav button[aria-current] { padding-right: 12px; } }
