@@ -1,6 +1,17 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from guardian.schemas.common import CamelModel, JsonDict
+
+
+class AgentStep(CamelModel):
+    """One step of the agent timeline (docs/spec/CITY_OPS.md §2)."""
+
+    key: Literal["read", "decide", "simulate", "send", "explain"]
+    label_vi: str
+    status: Literal["ok", "blocked", "skipped"]
+    detail: JsonDict
 
 
 class AgentRunOut(CamelModel):
@@ -15,3 +26,7 @@ class AgentRunOut(CamelModel):
     reason_code: str | None = None
     attempt_id: int | None = None
     balances: JsonDict
+    # CITY_OPS §2, all optional
+    steps: list[AgentStep] | None = None
+    untrusted_input: str | None = None
+    injection_ignored: bool | None = None

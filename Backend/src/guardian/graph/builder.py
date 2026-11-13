@@ -109,6 +109,8 @@ def build_graph(snapshot: PolicySnapshot, findings: list[dict[str, Any]]) -> dic
     districts = [
         {
             "principalId": pid,
+            "label": p.label,
+            "kind": p.kind,
             "dailyCap": str(p.daily_cap) if p.daily_cap > 0 else None,
             "spentToday": str(p.spent_today),
             "locked": p.locked,

@@ -15,7 +15,7 @@ export type StreamMessage =
   | { type: "reset"; data: { at: string } };
 
 export type StreamMessageType = StreamMessage["type"];
-export const STREAM_TYPES: StreamMessageType[] = [
-  "event", "attempt", "graph_updated", "proposal_updated", "agent_run", "city_updated", "reset",
+export const STREAM_TYPES: (StreamMessageType | "incident_updated")[] = [
+  "event", "attempt", "graph_updated", "proposal_updated", "agent_run", "city_updated", "reset", "incident_updated",
 ];
 export type StreamListener = (msg: StreamMessage) => void;

@@ -6,6 +6,7 @@ graph_updated  -> {graphVersion, policyVersion, policyLabel, block}
 proposal_updated -> ProposalOut
 agent_run      -> AgentRunOut
 city_updated   -> CityStates
+incident_updated -> IncidentOut  (CITY_OPS §4.4)
 reset          -> {at, policyVersion, policyLabel, graphVersion, block}
 """
 
@@ -21,4 +22,5 @@ SSE_EVENT_TYPES: Final = (
     "agent_run",
     "city_updated",
     "reset",
+    "incident_updated",
 )

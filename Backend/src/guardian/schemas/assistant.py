@@ -45,3 +45,18 @@ class AssistantAnswer(CamelModel):
     suggestions: list[Suggestion] = Field(default_factory=list)
     warnings: list[AssistantWarning] = Field(default_factory=list)
     numbers_verified: bool
+
+
+class AssistantLogOut(CamelModel):
+    """GET /api/assistant/logs row (issue API-003)."""
+
+    id: int
+    ts: int
+    question_id: str | None = None
+    question: str
+    answer: str
+    numbers_verified: bool
+    screen: str | None = None
+    flagged_untrusted: bool = (
+        False  # CITY_OPS B02: the responder marked this answer as not trustworthy
+    )

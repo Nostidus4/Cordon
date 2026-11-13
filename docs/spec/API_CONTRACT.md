@@ -62,6 +62,10 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 | GET | `/org` | công ty, quỹ chính, kho, Council | có |
 | GET | `/graph` | `GraphSnapshot` (`policyVersion` thô + `policyLabel`, mục 4.1) | có |
 | GET | `/city/states` | trạng thái 8 công trình cho thành phố 3D | có |
+| GET | `/city/buildings`, `/city/buildings/{id}` | 8 tòa = 8 module, luật đổi màu, bằng chứng, `recent` ([CITY_OPS](CITY_OPS.md) §2) | có (CITY_OPS) |
+| GET | `/faults` | các kiểu sự cố gây được (F01-F07) | có (CITY_OPS) |
+| POST | `/faults/{id}/inject` | gây sự cố thật qua `ChainPort` / service, chỉ `DEMO_MODE` (CITY_OPS §3) | có (CITY_OPS) |
+| GET | `/incidents?status=open\|all`, `/incidents/{id}` | sự cố do responder xử lý (CITY_OPS §4) | có (CITY_OPS) |
 | POST | `/simulate` | `{compromised[], change?}` → `SimResult` (có `before/after` khi có `change`) | có |
 | GET | `/findings` | findings đang mở (id dạng `R1_MULTI_KEY_NO_SHARED_CAP:minh`) | có |
 | GET | `/districts/{id}` | chi tiết khu | có |
@@ -73,9 +77,9 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 | POST | `/proposals/{id}/approve` | `{member}` (demo signer) | có |
 | POST | `/actions/lock`, `/actions/pause` | demo signer, `emergencyLock` / `emergencyPause` | có |
 | POST | `/assistant/ask` | `{question, context}` → `AssistantAnswer` (+ `numbersVerified`) | có |
-| GET | `/assistant/logs` | bảng `assistant_logs`, cũ nhất trước | **thiếu** (API-003) |
+| GET | `/assistant/logs` | bảng `assistant_logs`, cũ nhất trước, `?limit=` (mặc định 200) | có (CITY_OPS) |
 | POST | `/agent/run-once` | chạy agent một vòng → `AgentRun` | có |
-| GET | `/agent/runs` | bảng `agent_runs`, cũ nhất trước | **thiếu** (API-003) |
+| GET | `/agent/runs` | bảng `agent_runs`, cũ nhất trước, `?limit=` (mặc định 200); `AgentRun` thêm `steps`, `untrustedInput`, `injectionIgnored` | có (CITY_OPS) |
 | POST | `/scenario/scene4/run`, `/scenario/scene4/step7` | chạy kịch bản từ server | có |
 | GET | `/scenario/runs`, `/scenario/runs/{id}` | các lần chạy (Replay dùng) | có |
 | POST | `/demo/reset`, `/demo/policy-v2` | đặt lại về đầu cảnh 1 (sim: tua lại chain trong bộ nhớ; l1: nạp lại bộ contract mới mà `make demo-reset` vừa deploy, mục 4.2); áp policy v2 qua đường Council thật | có |
@@ -105,6 +109,7 @@ Mỗi message: `event: <type>` + `data: <JSON>`.
 | `agent_run` | `AgentRunOut` |
 | `city_updated` | `CityStates` |
 | `reset` | `{at, policyVersion, policyLabel, graphVersion, block}` |
+| `incident_updated` | `IncidentOut` (có (CITY_OPS), mục 4.4 của CITY_OPS) |
 
 Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`SSE_EVENT_TYPES`) và `Frontend/src/types/stream.ts` (`STREAM_TYPES`). Frontend phải bỏ qua type lạ, và tự kết nối lại khi mất kết nối.
 
