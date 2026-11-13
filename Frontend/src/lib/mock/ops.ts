@@ -45,12 +45,12 @@ export function ruleForState(id: BuildingId, state: RuleState, incident?: "open"
 }
 
 /** Timeline of one agent run (spec §2): read -> decide -> simulate -> send -> explain. */
-export function buildAgentSteps(run: Pick<AgentRun, "decision" | "outcome" | "reasonText" | "reasonSource" | "reasonHash" | "txHash" | "reasonCode" | "inputs">): AgentStep[] {
-  const noop = run.outcome === "noop", blocked = run.outcome === "blocked";
+export function buildAgentSteps(run: Pick<AgentRun, "decision" | "outcome" | "reasonText" | "reasonSource" | "reasonHash" | "txHash" | "reasonCode" | "balances">): AgentStep[] {
+  const noop = run.outcome === "no_action", blocked = run.outcome === "blocked";
   const reason = run.reasonCode ? REASONS[run.reasonCode].vi : null;
   return [
-    { key: "read", labelVi: "Đọc số liệu", status: "ok", detail: { vaultUsdc: run.inputs?.vaultUsdc.display ?? null, vaultTkb: run.inputs?.vaultTkb.display ?? null, keyRemaining: run.inputs?.keyRemaining.display ?? null, districtRemaining: run.inputs?.districtRemaining.display ?? null } },
-    { key: "decide", labelVi: "Quyết định", status: "ok", detail: { action: run.decision.action, share: run.decision.tTKBShareBefore, target: run.decision.targetShare, amountIn: run.decision.amountIn?.display ?? null } },
+    { key: "read", labelVi: "Đọc số liệu", status: "ok", detail: { ...run.balances } },
+    { key: "decide", labelVi: "Quyết định", status: "ok", detail: { action: run.decision ? "swap" : "none", ...run.decision } },
     { key: "simulate", labelVi: "Chạy thử", status: noop ? "skipped" : blocked ? "blocked" : "ok", detail: { reasonCode: run.reasonCode, reasonVi: reason } },
     { key: "send", labelVi: "Gửi lệnh", status: noop || blocked ? "skipped" : "ok", detail: { txHash: run.txHash } },
     { key: "explain", labelVi: "Giải thích", status: "ok", detail: { reasonText: run.reasonText, reasonSource: run.reasonSource, reasonHash: run.reasonHash } },

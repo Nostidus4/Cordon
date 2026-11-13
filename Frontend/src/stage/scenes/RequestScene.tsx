@@ -92,7 +92,7 @@ export function RequestScene() {
               <div className="mt-3 flex items-end justify-between gap-1" role="group" aria-label="Hội đồng duyệt đơn giao trợ lý">
                 {MEMBERS.map((m) => {
                   const blocked = m.id === "huy" && huyConflicted;
-                  const done = p13.approvals.some((a) => a.member === m.id);
+                  const done = p13.approvals.includes(m.id);
                   return <MemberButton key={m.id} member={m.id} name={m.name} busy={busy}
                     state={done ? "approved" : blocked ? "blocked" : p13.status !== "open" ? "waiting" : "ready"}
                     reason={blocked ? "Anh Huy ngồi Hội đồng và là người nhận thêm quyền" : undefined} onClick={() => void approve(p13, m.id)} />;

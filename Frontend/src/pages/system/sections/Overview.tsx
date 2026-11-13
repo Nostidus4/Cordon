@@ -28,13 +28,13 @@ export function Overview() {
   const [mountedAt] = useState(() => Date.now());
   const ok = attempts?.filter((a) => a.outcome === "ok").length ?? 0;
   const blocked = (attempts?.length ?? 0) - ok;
-  const uptime = health?.uptimeSec ?? Math.floor((now - mountedAt) / 1000);
-  const sim = health?.chainMode !== "live";
+  const uptime = Math.floor((now - mountedAt) / 1000);
+  const sim = health?.chainMode !== "l1";
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
       <Stat k="Chain" v={sim ? "sim" : "Guardian L1"} tone={sim ? "warn" : "ok"} />
       <Stat k="API" v={env.apiMode} />
-      <Stat k="Block mới nhất" v={health ? <Counter value={health.l1.block} className="tnum" /> : "…"} />
+      <Stat k="Block mới nhất" v={health ? <Counter value={health.l1Block} className="tnum" /> : "…"} />
       <Stat k="Policy" v={health ? `v${policyLabel(health)}` : "…"} tone={health && (policyLabel(health) ?? 1) > 1 ? "violet" : undefined} />
       <Stat k="Sự kiện" v={<Counter value={events?.length ?? 0} className="tnum" />} />
       <Stat k="Lần thử OK / chặn" v={<><span style={{ color: "var(--ok-ink)" }}>{ok}</span><span style={{ color: "var(--ink-2)", fontWeight: 600 }}> / </span><span style={{ color: blocked ? "var(--red-ink)" : "var(--ink-2)" }}>{blocked}</span></>} />

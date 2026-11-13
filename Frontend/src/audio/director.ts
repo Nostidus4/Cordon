@@ -37,7 +37,7 @@ const PLAY: Record<ReturnType<typeof attemptCue>, () => unknown> = {
 };
 
 /** Play cues for attempts that appeared since `seen`. A big jump (hydration after a fetch) is not a live event: stay silent. */
-export function newAttempts(list: Attempt[], seen: Set<string>): Attempt[] {
+export function newAttempts(list: Attempt[], seen: Set<number>): Attempt[] {
   const fresh = list.filter((a) => !seen.has(a.id));
   seen.clear();
   list.forEach((a) => seen.add(a.id));
@@ -110,7 +110,7 @@ export function useStageAudio(scene: SceneId, night: boolean) {
 
   // incident (scene 4): one cue per new attempt, by outcome. The first list seen after entering the scene is history, not news.
   useEffect(() => {
-    const seen = new Set<string>();
+    const seen = new Set<number>();
     let primed = false;
     return useStageStore.subscribe((s, p) => {
       if (sceneRef.current !== "incident") { seen.clear(); primed = false; return; }

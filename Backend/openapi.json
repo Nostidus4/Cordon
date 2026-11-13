@@ -128,6 +128,28 @@
             ],
             "title": "Reasonhash"
           },
+          "reasonHashOnChain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasonhashonchain"
+          },
+          "reasonHashVerified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasonhashverified"
+          },
           "reasonSource": {
             "anyOf": [
               {
@@ -149,6 +171,17 @@
               }
             ],
             "title": "Reasontext"
+          },
+          "rejectedReasonText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejectedreasontext"
           },
           "steps": {
             "anyOf": [
@@ -1081,6 +1114,254 @@
         "title": "CityStates",
         "type": "object"
       },
+      "ConfirmRequest": {
+        "properties": {
+          "acknowledgeRisk": {
+            "default": false,
+            "title": "Acknowledgerisk",
+            "type": "boolean"
+          }
+        },
+        "title": "ConfirmRequest",
+        "type": "object"
+      },
+      "CopilotDraftOut": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "integer"
+          },
+          "details": {
+            "$ref": "#/components/schemas/DraftDetails"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "intent": {
+            "enum": [
+              "pay",
+              "swap"
+            ],
+            "title": "Intent",
+            "type": "string"
+          },
+          "prepared": {
+            "$ref": "#/components/schemas/PreparedTxOut"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "confirmed",
+              "rejected",
+              "sent",
+              "blocked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summaryVi": {
+            "title": "Summaryvi",
+            "type": "string"
+          },
+          "txCheckId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txcheckid"
+          },
+          "txCheckLevel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "safe",
+                  "caution",
+                  "danger"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txchecklevel"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "intent",
+          "prepared",
+          "details",
+          "summaryVi",
+          "status"
+        ],
+        "title": "CopilotDraftOut",
+        "type": "object"
+      },
+      "CopilotEvalOut": {
+        "properties": {
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/EvalCase"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "chainMode": {
+            "title": "Chainmode",
+            "type": "string"
+          },
+          "intentAccuracy": {
+            "$ref": "#/components/schemas/EvalAccuracy"
+          },
+          "readsVerified": {
+            "$ref": "#/components/schemas/EvalAccuracy"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "validSent": {
+            "$ref": "#/components/schemas/EvalAccuracy"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "wrongTxBlocked": {
+            "$ref": "#/components/schemas/EvalBlocked"
+          }
+        },
+        "required": [
+          "version",
+          "chainMode",
+          "total",
+          "intentAccuracy",
+          "wrongTxBlocked",
+          "validSent",
+          "readsVerified",
+          "cases"
+        ],
+        "title": "CopilotEvalOut",
+        "type": "object"
+      },
+      "CopilotNumber": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "simulate",
+              "district",
+              "proposal",
+              "graph",
+              "draft"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "source",
+          "path"
+        ],
+        "title": "CopilotNumber",
+        "type": "object"
+      },
+      "CopilotReply": {
+        "properties": {
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CopilotDraftOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "highlight": {
+            "$ref": "#/components/schemas/Highlights"
+          },
+          "intent": {
+            "enum": [
+              "read",
+              "pay",
+              "swap",
+              "forecast_refused",
+              "injection_refused",
+              "unknown"
+            ],
+            "title": "Intent",
+            "type": "string"
+          },
+          "numbers": {
+            "items": {
+              "$ref": "#/components/schemas/CopilotNumber"
+            },
+            "title": "Numbers",
+            "type": "array"
+          },
+          "numbersVerified": {
+            "title": "Numbersverified",
+            "type": "boolean"
+          },
+          "replyVi": {
+            "title": "Replyvi",
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent",
+          "replyVi",
+          "numbers",
+          "numbersVerified",
+          "highlight"
+        ],
+        "title": "CopilotReply",
+        "type": "object"
+      },
+      "CopilotRequest": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "CopilotRequest",
+        "type": "object"
+      },
       "CouncilMemberOut": {
         "properties": {
           "address": {
@@ -1250,6 +1531,54 @@
         "title": "DistrictOut",
         "type": "object"
       },
+      "DraftDetails": {
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "minOut": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signerLabel": {
+            "title": "Signerlabel",
+            "type": "string"
+          },
+          "toLabel": {
+            "title": "Tolabel",
+            "type": "string"
+          },
+          "tokenOutSymbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenoutsymbol"
+          },
+          "tokenSymbol": {
+            "title": "Tokensymbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signerLabel",
+          "toLabel",
+          "tokenSymbol",
+          "amount"
+        ],
+        "title": "DraftDetails",
+        "type": "object"
+      },
       "DraftOut": {
         "properties": {
           "calls": {
@@ -1391,6 +1720,192 @@
           }
         },
         "title": "DraftRequest",
+        "type": "object"
+      },
+      "DraftResult": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          },
+          "simulated": {
+            "default": true,
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "txHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txhash"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "DraftResult",
+        "type": "object"
+      },
+      "EvalAccuracy": {
+        "properties": {
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "correct",
+          "total"
+        ],
+        "title": "EvalAccuracy",
+        "type": "object"
+      },
+      "EvalBlocked": {
+        "description": "Wrong transactions that must not succeed, and how each was stopped.",
+        "properties": {
+          "blocked": {
+            "title": "Blocked",
+            "type": "integer"
+          },
+          "byChain": {
+            "title": "Bychain",
+            "type": "integer"
+          },
+          "byCheckpoint": {
+            "title": "Bycheckpoint",
+            "type": "integer"
+          },
+          "byRefusal": {
+            "title": "Byrefusal",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "blocked",
+          "total",
+          "byRefusal",
+          "byChain",
+          "byCheckpoint"
+        ],
+        "title": "EvalBlocked",
+        "type": "object"
+      },
+      "EvalCase": {
+        "properties": {
+          "expectedIntent": {
+            "enum": [
+              "read",
+              "pay",
+              "swap",
+              "forecast_refused",
+              "injection_refused",
+              "unknown"
+            ],
+            "title": "Expectedintent",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "intent": {
+            "enum": [
+              "read",
+              "pay",
+              "swap",
+              "forecast_refused",
+              "injection_refused",
+              "unknown"
+            ],
+            "title": "Intent",
+            "type": "string"
+          },
+          "intentOk": {
+            "title": "Intentok",
+            "type": "boolean"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "numbersVerified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numbersverified"
+          },
+          "outcome": {
+            "enum": [
+              "answered",
+              "refused",
+              "sent",
+              "blocked_by_chain",
+              "blocked_by_checkpoint",
+              "unmatched"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          },
+          "stoppedWrongTx": {
+            "title": "Stoppedwrongtx",
+            "type": "boolean"
+          },
+          "wrongTx": {
+            "title": "Wrongtx",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "message",
+          "expectedIntent",
+          "intent",
+          "intentOk",
+          "wrongTx",
+          "outcome",
+          "stoppedWrongTx"
+        ],
+        "title": "EvalCase",
         "type": "object"
       },
       "EventOut": {
@@ -3219,6 +3734,195 @@
         "title": "PerDistrict",
         "type": "object"
       },
+      "PreparedTx": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "kind": {
+            "enum": [
+              "pay",
+              "swap",
+              "approve",
+              "raw"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "memo": {
+            "default": "",
+            "title": "Memo",
+            "type": "string"
+          },
+          "minOut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minout"
+          },
+          "signer": {
+            "title": "Signer",
+            "type": "string"
+          },
+          "source": {
+            "default": "paste",
+            "enum": [
+              "paste",
+              "city",
+              "copilot",
+              "attacker"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "tokenOut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenout"
+          }
+        },
+        "required": [
+          "kind",
+          "signer",
+          "to"
+        ],
+        "title": "PreparedTx",
+        "type": "object"
+      },
+      "PreparedTxOut": {
+        "description": "B05 `PreparedTx` field names. `signer`/`token`/`to`/`tokenOut` are hex addresses; `amount`/`minOut` raw ints.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "kind": {
+            "enum": [
+              "pay",
+              "swap",
+              "approve",
+              "raw"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "memo": {
+            "default": "",
+            "title": "Memo",
+            "type": "string"
+          },
+          "minOut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minout"
+          },
+          "signer": {
+            "title": "Signer",
+            "type": "string"
+          },
+          "source": {
+            "default": "copilot",
+            "enum": [
+              "paste",
+              "city",
+              "copilot",
+              "attacker"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "tokenOut": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenout"
+          }
+        },
+        "required": [
+          "kind",
+          "signer",
+          "token",
+          "to",
+          "amount"
+        ],
+        "title": "PreparedTxOut",
+        "type": "object"
+      },
       "ProposalOut": {
         "properties": {
           "approvalCount": {
@@ -3451,6 +4155,22 @@
         "title": "ReachedKey",
         "type": "object"
       },
+      "ReasonCode": {
+        "enum": [
+          "VAULT_PAUSED",
+          "KEY_NOT_REGISTERED",
+          "DISTRICT_LOCKED",
+          "TOKEN_NOT_ALLOWED",
+          "PROTOCOL_NOT_ALLOWED",
+          "RECIPIENT_NOT_ALLOWED",
+          "CARD_DAILY_CAP",
+          "DISTRICT_DAILY_CAP",
+          "SLIPPAGE",
+          "BLOCKED_AT_PROTOCOL"
+        ],
+        "title": "ReasonCode",
+        "type": "string"
+      },
       "RecentItem": {
         "properties": {
           "kind": {
@@ -3645,6 +4365,46 @@
         "title": "Scene4Body",
         "type": "object"
       },
+      "SentTx": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "txHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txhash"
+          }
+        },
+        "required": [
+          "simulated",
+          "ok"
+        ],
+        "title": "SentTx",
+        "type": "object"
+      },
       "SimResult": {
         "properties": {
           "findings": {
@@ -3835,6 +4595,85 @@
         "title": "SseLatency",
         "type": "object"
       },
+      "StateDiff": {
+        "properties": {
+          "approvals": {
+            "items": {
+              "$ref": "#/components/schemas/TxApproval"
+            },
+            "title": "Approvals",
+            "type": "array"
+          },
+          "chainReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReasonCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inflows": {
+            "items": {
+              "$ref": "#/components/schemas/TxFlow"
+            },
+            "title": "Inflows",
+            "type": "array"
+          },
+          "outflows": {
+            "items": {
+              "$ref": "#/components/schemas/TxFlow"
+            },
+            "title": "Outflows",
+            "type": "array"
+          },
+          "principalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principalid"
+          },
+          "recipient": {
+            "title": "Recipient",
+            "type": "string"
+          },
+          "recipientKnown": {
+            "title": "Recipientknown",
+            "type": "boolean"
+          },
+          "recipientLabel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipientlabel"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "outflows",
+          "inflows",
+          "approvals",
+          "recipient",
+          "recipientKnown",
+          "simulated"
+        ],
+        "title": "StateDiff",
+        "type": "object"
+      },
       "Suggestion": {
         "properties": {
           "change": {
@@ -3883,6 +4722,191 @@
         "title": "Totals",
         "type": "object"
       },
+      "TxApproval": {
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "spender": {
+            "title": "Spender",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "unlimited": {
+            "title": "Unlimited",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "token",
+          "spender",
+          "amount",
+          "unlimited"
+        ],
+        "title": "TxApproval",
+        "type": "object"
+      },
+      "TxCheckOut": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "integer"
+          },
+          "diff": {
+            "$ref": "#/components/schemas/StateDiff"
+          },
+          "explanationSource": {
+            "enum": [
+              "template",
+              "llm"
+            ],
+            "title": "Explanationsource",
+            "type": "string"
+          },
+          "explanationVi": {
+            "title": "Explanationvi",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/TxFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "level": {
+            "enum": [
+              "safe",
+              "caution",
+              "danger"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "numbers": {
+            "items": {
+              "$ref": "#/components/schemas/TxNumber"
+            },
+            "title": "Numbers",
+            "type": "array"
+          },
+          "numbersVerified": {
+            "title": "Numbersverified",
+            "type": "boolean"
+          },
+          "prepared": {
+            "$ref": "#/components/schemas/PreparedTx"
+          },
+          "sentTx": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SentTx"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "sent",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "prepared",
+          "diff",
+          "findings",
+          "level",
+          "explanationVi",
+          "explanationSource",
+          "numbers",
+          "numbersVerified",
+          "status"
+        ],
+        "title": "TxCheckOut",
+        "type": "object"
+      },
+      "TxFinding": {
+        "properties": {
+          "detailVi": {
+            "title": "Detailvi",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "caution",
+              "danger"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "ruleId": {
+            "title": "Ruleid",
+            "type": "string"
+          },
+          "titleVi": {
+            "title": "Titlevi",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ruleId",
+          "level",
+          "titleVi",
+          "detailVi"
+        ],
+        "title": "TxFinding",
+        "type": "object"
+      },
+      "TxFlow": {
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "amount"
+        ],
+        "title": "TxFlow",
+        "type": "object"
+      },
+      "TxNumber": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "TxNumber",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -3921,6 +4945,100 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "ViolationOut": {
+        "description": "One call the vault policy refused (docs/spec/CITY_OPS.md §9). Derived from the recorded attempts.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "keyLabel": {
+            "title": "Keylabel",
+            "type": "string"
+          },
+          "principalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Principalid"
+          },
+          "reasonCode": {
+            "title": "Reasoncode",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "agent",
+              "attacker",
+              "fault",
+              "copilot",
+              "other"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "integer"
+          },
+          "txHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txhash"
+          }
+        },
+        "required": [
+          "id",
+          "ts",
+          "source",
+          "key",
+          "keyLabel",
+          "action",
+          "reasonCode",
+          "simulated",
+          "ref"
+        ],
+        "title": "ViolationOut",
         "type": "object"
       },
       "WarningOut": {
@@ -4139,6 +5257,198 @@
         "summary": "Ask",
         "tags": [
           "assistant"
+        ]
+      }
+    },
+    "/api/assistant/copilot": {
+      "post": {
+        "description": "Prepare-only: a read answer, a refusal, or a PENDING draft. Never changes chain state.",
+        "operationId": "message_api_assistant_copilot_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopilotRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopilotReply"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Message",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/assistant/copilot/drafts": {
+      "get": {
+        "operationId": "drafts_api_assistant_copilot_drafts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CopilotDraftOut"
+                  },
+                  "title": "Response Drafts Api Assistant Copilot Drafts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Drafts",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/assistant/copilot/drafts/{draft_id}/confirm": {
+      "post": {
+        "description": "The ONLY path that sends. 409 when the draft is not pending, or when the checkpoint said `danger`\nand `acknowledgeRisk` is not true.",
+        "operationId": "confirm_api_assistant_copilot_drafts__draft_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ConfirmRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopilotDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/assistant/copilot/drafts/{draft_id}/reject": {
+      "post": {
+        "description": "Never touches the chain.",
+        "operationId": "reject_api_assistant_copilot_drafts__draft_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "title": "Draft Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopilotDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/assistant/copilot/eval": {
+      "get": {
+        "description": "Latest report written by `make copilot-eval`.",
+        "operationId": "eval_report_api_assistant_copilot_eval_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopilotEvalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Eval Report",
+        "tags": [
+          "copilot"
         ]
       }
     },
@@ -5921,6 +7231,270 @@
         "summary": "Stream",
         "tags": [
           "stream"
+        ]
+      }
+    },
+    "/api/txguard/check": {
+      "post": {
+        "operationId": "check_api_txguard_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreparedTx"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check",
+        "tags": [
+          "txguard"
+        ]
+      }
+    },
+    "/api/txguard/checks": {
+      "get": {
+        "operationId": "list_checks_api_txguard_checks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TxCheckOut"
+                  },
+                  "title": "Response List Checks Api Txguard Checks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Checks",
+        "tags": [
+          "txguard"
+        ]
+      }
+    },
+    "/api/txguard/checks/{check_id}": {
+      "get": {
+        "operationId": "get_check_api_txguard_checks__check_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "check_id",
+            "required": true,
+            "schema": {
+              "title": "Check Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Check",
+        "tags": [
+          "txguard"
+        ]
+      }
+    },
+    "/api/txguard/checks/{check_id}/reject": {
+      "post": {
+        "operationId": "reject_api_txguard_checks__check_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "check_id",
+            "required": true,
+            "schema": {
+              "title": "Check Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject",
+        "tags": [
+          "txguard"
+        ]
+      }
+    },
+    "/api/txguard/checks/{check_id}/send": {
+      "post": {
+        "operationId": "send_api_txguard_checks__check_id__send_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "check_id",
+            "required": true,
+            "schema": {
+              "title": "Check Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Send",
+        "tags": [
+          "txguard"
+        ]
+      }
+    },
+    "/api/violations": {
+      "get": {
+        "description": "Every refused call (reason code as the chain returned it), newest first. Read-only.",
+        "operationId": "list_violations_api_violations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ViolationOut"
+                  },
+                  "title": "Response List Violations Api Violations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Violations",
+        "tags": [
+          "violations"
         ]
       }
     }

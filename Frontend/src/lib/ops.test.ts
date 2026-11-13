@@ -66,7 +66,7 @@ describe("texts", () => {
 describe("city states and rules", () => {
   it("derives buildingStates from the city states", () => {
     expect(buildingStatesFrom(undefined)).toBeUndefined();
-    const c = { B01: { state: "warning", reasonVi: "" }, B02: { state: "normal", reasonVi: "" } } as unknown as CityStates;
+    const c = { buildings: [{ id: "B01", state: "warning" }, { id: "B02", state: "normal" }] } as unknown as CityStates;
     expect(buildingStatesFrom(c)).toEqual({ B01: "warning", B02: "normal" });
   });
   it("picks the rule that paints a building", () => {
@@ -80,19 +80,20 @@ describe("city states and rules", () => {
 });
 
 describe("agent timeline", () => {
-  const base = { decision: { action: "swap" as const, tokenIn: "tUSDC", tokenOut: "tTKB", amountIn: { raw: "1", display: "1" }, tTKBShareBefore: 5, targetShare: 20 }, reasonText: "r", reasonSource: "template" as const, reasonHash: null };
+  const base = { decision: { tokenIn: "tUSDC", tokenOut: "tTKB", amountIn: { raw: "1", display: "1" }, gap: { raw: "1", display: "1" }, ttkbWeightBps: 500, targetBps: 2000, totalValue: { raw: "1", display: "1" } },
+    balances: { vaultTusdc: { raw: "1", display: "1" }, vaultTtkb: { raw: "0", display: "0" }, ttkbValueInTusdc: { raw: "0", display: "0" }, keyRemaining: { raw: "1", display: "1" }, districtRemaining: null }, reasonText: "r", reasonSource: "template" as const, reasonHash: null };
   it("has read, decide, simulate, send, explain with blocked/skipped marks", () => {
-    const ok = buildAgentSteps({ ...base, outcome: "ok", txHash: "0x1", reasonCode: null });
+    const ok = buildAgentSteps({ ...base, outcome: "swapped", txHash: "0x1", reasonCode: null });
     expect(ok.map((s) => `${s.key}:${s.status}`)).toEqual(["read:ok", "decide:ok", "simulate:ok", "send:ok", "explain:ok"]);
     const blocked = buildAgentSteps({ ...base, outcome: "blocked", txHash: null, reasonCode: "CARD_DAILY_CAP" });
     expect(blocked.map((s) => s.status)).toEqual(["ok", "ok", "blocked", "skipped", "ok"]);
-    const noop = buildAgentSteps({ ...base, outcome: "noop", txHash: null, reasonCode: null });
+    const noop = buildAgentSteps({ ...base, outcome: "no_action", txHash: null, reasonCode: null });
     expect(noop.map((s) => s.status)).toEqual(["ok", "ok", "skipped", "skipped", "ok"]);
   });
   it("finds the latest run that carries steps", () => {
-    const withSteps = { id: "b", steps: buildAgentSteps({ ...base, outcome: "noop", txHash: null, reasonCode: null }) } as AgentRun;
-    expect(latestRunWithSteps([withSteps, { id: "c" } as AgentRun])?.id).toBe("b");
-    expect(latestRunWithSteps([{ id: "c" } as AgentRun])).toBeNull();
+    const withSteps = { id: 2, steps: buildAgentSteps({ ...base, outcome: "no_action", txHash: null, reasonCode: null }) } as AgentRun;
+    expect(latestRunWithSteps([withSteps, { id: 3 } as AgentRun])?.id).toBe(2);
+    expect(latestRunWithSteps([{ id: 3 } as AgentRun])).toBeNull();
     expect(latestRunWithSteps(undefined)).toBeNull();
   });
 });

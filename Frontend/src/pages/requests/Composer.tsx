@@ -34,7 +34,7 @@ export function Composer({ req, sending, onSend, onCancel, treasury }: { req: Dr
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <Warnings proposal={d} />
           <BeforeAfter report={d} treasury={treasury} />
-          <Card><p className="mb-3 text-[15px] font-semibold text-text">Thay đổi bằng lời thường</p><CallsInPlainWords calls={d.calls} describe={d.describe} /></Card>
+          <Card><p className="mb-3 text-[15px] font-semibold text-text">Thay đổi bằng lời thường</p><CallsInPlainWords calls={d.calls} describe={d.descriptionVi} /></Card>
           <RiskReportView report={d.riskReport} hash={d.riskReportHash} />
           <div className="sticky bottom-12 z-10 flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-brand/50 bg-[#0d1236]/90 px-5 py-4 shadow-[var(--shadow-pop)] backdrop-blur-xl">
             <p className="text-[13px] text-muted">Người đề xuất: <b className="text-text">{MEMBER_FULL[PROPOSER]}</b> · cần {2}/3 phiếu để thực thi</p>

@@ -152,9 +152,9 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 - [x] `chain/sim` phát `AllowListRoleSet` khi khoá khu bị khoá/mở khoá (CHN-003); mock frontend phát giống vậy (role 0 mỗi thẻ khi khoá, role 1 mỗi thẻ còn hoạt động khi mở, cùng tx) (WEB-002)
 - [x] Đề xuất #11 (gom khu): proposer `lan` trên cả mock và backend (WEB-002)
 - [x] `GET /agent/runs`, `GET /assistant/logs` đã có (CITY_OPS)
-- [ ] Chạy trọn luồng trực tiếp (live) Frontend ↔ Backend -> WEB-001 (#17)
+- [x] Chạy trọn luồng trực tiếp (live) Frontend ↔ Backend: `make dev-live`; script `Frontend/src/lib/api/live.walkthrough.test.ts` (chạy khi có `LIVE_API`) đi cảnh 2-5 + mọi GET (WEB-001)
 - [ ] Kiểm tương đương (parity) schema/mock/backend tự động -> QA-001 (#21)
-- [ ] Type Frontend lệch schema Backend: danh sách lệch hiện tại là các `Known<...>` trong `Frontend/src/types/parity.test.ts` (API-002 kiểm bằng `npm run typecheck`, chỉ cho giảm). Lệch gây lỗi khi chạy live: `POST /proposals` Frontend gửi `proposer`, Backend nhận `member` + `title` (422) -> WEB-001 (#17)
+- [x] Type Frontend khớp schema Backend: mọi `Known<...>` trong `Frontend/src/types/parity.test.ts` rỗng, trừ `SimulateResponse.before/after` (Backend `response_model_exclude_none` bỏ key, không phải lệch). `POST /proposals` gửi `member` (+ `title` tuỳ chọn); payload event đọc theo mục 2 (`id`, địa chỉ thành viên) (WEB-001)
 - [ ] `chain/sim` lệch [CONTRACTS.md](CONTRACTS.md) mục 6: `KeyAdded.kind` phát chữ hoa (`HUMAN`) thay vì `human`; `Proposed.subjectPrincipal` là `null` thay vì bytes32 rỗng. Sửa sim khi viết adapter L1 / bộ test conformance
 - [x] `Runtime.sim` đã bỏ: app code đi qua `ChainPort` (`proposal_state`...) và truyền địa chỉ hex vào `ChainPort`; id chỉ nằm trong store/API (không đổi API) (CHN-004)
 

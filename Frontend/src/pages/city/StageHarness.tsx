@@ -64,12 +64,12 @@ export default function StageHarness() {
       setGraph(await api.getGraph());
       setScene("incident"); setShot("overview");
       await waitReady();
-      const base = { runId: "demo", step: 1, ts: new Date().toISOString(), scenarioTime: "14:01", principalId: "minh", reasonCode: null, txHash: null, simulated: true, errorRaw: null, keySpentAfter: null, principalSpentAfter: null } as const;
+      const base = { scenarioRunId: "demo", step: 1, ts: Math.floor(Date.now() / 1000), displayTime: "14:01", principalId: "minh", reasonCode: null, reasonTextVi: null, reasonTextEn: null, txHash: null, simulated: true, errorRaw: null, block: null, token: null, to: null, toLabel: null, amount: null, keySpentAfter: null, principalSpentAfter: null, source: "server", badge: null } as const;
       const at: Attempt = demo === "blocked"
-        ? { ...base, id: "d1", signer: "key_minh", signerLabel: "Thẻ anh Minh", action: { kind: "approve", label: "approve tSCAM" }, outcome: "blocked_at_protocol" }
+        ? { ...base, id: 1, signer: "key_minh", signerLabel: "Thẻ anh Minh", action: "raw_call", token: "tSCAM", outcome: "blocked_at_protocol" }
         : demo === "ok"
-          ? { ...base, id: "d1", signer: "key_agent_data", signerLabel: "Trợ lý Dữ liệu", action: { kind: "pay", label: "pay", to: "vendor_data_api" }, outcome: "ok" }
-          : { ...base, id: "d1", signer: "key_agent_intl_pay", signerLabel: "Trợ lý TTQT", action: { kind: "pay", label: "pay", to: "stranger_wallet" }, outcome: "reverted" };
+          ? { ...base, id: 1, signer: "key_agent_data", signerLabel: "Trợ lý Dữ liệu", action: "pay", to: "vendor_data_api", outcome: "ok" }
+          : { ...base, id: 1, signer: "key_agent_intl_pay", signerLabel: "Trợ lý TTQT", action: "pay", to: "stranger_wallet", outcome: "reverted" };
       (window as unknown as { __t0?: number }).__t0 = performance.now();
       setAttempts([at]);
     })();

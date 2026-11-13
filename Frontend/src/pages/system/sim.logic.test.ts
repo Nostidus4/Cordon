@@ -19,8 +19,8 @@ describe("reference table (spec §8.4)", () => {
   it("flags numbers that differ for the same scenario", () => {
     expect(matchReference(REFERENCE[0], { policyVersion: 1, compromised: ["minh"] }, res(20000, 20000, 99000))).toBe("mismatch");
   });
-  it("matches v2 + #12 through the raise_cap change", () => {
-    const change = { kind: "raise_cap" as const, principalId: "minh", newCapRaw: toBase(130000).toString() };
+  it("matches v2 + #12 through the set_district_cap change", () => {
+    const change = { kind: "set_district_cap" as const, principalId: "minh", cap: money(toBase(130000)) };
     expect(changeCapOf(change)).toBe(130000);
     expect(REFERENCE.map((r) => matchReference(r, { policyVersion: 2, compromised: ["minh"], change }, res(130000, 130000, 130000)))).toEqual(["other", "other", "other", "match"]);
   });
@@ -31,7 +31,7 @@ describe("reference table (spec §8.4)", () => {
 });
 describe("presetsFrom", () => {
   it("keeps open proposals only", () => {
-    const change = { kind: "raise_cap" as const, principalId: "minh", newCapRaw: "1" };
+    const change = { kind: "set_district_cap" as const, principalId: "minh", cap: money(1n) };
     expect(presetsFrom([{ id: 12, status: "open", title: "t", change }, { id: 11, status: "executed", title: "x", change }]).map((p) => p.id)).toEqual(["p12"]);
     expect(presetsFrom(undefined)).toEqual([]);
   });

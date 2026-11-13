@@ -64,7 +64,7 @@ export default function SimulatePage() {
 
   const treasury = useMemo(() => BigInt(graph?.nodes.find((n) => n.id === "treasury")?.data.balance?.raw ?? "2000000000000"), [graph]);
   const onSuggestion = useCallback((s: { title: string; change: unknown }) => { void handoff.go({ change: s.change as ProposedChange }); }, [handoff]);
-  const finding = sim?.findings.find((f) => f.resolvedByProposal == null);
+  const finding = sim?.findings[0];
   const pointedAt = useMemo(() => people.filter((p) => highlight.nodeIds.includes(`p:${p.principalId}`) && !compromised.includes(p.principalId)), [people, highlight, compromised]);
   // camera frames only the districts the spread can touch (people + the owners of keys they declare control over)
   const involved = useMemo(() => {

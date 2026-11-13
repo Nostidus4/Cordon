@@ -73,7 +73,7 @@ export function Architecture() {
   const { data: logs } = useAssistantLogs();
   const { edges, sse, rest, packets, ticks } = useFeed();
   const paths = useRef<Record<string, SVGPathElement | null>>({});
-  const sim = health?.chainMode !== "live";
+  const sim = health?.chainMode !== "l1";
   const askN = logs?.length ?? 0;
   const prevAsk = useRef<number | null>(null);
   useEffect(() => {

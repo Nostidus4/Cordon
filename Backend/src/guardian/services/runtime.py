@@ -1,9 +1,8 @@
 """Process-wide Runtime: a ChainPort (SimChain, or L1Chain for CHAIN_MODE=l1) + in-memory stores +
 SSE event bus + graph version.
 
-TODO(persistence): attempts/scenario_runs/proposals/agent_runs/assistant_logs are in memory only
-(spec §8.2 wants Postgres). Keep the `Stores` surface small (add/get/list/clear) so a DB-backed
-implementation can replace it without touching services.
+Persistence: with `DATABASE_URL` set, attempts/scenario_runs/events live in Postgres (DB-002; write-through
+cache, see `repositories/pg.py`); proposals/agent_runs/assistant_logs are still in memory only (DB-003).
 
 Concurrency: route handlers are `async def` and call the sync SimChain without awaiting in the
 middle of a chain operation, so chain access is serialised by the event loop. SimChain
@@ -18,7 +17,7 @@ import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from eth_utils import to_checksum_address
 
@@ -33,6 +32,9 @@ from guardian.services import views
 from guardian.services.event_bus import EventBus
 from guardian.workers.health import BlockWatch, LatencyStats
 from guardian.workers.indexer import Indexer
+
+if TYPE_CHECKING:
+    from guardian.db.bridge import DbBridge
 
 EVENT_LOG_SIZE = 5000
 RESPONDER_EVENTS = frozenset({"Paused", "Executed"})
@@ -69,7 +71,7 @@ class AttemptRec:
     principal_spent_after: dict[str, str] | None = None
     key_spent_after: dict[str, str] | None = None
     simulated: bool = True
-    source: str = "server"  # server | agent | external
+    source: str = "server"  # server | agent | external | copilot
 
 
 @dataclass
@@ -117,6 +119,8 @@ class AgentRunRec:
     steps: list[dict[str, Any]] = field(default_factory=list)  # AgentStep dicts (CITY_OPS §2)
     untrusted_input: str | None = None
     injection_ignored: bool | None = None
+    # CITY-005: the LLM sentence that failed the guardrail (we stored the template instead)
+    rejected_reason_text: str | None = None
 
 
 @dataclass
@@ -158,22 +162,99 @@ class ConflictRec:
     proposal_id: int
 
 
-class Stores:
-    """In-memory stores (see module TODO)."""
+class AttemptStore(Protocol):
+    def add(self, rec: AttemptRec) -> None: ...
+    def save(self, rec: AttemptRec) -> None:
+        """Persist an in-place mutation of a rec that was added before."""
+        ...
 
+    def all(self) -> list[AttemptRec]: ...  # id order
+    def clear(self) -> None: ...
+
+
+class ScenarioRunStore(Protocol):
+    def save(self, run: ScenarioRunRec) -> None: ...  # upsert
+    def get(self, run_id: str) -> ScenarioRunRec | None: ...
+    def all(self) -> list[ScenarioRunRec]: ...  # start order
+    def latest(self) -> ScenarioRunRec | None: ...
+    def clear(self) -> None: ...
+
+
+class InMemoryAttemptStore:
     def __init__(self) -> None:
-        self.clear()
+        self._items: list[AttemptRec] = []
+
+    def add(self, rec: AttemptRec) -> None:
+        self._items.append(rec)
+
+    def save(self, rec: AttemptRec) -> None:
+        pass  # the rec is the stored object
+
+    def all(self) -> list[AttemptRec]:
+        return list(self._items)
 
     def clear(self) -> None:
-        self.attempts: list[AttemptRec] = []
-        self.runs: dict[str, ScenarioRunRec] = {}
+        self._items.clear()
+
+
+class InMemoryScenarioRunStore:
+    def __init__(self) -> None:
+        self._items: dict[str, ScenarioRunRec] = {}
+
+    def save(self, run: ScenarioRunRec) -> None:
+        self._items[run.id] = run
+
+    def get(self, run_id: str) -> ScenarioRunRec | None:
+        return self._items.get(run_id)
+
+    def all(self) -> list[ScenarioRunRec]:
+        return list(self._items.values())
+
+    def latest(self) -> ScenarioRunRec | None:
+        return next(reversed(self._items.values()), None)
+
+    def clear(self) -> None:
+        self._items.clear()
+
+
+class Stores:
+    """Attempts and scenario runs are in memory or Postgres (`database_url`, DB-002); the rest is in memory (DB-003)."""
+
+    def __init__(self, database_url: str = "") -> None:
+        self.bridge: DbBridge | None = None
+        self.attempts: AttemptStore = InMemoryAttemptStore()
+        self.runs: ScenarioRunStore = InMemoryScenarioRunStore()
+        if database_url:
+            from guardian.db.bridge import DbBridge
+            from guardian.repositories.pg import PgAttemptStore, PgScenarioRunStore
+
+            self.bridge = DbBridge(database_url)
+            self.attempts, self.runs = PgAttemptStore(self.bridge), PgScenarioRunStore(self.bridge)
+        self._reset_rest()
+        # never collide with persisted ids
+        self._ids = max((a.id for a in self.attempts.all()), default=0)
+
+    def _reset_rest(self) -> None:
         self.proposals: dict[int, ProposalRec] = {}
         self.agent_runs: list[AgentRunRec] = []
         self.assistant_logs: list[AssistantLogRec] = []
         self.conflicts: list[ConflictRec] = []
         self.incidents: list[IncidentRec] = []
+        self.fault_attempts: dict[
+            int, str
+        ] = {}  # attempt id -> fault id (CITY-005 violations board)
+        self.copilot_drafts: dict[
+            int, Any
+        ] = {}  # CopilotDraftRec (assistant/copilot/models.py), CITY-004
+        self.tx_checks: dict[int, Any] = {}  # B05 Tx Guardian checks (TxCheckOut), CITY-003
         self._ids = 0
         self._incident_ids = 0
+        self._txcheck_ids = 0
+
+    def clear(self) -> None:
+        self.attempts.clear()  # before runs: attempts reference them
+        self.runs.clear()
+        self._reset_rest()
 
     def next_id(self) -> int:
         self._ids += 1
@@ -182,6 +263,10 @@ class Stores:
     def next_incident_id(self) -> int:
         self._incident_ids += 1
         return self._incident_ids
+
+    def next_txcheck_id(self) -> int:
+        self._txcheck_ids += 1
+        return self._txcheck_ids
 
 
 class Runtime:
@@ -206,7 +291,7 @@ class Runtime:
             ensure_test_chain(settings, int(self.chain.w3.eth.chain_id))
         self.bus = EventBus()
         self.guard = DemoGuard(settings)
-        self.stores = Stores()
+        self.stores = Stores(settings.database_url)
         self.llm_client: Any = None  # built lazily by core.llm.open_session; tests inject a fake
         self.graph_version = 1
         self._book: dict[str, str] | None = None
@@ -246,9 +331,16 @@ class Runtime:
         from guardian.workers.indexer import Indexer, InMemoryEventSink, L1ChainSource
 
         s = self.settings
+        sink: Any = InMemoryEventSink()
+        if self.stores.bridge is not None:
+            from guardian.repositories.pg import PgEventSink
+
+            sink = PgEventSink(self.stores.bridge)
+            if not self.event_log:  # history survives a restart (a reload keeps the log it has)
+                self.event_log.extend(sink.recent(EVENT_LOG_SIZE))
         self.indexer = Indexer(
             L1ChainSource(self.chain),
-            InMemoryEventSink(),
+            sink,
             publish=self._on_chain_event,
             poll_interval=s.l1_poll_interval_seconds,
             reorg_window=s.indexer_reorg_window,
@@ -305,14 +397,19 @@ class Runtime:
         if self._responder_task is not None:
             self._responder_task.cancel()
             self._responder_task = None
-        for t in list(self.scenario_tasks.values()):
+        tasks = list(self.scenario_tasks.values())
+        for t in tasks:
             t.cancel()
+        # let their `finally` (runs.save) finish while the DB bridge is still open
+        await asyncio.gather(*tasks, return_exceptions=True)
         self._unsubscribe()
         if self.indexer is not None:
             self.indexer.stop()
         close = getattr(self.chain, "close", None)
         if close is not None:
             close()
+        if self.stores.bridge is not None:
+            self.stores.bridge.close()
 
     # ------------------------------------------------------------------ helpers
     def now(self) -> int:

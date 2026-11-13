@@ -30,11 +30,11 @@ describe("voice pool", () => {
 });
 
 describe("attempt -> cue", () => {
-  const base = { reasonCode: null, signer: "key_minh", action: { kind: "pay" as const, label: "" } };
+  const base = { reasonCode: null, signer: "key_minh", action: "pay" as const };
   it("maps outcomes and reason codes", () => {
     expect(attemptCue({ ...base, outcome: "ok" })).toBe("coin");
-    expect(attemptCue({ ...base, outcome: "ok", signer: "key_agent_rebalance", action: { kind: "swap", label: "" } })).toBe("coinRich");
-    expect(attemptCue({ ...base, outcome: "ok", action: { kind: "lock", label: "" } })).toBe("lock");
+    expect(attemptCue({ ...base, outcome: "ok", signer: "key_agent_rebalance", action: "swap" })).toBe("coinRich");
+    expect(attemptCue({ ...base, outcome: "ok", action: "lock" })).toBe("lock");
     expect(attemptCue({ ...base, outcome: "reverted", reasonCode: "DISTRICT_DAILY_CAP" })).toBe("clang");
     expect(attemptCue({ ...base, outcome: "reverted", reasonCode: "PROTOCOL_NOT_ALLOWED" })).toBe("bonk");
     expect(attemptCue({ ...base, outcome: "blocked_at_protocol", reasonCode: "BLOCKED_AT_PROTOCOL" })).toBe("fizzle");

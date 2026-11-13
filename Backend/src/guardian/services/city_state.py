@@ -237,10 +237,11 @@ def evaluate_buildings(rt: Runtime) -> dict[str, BuildingEval]:
     # B04 Cổng chi trả
     b4 = ev["B04"]
     b4.normal_reason = "Chi tiêu bình thường."
-    latest_run = next(reversed(st.runs), None) if st.runs else None
+    latest = st.runs.latest()
+    latest_run = latest.id if latest else None
     bad = [
         a
-        for a in st.attempts
+        for a in st.attempts.all()
         if latest_run is not None
         and a.scenario_run_id == latest_run
         and a.action in ("pay", "swap")
@@ -299,7 +300,9 @@ def evaluate_buildings(rt: Runtime) -> dict[str, BuildingEval]:
     b5.normal_reason = "Không có khu nào bị khoá."
     locked = [p for p in snap.principals.values() if p.locked]
     shield = [
-        a for a in st.attempts if a.reason_code in _SHIELD_REASONS and now - a.ts <= SHIELD_WINDOW_S
+        a
+        for a in st.attempts.all()
+        if a.reason_code in _SHIELD_REASONS and now - a.ts <= SHIELD_WINDOW_S
     ]
     if shield:
         a = shield[-1]

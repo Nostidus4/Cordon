@@ -59,7 +59,7 @@ export const deltaTone = (d: Delta): "ok" | "bad" | "muted" => (d.dir === "down"
 
 export type SlotState = "approved" | "proposer" | "conflict" | "pending";
 export interface ApprovalSlot {
-  member: MemberId; label: string; state: SlotState; at?: string;
+  member: MemberId; label: string; state: SlotState;
   /** may this member's demo button be pressed right now */
   canApprove: boolean;
   /** why the button is disabled (VI), if it is */
@@ -73,24 +73,24 @@ export const conflictReason = (label: string) =>
 export function approvalSlots(p: Pick<Proposal, "approvals" | "conflictedMembers" | "status" | "proposer">, members: Pick<CouncilMember, "id" | "label">[] = []): ApprovalSlot[] {
   return MEMBER_ORDER.map((id) => {
     const label = members.find((m) => m.id === id)?.label ?? MEMBER_FULL[id];
-    const approval = p.approvals.find((a) => a.member === id);
+    const approval = p.approvals.includes(id);
     const conflicted = p.conflictedMembers.includes(id);
     let disabledReason: string | undefined;
     if (approval) disabledReason = "Đã duyệt";
     else if (p.status !== "open") disabledReason = p.status === "executed" ? "Đề xuất đã thực thi" : "Đề xuất đã đóng";
     else if (conflicted) disabledReason = conflictReason(label);
     const state: SlotState = approval ? "approved" : conflicted ? "conflict" : "pending";
-    return { member: id, label, state, at: approval?.at, canApprove: !disabledReason, disabledReason };
+    return { member: id, label, state, canApprove: !disabledReason, disabledReason };
   });
 }
 
 export const approvalCount = (p: Pick<Proposal, "approvals">) => p.approvals.length;
 /** Can the proposal still reach threshold given conflicts? (2 non-conflicted members needed) */
 export const canReachThreshold = (p: Pick<Proposal, "threshold" | "conflictedMembers" | "approvals">) =>
-  MEMBER_ORDER.filter((m) => !p.conflictedMembers.includes(m) || p.approvals.some((a) => a.member === m)).length >= p.threshold;
+  MEMBER_ORDER.filter((m) => !p.conflictedMembers.includes(m) || p.approvals.includes(m)).length >= p.threshold;
 
 export const changeKindLabel: Record<ProposedChange["kind"], string> = {
-  consolidate: "Gom khu", raise_cap: "Nâng hạn mức", move_key: "Chuyển thẻ", council_district: "Khu Hội đồng",
+  merge_district: "Gom khu", set_district_cap: "Đổi hạn mức khu", set_key_cap: "Đổi hạn mức thẻ", move_key: "Chuyển thẻ", create_district: "Khu Hội đồng",
 };
 
 /** Is this a "grant more power" request? Judged on the worst case (max of Enforced, Estimated) before vs after. */

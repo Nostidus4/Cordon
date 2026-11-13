@@ -20,7 +20,7 @@ export function PauseAllButton({ paused }: { paused: boolean }) {
         <p className="mb-3 text-[13px] text-muted">Dừng là hành động <b className="text-text">siết</b>: chỉ cần một thành viên ký. Mở lại kho là <b className="text-text">nới</b>, cần 2/3 thành viên.</p>
         <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-wider text-faint">Ký bởi</p>
         <div role="radiogroup" aria-label="Thành viên ký" className="flex gap-2">
-          {(org?.council.members ?? []).map((m) => (
+          {(org?.council ?? []).map((m) => (
             <button key={m.id} role="radio" aria-checked={member === m.id} type="button" onClick={() => setMember(m.id)}
               className={cn("flex-1 rounded-[var(--radius-md)] border px-3 py-2 text-sm font-semibold transition-colors", member === m.id ? "border-bad/60 bg-bad-soft text-text" : "border-line text-muted hover:border-line-strong")}>{m.label}</button>
           ))}
