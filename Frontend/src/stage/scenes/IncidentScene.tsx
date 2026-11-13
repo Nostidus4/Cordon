@@ -21,8 +21,9 @@ import { Tile } from "../parts";
 import { useCityProps, usePrimaryAction, useStageStore } from "../stageStore";
 import { CheckIcon, Counter, CrossIcon, GateIcon, KindIcon, Ribbon, ToyButton, ToyCard, WarnIcon } from "../ui";
 import { policyLabel } from "../../lib/policy";
+import { byStep, liveRunAttempts } from "../../lib/dto";
 
-const sortAttempts = (a: Attempt[]) => [...a].sort((x, y) => x.step - y.step || x.ts.localeCompare(y.ts));
+const sortAttempts = (a: Attempt[]) => [...a].sort(byStep);
 const U = 1_000_000n;
 const toNum = (b: bigint | null) => (b == null ? 0 : Number(b / U));
 
@@ -33,18 +34,16 @@ function useLiveAttempts(): Attempt[] {
   useStream((m) => { if (m.type === "attempt") setStreamed((s) => (s.some((a) => a.id === m.data.id) ? s : [...s, m.data])); else setStreamed([]); }, ["attempt", "reset"]);
   return useMemo(() => {
     const base = q.data ?? [];
-    const run = streamed.length ? streamed[streamed.length - 1].runId : base[base.length - 1]?.runId;
-    const extra = streamed.filter((a) => a.runId === run && !base.some((b) => b.id === a.id));
-    return [...base.filter((a) => !run || a.runId === run), ...extra];
+    return liveRunAttempts(base, streamed);
   }, [q.data, streamed]);
 }
 
 /** "trả 10.000 cho Nhà cung cấp máy chủ" — plain Vietnamese, no ids. */
 export function attemptText(a: Attempt): string {
-  const amt = a.action.amount?.display;
-  if (a.action.kind === "pay") return `trả ${amt} cho ${recipientVi(a.action.to ?? "")}`;
-  if (a.action.kind === "swap") return `đổi ${amt ?? ""} ${a.action.dex === "EvilDEX" ? "ở chợ lạ" : "ở chợ đã duyệt"}`.replace("  ", " ");
-  if (a.action.kind === "lock") return "khoá cả khu";
+  const amt = a.amount?.display;
+  if (a.action === "pay") return `trả ${amt} cho ${recipientVi(a.to ?? "")}`;
+  if (a.action === "swap") return `đổi ${amt ?? ""} ${/evil/i.test(a.to ?? "") ? "ở chợ lạ" : "ở chợ đã duyệt"}`.replace("  ", " ");
+  if (a.action === "lock") return "khoá cả khu";
   return "thử gọi hợp đồng lạ";
 }
 const shortHash = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
@@ -58,7 +57,7 @@ function TickerRow({ a }: { a: Attempt }) {
   const ok = a.outcome === "ok";
   return (
     <motion.li className="toy-ticker-row" initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 26 }}>
-      <span className="font-toy text-[14px] font-bold" style={{ color: "var(--ink-2)" }}>{a.scenarioTime}</span>
+      <span className="font-toy text-[14px] font-bold" style={{ color: "var(--ink-2)" }}>{a.displayTime}</span>
       <div>
         <div className="flex items-start gap-1.5 font-semibold" style={{ color: "var(--ink)" }}>
           <span className="mt-[3px] shrink-0" style={{ color: ok ? "var(--teal-ink)" : "var(--red-ink)" }}>{ok ? <CheckIcon size={14} /> : <CrossIcon size={14} />}</span>

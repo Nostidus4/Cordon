@@ -29,15 +29,16 @@ export function PolicyState() {
   const paused = vault?.data.paused === true;
   const keyNode = (id: string): GraphNode | undefined => graph?.nodes.find((n) => n.id === `k:${id}`);
 
-  const snap = policySnapshot(graph, org ? { usdc: org.vault.usdc.raw, tkb: org.vault.tkb.raw } : undefined);
+  const snap = policySnapshot(graph, org ? { usdc: org.vault.balance.raw, tkb: org.vault.tkb?.raw ?? "" } : undefined);
   const ch = useChanged(snap);
   const f = (k: string) => (ch.has(k) ? "sx-flash" : "");
 
   const tokens = graph?.nodes.filter((n) => n.type === "Token") ?? [];
   const protocols = graph?.nodes.filter((n) => n.type === "Protocol") ?? [];
   const recipients = graph?.nodes.filter((n) => n.type === "Recipient") ?? [];
-  const total = org ? big(org.vault.usdc.raw) + big(org.vault.tkb.raw) : 0n;
-  const share = org ? percentOf(big(org.vault.tkb.raw), total) : 0;
+  const tkb = org?.vault.tkb;
+  const total = org ? big(org.vault.balance.raw) + big(tkb?.raw ?? "0") : 0n;
+  const share = tkb ? percentOf(big(tkb.raw), total) : 0;
 
   return (
     <section id="chinh-sach" aria-labelledby="chinh-sach-t" className="sx-card" style={{ ["--ac" as string]: "#ff8c42", padding: "22px 26px 20px" }}>
@@ -50,8 +51,8 @@ export function PolicyState() {
       </header>
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))" }}>
         <Stat cls={f("vault:paused")} k="Vault" v={paused ? "Đã dừng" : "Đang chạy"} tone={paused ? "bad" : "ok"} s={paused ? "mọi pay/swap bị revert" : undefined} />
-        <Stat cls={f("usdc")} k="tUSDC trong vault" v={org?.vault.usdc.display ?? "…"} />
-        <Stat cls={f("tkb")} k="tTKB trong vault" v={org?.vault.tkb.display ?? "…"} s={<>chiếm <b>{share.toFixed(1).replace(".", ",")}%</b> (mục tiêu 20%)</>} />
+        <Stat cls={f("usdc")} k="tUSDC trong vault" v={org?.vault.balance.display ?? "…"} />
+        {tkb ? <Stat cls={f("tkb")} k="tTKB trong vault" v={tkb.display} s={<>chiếm <b>{share.toFixed(1).replace(".", ",")}%</b> (mục tiêu 20%)</>} /> : null}
         <Stat k="Quỹ chính · C-Chain" v={org?.mainTreasury.balance.display ?? "…"} />
       </div>
 

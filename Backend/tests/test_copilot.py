@@ -56,7 +56,7 @@ def chain_fingerprint(rt: Runtime) -> tuple[Any, ...]:
     snap = rt.snapshot()
     return (
         snap.block,
-        len(rt.stores.attempts),
+        len(rt.stores.attempts.all()),
         tuple(sorted((p.id, p.spent_today) for p in snap.principals.values())),
         tuple(sorted((k.address, k.spent_today) for k in snap.keys.values())),
     )
@@ -154,15 +154,17 @@ async def test_confirm_is_the_only_sender_and_only_once(app: FastAPI, rt: Runtim
         transport=httpx.ASGITransport(app=app), base_url="http://test"
     ) as c:
         did = (await say(c, PAY))["draft"]["id"]
-        assert len(rt.stores.attempts) == 0
+        assert len(rt.stores.attempts.all()) == 0
         r = await c.post(f"{BASE}/drafts/{did}/confirm", json={})
         assert r.status_code == 200, r.text
         out = r.json()
         assert out["status"] == "sent" and out["result"]["ok"] is True and out["result"]["txHash"]
-        assert len(rt.stores.attempts) == 1 and rt.stores.attempts[0].source == "copilot"
+        assert (
+            len(rt.stores.attempts.all()) == 1 and rt.stores.attempts.all()[0].source == "copilot"
+        )
         again = await c.post(f"{BASE}/drafts/{did}/confirm", json={})
         assert again.status_code == 409 and again.json()["error"]["code"] == "DRAFT_NOT_PENDING"
-        assert len(rt.stores.attempts) == 1  # no double send
+        assert len(rt.stores.attempts.all()) == 1  # no double send
         rej = await c.post(f"{BASE}/drafts/{did}/reject")
         assert rej.status_code == 409
 
@@ -194,7 +196,7 @@ async def test_chain_refusal_is_recorded_with_reason_code(app: FastAPI, rt: Runt
     assert o["status"] == "blocked" and o["result"]["ok"] is False
     assert o["result"]["reasonCode"] == "CARD_DAILY_CAP"
     assert s["status"] == "blocked" and s["result"]["reasonCode"] == "RECIPIENT_NOT_ALLOWED"
-    assert [a.outcome != "ok" for a in rt.stores.attempts] == [True, True]
+    assert [a.outcome != "ok" for a in rt.stores.attempts.all()] == [True, True]
 
 
 async def test_confirm_needs_demo_mode() -> None:
@@ -210,7 +212,7 @@ async def test_confirm_needs_demo_mode() -> None:
         did = (await say(c, PAY))["draft"]["id"]
         res = await c.post(f"{BASE}/drafts/{did}/confirm", json={})
         assert res.status_code == 403 and res.json()["error"]["code"] == "DEMO_MODE_REQUIRED"
-        assert len(r.stores.attempts) == 0
+        assert len(r.stores.attempts.all()) == 0
 
 
 async def test_demo_reset_clears_drafts(app: FastAPI, rt: Runtime) -> None:
@@ -251,11 +253,11 @@ async def test_danger_checkpoint_requires_acknowledge_risk(app: FastAPI, rt: Run
         for body in ({}, {"acknowledgeRisk": False}):
             r = await c.post(f"{BASE}/drafts/{d['id']}/confirm", json=body)
             assert r.status_code == 409 and r.json()["error"]["code"] == "RISK_ACK_REQUIRED"
-        assert len(rt.stores.attempts) == 0
+        assert len(rt.stores.attempts.all()) == 0
         assert rt.stores.copilot_drafts[d["id"]].status == "pending"
         ok = await c.post(f"{BASE}/drafts/{d['id']}/confirm", json={"acknowledgeRisk": True})
         assert ok.status_code == 200 and ok.json()["status"] == "sent"
-        assert len(rt.stores.attempts) == 1
+        assert len(rt.stores.attempts.all()) == 1
 
 
 @pytest.mark.parametrize("level", ["safe", "caution"])
@@ -471,7 +473,7 @@ def test_eval_counts_checkpoint_blocks() -> None:
         rt, {"id": "x", "message": PAY, "expectedIntent": "pay", "wrongTx": True}
     )
     assert row["outcome"] == "blocked_by_checkpoint" and row["stoppedWrongTx"] is True
-    assert len(rt.stores.attempts) == 0
+    assert len(rt.stores.attempts.all()) == 0
 
 
 async def test_eval_endpoint(app: FastAPI, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -506,9 +508,9 @@ async def test_real_txguard_checks_copilot_drafts(app: FastAPI, rt: Runtime) -> 
         by_id = {x["id"]: x for x in (await c.get("/api/txguard/checks")).json()}
         for d in (ok, bad, swap, evil):
             assert by_id[int(d["txCheckId"])]["prepared"]["source"] == "copilot"
-        before = len(rt.stores.attempts)
+        before = len(rt.stores.attempts.all())
         r = await c.post(f"{BASE}/drafts/{bad['id']}/confirm", json={})
         assert r.status_code == 409 and r.json()["error"]["code"] == "RISK_ACK_REQUIRED"
-        assert len(rt.stores.attempts) == before
+        assert len(rt.stores.attempts.all()) == before
         r = await c.post(f"{BASE}/drafts/{bad['id']}/confirm", json={"acknowledgeRisk": True})
         assert r.status_code == 200 and r.json()["status"] == "blocked"  # chain still enforces

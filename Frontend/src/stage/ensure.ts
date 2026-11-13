@@ -10,7 +10,7 @@ export type Prereq = "any" | "v2";
 /** What each scene needs. look/try/fix work in either policy (they show a "chơi lại" chip instead of resetting). */
 export const PREREQ: Record<SceneId, Prereq> = { intro: "any", look: "any", try: "any", fix: "any", incident: "v2", request: "v2" };
 
-const isMerge = (p: Proposal) => p.change.kind === "consolidate";
+const isMerge = (p: Proposal) => p.change?.kind === "merge_district";
 let inflight: Promise<void> | null = null;
 
 /** Brings the demo to policy v2 by running the council flow. Resolves when #12/#13 are there. */
@@ -21,14 +21,14 @@ export function ensureV2(): Promise<void> {
     if ((policyLabel(g) ?? 1) >= 2) return;
     let merge = (await api.getProposals()).filter(isMerge).sort((a, b) => b.id - a.id)[0];
     if (!merge) {
-      const f = (await api.getFindings()).find((x) => x.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && x.principalId === "minh" && x.suggestedChange);
+      const f = (await api.getFindings()).find((x) => x.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && x.principalId === "minh" && x.proposal);
       if (!f) { await api.applyPolicyV2(); return; } // no finding to start from: fall back to the demo shortcut
-      merge = await api.createProposal({ findingId: f.id, proposer: "lan" });
+      merge = await api.createProposal({ findingId: f.id, member: "lan" });
     }
     for (const m of ["lan", "trang"] as MemberId[]) {
       const cur = (await api.getProposals()).find((p) => p.id === merge.id);
       if (!cur || cur.status !== "open") break;
-      if (!cur.approvals.some((a) => a.member === m)) await api.approveProposal(merge.id, m);
+      if (!cur.approvals.includes(m)) await api.approveProposal(merge.id, m);
     }
   })().finally(() => { inflight = null; });
   return inflight;

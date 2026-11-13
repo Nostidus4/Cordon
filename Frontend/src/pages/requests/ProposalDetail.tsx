@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarClock, Layers, PenLine } from "lucide-react";
 import { Card, CardHeader, cn } from "../../components/ui";
+import { useGraph } from "../../hooks/useGraph";
+import { policyLabel } from "../../lib/policy";
 import type { CouncilMember, MemberId, Proposal, ProposedChange } from "../../types";
 import { ApproveButtons } from "./ApproveButtons";
 import { BeforeAfter } from "./BeforeAfter";
@@ -18,6 +20,8 @@ export function ProposalDetail({ proposal, all, members, demoMode, pendingMember
   proposal: Proposal; all: Proposal[]; members: CouncilMember[]; demoMode: boolean; pendingMember: MemberId | null;
   onApprove: (m: MemberId) => void; onOpen: (id: number) => void; onDraft: (c: ProposedChange) => void; treasury?: bigint;
 }) {
+  // The backend does not store the resulting version per proposal; show the live one.
+  const version = policyLabel(useGraph().data) ?? null;
   // open -> executed transition (while viewing) plays the seal + toast once
   const prev = useRef<{ id: number; status: Proposal["status"] }>({ id: proposal.id, status: proposal.status });
   const [burst, setBurst] = useState(false);
@@ -40,10 +44,10 @@ export function ProposalDetail({ proposal, all, members, demoMode, pendingMember
     <div className={cn("grid items-start gap-5", scene5 ? "xl:grid-cols-[minmax(0,1fr)_400px]" : "")}>
       <div className="relative min-w-0 space-y-4">
         <Card className="relative" strong tone={proposal.conflictedMembers.length && !executed ? "bad" : executed ? "ok" : "brand"}>
-          <ExecutionBurst show={burst} version={proposal.resultingPolicyVersion} />
+          <ExecutionBurst show={burst} version={version} />
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-md bg-white/10 px-2 py-0.5 font-mono font-bold text-text">Đề xuất #{proposal.id}</span>
-            <span className="rounded-md bg-brand-soft px-2 py-0.5 font-semibold text-[#c9c2ff]">{changeKindLabel[proposal.change.kind]}</span>
+            <span className="rounded-md bg-brand-soft px-2 py-0.5 font-semibold text-[#c9c2ff]">{proposal.change ? changeKindLabel[proposal.change.kind] : "Khác"}</span>
             {isRiskIncrease(proposal) ? <span className="rounded-md bg-bad-soft px-2 py-0.5 font-semibold text-bad">▲ xin thêm quyền</span> : <span className="rounded-md bg-ok-soft px-2 py-0.5 font-semibold text-ok">▼ thu hẹp rủi ro</span>}
             <span className="ml-auto"><RiskHashChip report={proposal.riskReport} hash={proposal.riskReportHash} /></span>
           </div>
@@ -51,9 +55,9 @@ export function ProposalDetail({ proposal, all, members, demoMode, pendingMember
           <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-muted">
             <span className="inline-flex items-center gap-1.5"><Layers className="size-3.5 text-faint" aria-hidden /> Khu bị ảnh hưởng: <b className="text-text">{proposal.subjectPrincipal ?? "chung"}</b></span>
             <span className="inline-flex items-center gap-1.5"><PenLine className="size-3.5 text-faint" aria-hidden /> Người đề xuất: <b className="text-text">{MEMBER_FULL[proposal.proposer]}</b></span>
-            <span className="inline-flex items-center gap-1.5"><CalendarClock className="size-3.5 text-faint" aria-hidden /> {new Date(proposal.createdAt).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}</span>
+            <span className="inline-flex items-center gap-1.5"><CalendarClock className="size-3.5 text-faint" aria-hidden /> {new Date(proposal.createdAt * 1000).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}</span>
           </div>
-          {executed ? <ExecutedBanner className="mt-4" version={proposal.resultingPolicyVersion} at={proposal.executedAt} /> : null}
+          {executed ? <ExecutedBanner className="mt-4" version={version} at={proposal.executedAt} /> : null}
         </Card>
 
         <Warnings proposal={proposal} />
@@ -61,7 +65,7 @@ export function ProposalDetail({ proposal, all, members, demoMode, pendingMember
 
         <Card>
           <CardHeader title="Thay đổi bằng lời thường" en="dịch từ calls[] sẽ gửi lên contract" />
-          <CallsInPlainWords calls={proposal.calls} describe={proposal.describe} />
+          <CallsInPlainWords calls={proposal.calls} describe={proposal.descriptionVi} />
         </Card>
 
         <Card strong>

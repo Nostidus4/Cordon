@@ -36,19 +36,18 @@ const Hash = ({ h, sim }: { h: string; sim?: boolean }) => (
 
 function evidenceLine(e: BuildingEvidence | undefined) {
   if (!e) return null;
-  const text = e.kind === "reasonCode" ? reasonTextVi(e.value) : null;
-  if (!text && !e.txHash) return null;
+  const text = e.kind === "reasonCode" ? reasonTextVi(String(e.value)) : null;
+  if (!text) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-[13px] font-semibold" data-evidence>
       {text ? <span style={{ color: "var(--red-ink)" }}>{text}</span> : null}
-      {e.txHash ? <Hash h={e.txHash} sim={e.simulated} /> : null}
     </div>
   );
 }
 
 function Overview({ d, summary, module, topic, run }: { d: BuildingDetail; summary: string; module: string; topic: string; run: AgentRun | null }) {
   const tone = STATE_TONE[d.state];
-  const ev = d.evidence.find((e) => e.kind === "reasonCode" || e.txHash);
+  const ev = d.evidence.find((e) => e.kind === "reasonCode");
   return (
     <div className="flex flex-col gap-2.5">
       <p className="toy-body m-0 line-clamp-2" style={{ fontSize: 13.5, lineHeight: 1.35 }}>{summary}</p>
@@ -105,7 +104,7 @@ function IncidentTab({ inc, demo }: { inc: Incident; demo: boolean }) {
   const actions = useActions();
   const steps = stepViews(inc);
   const proposal = awaitsCouncil(inc) ? proposals?.find((p) => p.id === inc.proposalId) : undefined;
-  const slots = proposal ? approvalSlots(proposal, org?.council.members ?? []) : [];
+  const slots = proposal ? approvalSlots(proposal, org?.council ?? []) : [];
   return (
     <div className="flex flex-col gap-2.5" data-incident-tab={inc.id}>
       <div className="flex items-start justify-between gap-2">

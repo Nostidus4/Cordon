@@ -38,7 +38,7 @@ export default function AboutPage() {
       <motion.section {...enter(1)} className="mb-6" data-tour="about-vault" aria-label={VAULT_MODEL.title}>
         <Card strong>
           <CardHeader title={VAULT_MODEL.title} en={VAULT_MODEL.en} right={<span className="max-w-sm text-right text-xs text-faint">{VAULT_MODEL.note}</span>} />
-          <VaultDiagram tiles={tiles} policyVersion={policyLabel(graph)} main={org?.mainTreasury.balance.display ?? VAULT_MODEL.main.fallback} vault={org ? org.vault.usdc.display : VAULT_MODEL.vault.fallback} />
+          <VaultDiagram tiles={tiles} policyVersion={policyLabel(graph)} main={org?.mainTreasury.balance.display ?? VAULT_MODEL.main.fallback} vault={org ? org.vault.balance.display : VAULT_MODEL.vault.fallback} />
         </Card>
       </motion.section>
 

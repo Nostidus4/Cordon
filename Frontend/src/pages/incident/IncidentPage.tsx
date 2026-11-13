@@ -21,6 +21,7 @@ import { deriveView } from "./incidentView";
 import { leftStateAtStep, leftStepFromAttempts } from "./leftSimulation";
 import { pickReplayRun, useReplayPlayer } from "./replay";
 import { policyLabel } from "../../lib/policy";
+import { liveRunAttempts } from "../../lib/dto";
 
 export default function IncidentPage() {
   useEffect(() => { if (import.meta.env.DEV) void import("./devAutoplay").then((m) => m.runDevAutoplay()); }, []);
@@ -49,9 +50,7 @@ export default function IncidentPage() {
   useStream((m) => { if (m.type === "attempt") setStreamed((s) => (s.some((a) => a.id === m.data.id) ? s : [...s, m.data])); else setStreamed([]); }, ["attempt", "reset"]);
   const liveAttempts = useMemo(() => {
     const base = live.data ?? [];
-    const run = streamed.length ? streamed[streamed.length - 1].runId : base[base.length - 1]?.runId;
-    const extra = streamed.filter((a) => a.runId === run && !base.some((b) => b.id === a.id));
-    return [...base.filter((a) => !run || a.runId === run), ...extra];
+    return liveRunAttempts(base, streamed);
   }, [live.data, streamed]);
 
   const attempts = replay ? player.attempts : liveAttempts;
@@ -62,7 +61,7 @@ export default function IncidentPage() {
 
   const done = { agent: view.maxStep >= 0 || !!agentRun, attack: view.attackDone, lock: view.locked, step7: !!view.step7 };
   const stage: Stage = !done.agent ? "agent" : attacking && !view.attackDone ? "attacking" : !done.attack ? "attack" : !done.lock ? "lock" : !done.step7 ? "step7" : "done";
-  const agentNote = agentRun && agentRun.outcome === "ok" ? agentRun.reasonText : undefined;
+  const agentNote = agentRun && agentRun.outcome === "swapped" ? (agentRun.reasonText ?? undefined) : undefined;
   const showV1Callout = !replay && health && !policyActive;
 
   const lock = () => actions.lock.mutate({ principalId: "minh", member: "lan" });

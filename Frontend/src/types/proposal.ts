@@ -1,17 +1,12 @@
-// Proposal + RiskReport (spec §6.5, §8.5).
+// Proposal + RiskReport (spec §6.5, §8.5), backend shape.
 import type { MemberId, ProposalStatus } from "./common";
 import type { Finding } from "./finding";
 import type { ProposedChange, SimTotals } from "./simulate";
 
-export interface Call {
-  target: "PrincipalRegistry" | "PolicyVault";
-  fn: string;
-  args: Record<string, string>;
-  /** Plain-words (VI) translation of the call (spec §10.4). */
-  describe: string;
-}
+/** Raw contract call as the backend returns it; the VI sentence for each lives in `descriptionVi`. */
+export type Call = { target: string; fn: string; args: Record<string, unknown> };
 
-export interface RiskReport {
+export type RiskReport = {
   before: SimTotals;
   after: SimTotals;
   findingsBefore: Finding[];
@@ -19,14 +14,15 @@ export interface RiskReport {
   conflictOfInterest: boolean;
   generatedAt: string;
   graphVersion: number;
-}
+};
 
-export interface ProposalDraft {
+interface ProposalBody {
   title: string;
+  findingId: string | null;
   subjectPrincipal: string | null;
-  change: ProposedChange;
   calls: Call[];
-  describe: string[];
+  /** Plain-words (VI) sentences for `calls` (spec §10.4). */
+  descriptionVi: string[];
   riskReport: RiskReport;
   /** keccak256 of canonical JSON of riskReport (sorted keys, no spaces, generatedAt excluded), 0x-prefixed (spec §6.5). */
   riskReportHash: string;
@@ -34,21 +30,50 @@ export interface ProposalDraft {
   warnings: { code: "CONFLICT_OF_INTEREST" | "CONCENTRATION" | "DATA_DECLARED"; text: string }[];
 }
 
-export interface Proposal extends ProposalDraft {
+export interface ProposalDraft extends ProposalBody {
+  change: ProposedChange;
+  /** tighten = one member suffices; loosen = 2/3 Council. */
+  classification: "tighten" | "loosen";
+  requiresCouncil: boolean;
+  sent: boolean;
+}
+
+export interface ProposalMember {
+  id: MemberId;
+  label: string;
+  principalId: string | null;
+  approved: boolean;
+  conflicted: boolean;
+  canApprove: boolean;
+  disabledReason: string | null;
+}
+
+export interface Proposal extends ProposalBody {
   id: number;
+  change: ProposedChange | null;
   proposer: MemberId;
-  approvals: { member: MemberId; at: string }[];
+  /** Member ids that approved so far. */
+  approvals: MemberId[];
+  approvalCount: number;
+  members: ProposalMember[];
   threshold: number;
   status: ProposalStatus;
-  createdAt: string;
-  executedAt: string | null;
-  resultingPolicyVersion: number | null;
+  reportBasis: string;
+  /** Unix seconds. */
+  createdAt: number;
+  executedAt: number | null;
+  executedTxHash: string | null;
 }
 
 export interface DraftProposalRequest {
   findingId?: string;
   change?: ProposedChange;
+  compromised?: string[];
 }
-export interface CreateProposalRequest extends DraftProposalRequest {
-  proposer: MemberId;
+export interface CreateProposalRequest {
+  member: MemberId;
+  findingId?: string;
+  change?: ProposedChange;
+  /** Optional; the backend derives it from the draft when absent. */
+  title?: string;
 }

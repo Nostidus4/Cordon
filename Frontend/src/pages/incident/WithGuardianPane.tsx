@@ -61,7 +61,7 @@ export function WithGuardianPane({ view, policyActive, replay, agentNote, onLock
   const prev = useRef(view.locked);
   const [sweep, setSweep] = useState(0);
   useEffect(() => { if (view.locked && !prev.current) setSweep((n) => n + 1); prev.current = view.locked; }, [view.locked]);
-  const ghostAmount = view.ghost?.action.amount ? BigInt(view.ghost.action.amount.raw) : null;
+  const ghostAmount = view.ghost?.amount ? BigInt(view.ghost.amount.raw) : null;
   const ghostLive = !view.locked && !!view.ghost;
   return (
     <section aria-labelledby="right-title" data-pane="with" data-tour="inc-with-guardian" className="relative flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-xl)] border border-ok/25 bg-[#071a24]/70 p-4 shadow-[var(--shadow-card)]">

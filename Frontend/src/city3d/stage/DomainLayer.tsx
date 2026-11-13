@@ -38,8 +38,8 @@ export default function DomainLayer({ scene, graph, spread, highlight, attempts,
       L.add("p:minh");
       for (const a of (attempts ?? []).slice(-3)) {
         L.add(`k:${a.signer}`);
-        if (a.action.to) L.add(`r:${a.action.to}`);
-        if (a.action.dex) L.add(/evil/i.test(a.action.dex) ? "pr:evil_dex" : "pr:MockDEX");
+        if (a.action === "pay" && a.to) L.add(`r:${a.to}`);
+        if (a.action === "swap" && a.to) L.add(/evil/i.test(a.to) ? "pr:evil_dex" : "pr:MockDEX");
       }
     }
     if (scene === "request") { L.add("council"); }
