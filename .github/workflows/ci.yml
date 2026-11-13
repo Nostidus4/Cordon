@@ -40,10 +40,21 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: Frontend/package-lock.json
+      # the parity test starts the sim backend itself (uv run in Backend/)
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync
+        working-directory: Backend
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Parity mock vs live sim backend (QA-001)
+        timeout-minutes: 2
+        run: npm run test:parity
       - run: npm run build
       - name: Generated OpenAPI types are up to date
         run: |

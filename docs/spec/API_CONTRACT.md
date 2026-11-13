@@ -151,7 +151,12 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 - [x] Đề xuất #11 (gom khu): proposer `lan` trên cả mock và backend (WEB-002)
 - [x] `GET /agent/runs`, `GET /assistant/logs` đã có (CITY_OPS)
 - [x] Chạy trọn luồng trực tiếp (live) Frontend ↔ Backend: `make dev-live`; script `Frontend/src/lib/api/live.walkthrough.test.ts` (chạy khi có `LIVE_API`) đi cảnh 2-5 + mọi GET (WEB-001)
-- [ ] Kiểm tương đương (parity) schema/mock/backend tự động -> QA-001 (#21)
+- [x] Kiểm tương đương (parity) mock/backend tự động: `make parity` (= `npm run test:parity` trong `Frontend/`, chạy trong CI job `frontend`) tự dựng backend sim (`uv run uvicorn`, cổng 8199) rồi chạy 5 cảnh qua `Api` trên cả hai, so từng phần (bảng 4.5, findings, cảnh 4 bước 0-7, proposal, cap/khoá khu, tên event theo thứ tự) (QA-001)
+- [x] Id proposal: mock đánh số proposal đầu tiên tạo lúc chạy là #14 (như backend, vì #12/#13 là đơn seed), không còn #11 (QA-001)
+- [x] `pauseAll`: mock phát `Paused` rồi `EmergencyAction` (cùng thứ tự `chain/sim`), trước đó ngược lại (QA-001)
+- [x] Run cảnh 4: sau bước 5 mock ở `waiting_lock` (như backend), chỉ `step7` mới đưa về `completed` (QA-001)
+- [x] `principalSpentAfter` của attempt `blocked_at_protocol` (bước 7) là `null` trên cả hai (bảng 4.3 ghi "–", không có event để lấy số); backend trước đó trả bộ đếm hiện tại 25.000 (QA-001)
+- [ ] Còn lệch (chỉ chuẩn hoá trong test parity, QA-001): mock seed đơn #12/#13 sau lần gom khu đầu tiên, backend seed ngay lúc reset; `graph.districts` backend gồm cả khu của agent/dịch vụ (`agent_*`, `svc_payment`), mock chỉ có khu của người; backend responder tự đề xuất khôi phục sau `pauseAll` (event `Proposed` thêm), mock chỉ làm vậy khi gây lỗi qua `injectFault`; mock lưu bước 0 là `step: null` (FE đọc qua `stepOf`), backend là `0`; `POST /simulate` có `change`: backend chỉ trả `before/after`, mock còn điền `totals` cấp trên cùng
 - [x] Type Frontend khớp schema Backend: mọi `Known<...>` trong `Frontend/src/types/parity.test.ts` rỗng, trừ `SimulateResponse.before/after` (Backend `response_model_exclude_none` bỏ key, không phải lệch). `POST /proposals` gửi `member` (+ `title` tuỳ chọn); payload event đọc theo mục 2 (`id`, địa chỉ thành viên) (WEB-001)
 - [ ] `chain/sim` lệch [CONTRACTS.md](CONTRACTS.md) mục 6: `KeyAdded.kind` phát chữ hoa (`HUMAN`) thay vì `human`; `Proposed.subjectPrincipal` là `null` thay vì bytes32 rỗng. Sửa sim khi viết adapter L1 / bộ test conformance
 - [x] `Runtime.sim` đã bỏ: app code đi qua `ChainPort` (`proposal_state`...) và truyền địa chỉ hex vào `ChainPort`; id chỉ nằm trong store/API (không đổi API) (CHN-004)

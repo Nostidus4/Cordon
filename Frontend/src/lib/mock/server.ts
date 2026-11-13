@@ -234,7 +234,8 @@ function resolveChange(req: DraftProposalRequest): ProposedChange {
   }
   throw new ApiError("BAD_REQUEST", "Cần findingId hoặc change");
 }
-function nextProposalId(): number { let n = 11; while (S.proposals.some((p) => p.id === n) || (n === 12 || n === 13)) n++; return n; }
+// backend: #12/#13 are the seeded requests, the first proposal made at runtime is #14 (QA-001)
+function nextProposalId(): number { let n = 14; while (S.proposals.some((p) => p.id === n)) n++; return n; }
 /** Draft -> stored proposal (backend ProposalOut shape; `members`/`approvalCount` are filled live by `liveProposal`). */
 function toProposal(d: ProposalDraft, id: number, proposer: MemberId): Proposal {
   const { classification: _c, requiresCouncil: _r, sent: _s, ...body } = d;
@@ -470,7 +471,7 @@ async function runScene4(): Promise<ScenarioRun> {
         await sleep(mockConfig.stepDelayMs); if (my !== epoch) return;
         recordAttempt(st.step, { signer: st.signer, kind: st.kind as "pay" | "swap", token: st.token, tokenOut: st.tokenOut, to: st.to, dex: st.dex, amount: st.amount }, st.label, st.time);
       }
-      run.status = "completed"; run.finishedAt = nowSec();
+      run.status = "waiting_lock"; // like the backend: the run waits for the Council lock; step 7 completes it (QA-001)
     } finally { if (my === epoch) runActive = false; }
   })();
   return structuredClone(run);
@@ -776,7 +777,7 @@ export const mockApi = {
     await lat(); memberOf(req.member);
     if (S.paused) throw new ApiError("ALREADY_PAUSED", "Kho đã dừng", 409);
     S.paused = true; const tx = fakeTxHash(`pause${++counter}`);
-    pushEvent("EmergencyAction", { member: addrOf(req.member), action: "pauseAll" }, tx); pushEvent("Paused", { by: addrOf(req.member) }, tx);
+    pushEvent("Paused", { by: addrOf(req.member) }, tx); pushEvent("EmergencyAction", { member: addrOf(req.member), action: "pauseAll" }, tx); // same order as chain/sim (QA-001)
     graphUpdated(); emitCity(); return ok(tx, req.member);
   },
   async askAssistant(req: AskRequest): Promise<AssistantAnswer> { await sleep(mockConfig.latencyMs > 0 ? 600 : 0); return logAssistant(req.question, answerFor(req), req.context?.screen); },
@@ -787,7 +788,9 @@ export const mockApi = {
     const id = ensureRun();
     const st = SCENE4_STEPS[7];
     recordAttempt(7, { signer: st.signer, kind: "approve", token: st.token }, st.label, st.time);
-    return structuredClone(runs.find((r) => r.id === id)!);
+    const run = runs.find((r) => r.id === id)!;
+    run.status = "completed"; run.finishedAt = nowSec();
+    return structuredClone(run);
   },
   async applyPolicyV2(): Promise<ActionResult> {
     await lat();

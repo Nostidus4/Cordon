@@ -1,4 +1,4 @@
-.PHONY: openapi shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web dev-live test lint build docker-up docker-down db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
+.PHONY: openapi parity shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web dev-live test lint build docker-up docker-down db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
 
 API_URL ?= http://localhost:8000
 
@@ -19,6 +19,10 @@ dev-live:
 	(cd Backend && CHAIN_MODE=sim DEMO_MODE=true uv run guardian-api) & \
 	(cd Frontend && VITE_API_MODE=live npm run dev) & \
 	wait
+
+# Mock vs live parity (QA-001): starts the sim backend itself on :8199
+parity:
+	cd Frontend && npm run test:parity
 
 test:
 	cd Backend && uv run pytest -q

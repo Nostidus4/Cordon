@@ -75,6 +75,8 @@ def spent_after(
                 views.mny(e.payload["principalSpentAfter"]),
                 views.mny(e.payload["keySpentAfter"]),
             )
+    if res.status == "blocked_at_protocol":  # no event, no counter ("-" in the 4.3 table)
+        return None, None
     snap = rt.snapshot()
     p = snap.principals.get(pid) if pid else None
     k = snap.keys.get(signer_addr) if signer_addr else None

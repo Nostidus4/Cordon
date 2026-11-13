@@ -50,7 +50,7 @@ export interface Api {
   subscribe(listener: StreamListener): () => void;
 }
 
-const liveApi: Api = {
+export const liveApi: Api = {
   getHealth: () => http("GET", "/health"),
   getOrg: () => http("GET", "/org"),
   getGraph: () => http("GET", "/graph"),
