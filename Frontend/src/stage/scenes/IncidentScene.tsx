@@ -10,6 +10,8 @@ import { useCityStates } from "../../hooks/useCityStates";
 import { useGraph } from "../../hooks/useGraph";
 import { useScenarioRuns } from "../../hooks/useScenarioRuns";
 import { useStream } from "../../hooks/useStream";
+import { shortRpc } from "../../pages/incident/AttemptTimeline";
+import { txUrl } from "../../lib/explorer";
 import { pickReplayRun, useReplayPlayer } from "../../pages/incident/replay";
 import { leftStateAtStep } from "../../pages/incident/leftSimulation";
 import { reasonVi } from "../../shared/reasonCodes";
@@ -48,13 +50,14 @@ export function attemptText(a: Attempt): string {
 }
 const shortHash = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
 function evidence(a: Attempt): string {
-  if (a.outcome === "blocked_at_protocol") return "bị chain từ chối";
+  if (a.outcome === "blocked_at_protocol") return `bị chain từ chối · ${shortRpc(a.errorRaw)}`;
   if (!a.txHash) return "";
   return `${a.simulated ? "mô phỏng" : "giao dịch thật"} · ${shortHash(a.txHash)}`;
 }
 
 function TickerRow({ a }: { a: Attempt }) {
   const ok = a.outcome === "ok";
+  const url = a.outcome === "blocked_at_protocol" ? null : txUrl(a.txHash, a.simulated);
   return (
     <motion.li className="toy-ticker-row" initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 26 }}>
       <span className="font-toy text-[14px] font-bold" style={{ color: "var(--ink-2)" }}>{a.displayTime}</span>
@@ -64,7 +67,8 @@ function TickerRow({ a }: { a: Attempt }) {
           <span><b>{signerShort(a.signer, a.signerLabel)}</b> {attemptText(a)}</span>
         </div>
         {!ok ? <div className="text-[13px] font-bold" style={{ color: "var(--red-ink)" }}>{reasonVi(a.reasonCode)}</div> : null}
-        {evidence(a) ? <div className="text-[12px] font-semibold" style={{ color: "var(--ink-2)" }}>{evidence(a)}</div> : null}
+        {evidence(a) ? (url ? <a className="block text-[12px] font-semibold underline" style={{ color: "var(--ink-2)" }} href={url} target="_blank" rel="noreferrer">{evidence(a)}</a>
+          : <div className="text-[12px] font-semibold" style={{ color: "var(--ink-2)" }}>{evidence(a)}</div>) : null}
       </div>
     </motion.li>
   );
@@ -190,8 +194,14 @@ export function IncidentScene() {
       {/* bottom: the toy action buttons in story order; the next one pulses */}
       <div className="pointer-events-none absolute bottom-10 left-1/2 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 justify-center" data-slot="scene-bottom">
         {replay ? (
-          <ToyCard className="flex items-center gap-4 px-5 py-3" label="Xem lại">
+          <ToyCard className="pointer-events-auto flex items-center gap-4 px-5 py-3" label="Xem lại">
             <span className="font-toy text-[17px] font-bold" style={{ color: "var(--ink)" }}>Xem lại bản đã lưu · {player.shown}/{player.total}</span>
+            <select aria-label="Chọn lần chạy" value={replayRunId ?? ""} onChange={(e) => setReplayRunId(e.target.value)}
+              className="pointer-events-auto rounded-full border-2 px-3 py-1 font-toy text-[14px] font-bold" style={{ background: "var(--cream)", color: "var(--ink)", borderColor: "var(--ink-2)" }}>
+              {(runs ?? []).filter((r) => r.attempts.length > 0).map((r) => (
+                <option key={r.id} value={r.id}>{r.status === "recorded" ? "Bản ghi sẵn" : `Lần chạy ${new Date(r.startedAt * 1000).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`} · {r.attempts.length} bước</option>
+              ))}
+            </select>
             <ToyButton size="sm" onClick={player.toggle}>{player.playing ? "Tạm dừng" : "Chạy"}</ToyButton>
             <ToyButton size="sm" color="cream" onClick={player.restart}>↻ Từ đầu</ToyButton>
           </ToyCard>

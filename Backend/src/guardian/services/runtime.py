@@ -71,7 +71,7 @@ class AttemptRec:
     principal_spent_after: dict[str, str] | None = None
     key_spent_after: dict[str, str] | None = None
     simulated: bool = True
-    source: str = "server"  # server | agent | external
+    source: str = "server"  # server | agent | external | copilot
 
 
 @dataclass
@@ -119,6 +119,8 @@ class AgentRunRec:
     steps: list[dict[str, Any]] = field(default_factory=list)  # AgentStep dicts (CITY_OPS §2)
     untrusted_input: str | None = None
     injection_ignored: bool | None = None
+    # CITY-005: the LLM sentence that failed the guardrail (we stored the template instead)
+    rejected_reason_text: str | None = None
 
 
 @dataclass
@@ -238,8 +240,16 @@ class Stores:
         self.assistant_logs: list[AssistantLogRec] = []
         self.conflicts: list[ConflictRec] = []
         self.incidents: list[IncidentRec] = []
+        self.fault_attempts: dict[
+            int, str
+        ] = {}  # attempt id -> fault id (CITY-005 violations board)
+        self.copilot_drafts: dict[
+            int, Any
+        ] = {}  # CopilotDraftRec (assistant/copilot/models.py), CITY-004
+        self.tx_checks: dict[int, Any] = {}  # B05 Tx Guardian checks (TxCheckOut), CITY-003
         self._ids = 0
         self._incident_ids = 0
+        self._txcheck_ids = 0
 
     def clear(self) -> None:
         self.attempts.clear()  # before runs: attempts reference them
@@ -253,6 +263,10 @@ class Stores:
     def next_incident_id(self) -> int:
         self._incident_ids += 1
         return self._incident_ids
+
+    def next_txcheck_id(self) -> int:
+        self._txcheck_ids += 1
+        return self._txcheck_ids
 
 
 class Runtime:

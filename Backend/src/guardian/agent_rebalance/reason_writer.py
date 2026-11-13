@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from eth_utils import keccak
@@ -111,18 +112,38 @@ def _llm_reason(rt: Any, d: Decision, untrusted_input: str | None) -> str:
     return reason.strip()
 
 
-def write_reason(
+@dataclass(frozen=True)
+class ReasonResult:
+    """`text`/`source` are what is stored and hashed. `rejected_text` is the LLM sentence that failed the
+    guardrail (None when the LLM was not used, failed, or its sentence was accepted)."""
+
+    text: str
+    source: str  # "llm" | "template"
+    rejected_text: str | None = None
+
+
+def write_reason_detail(
     d: Decision, rt: Any = None, untrusted_input: str | None = None
-) -> tuple[str, str]:
-    """Returns (sentence, reason_source in {"llm", "template"}). Never changes `d`; any failure -> template."""
+) -> ReasonResult:
+    """Never changes `d`; any failure or unverified sentence -> template."""
+    rejected: str | None = None
     if rt is not None:
         try:
             text = _llm_reason(rt, d, untrusted_input)
             if reason_acceptable(text, d):
-                return text, "llm"
+                return ReasonResult(text, "llm")
+            rejected = text
             log.warning("agent reason rejected by guardrail; using the template")
         except LlmUnavailable as e:
             log.info("agent reason -> template (%s)", e)
         except Exception:
             log.warning("agent reason failed unexpectedly", exc_info=True)
-    return template_reason(d), "template"
+    return ReasonResult(template_reason(d), "template", rejected)
+
+
+def write_reason(
+    d: Decision, rt: Any = None, untrusted_input: str | None = None
+) -> tuple[str, str]:
+    """Returns (sentence, reason_source in {"llm", "template"})."""
+    r = write_reason_detail(d, rt, untrusted_input)
+    return r.text, r.source

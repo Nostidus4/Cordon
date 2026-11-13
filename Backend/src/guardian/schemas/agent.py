@@ -30,3 +30,8 @@ class AgentRunOut(CamelModel):
     steps: list[AgentStep] | None = None
     untrusted_input: str | None = None
     injection_ignored: bool | None = None
+    # CITY-005, all optional: reasonHash as recorded by the chain event, and whether keccak(reasonText) matches it
+    reason_hash_on_chain: str | None = None
+    reason_hash_verified: bool | None = None
+    # the LLM sentence that failed verification (reasonText is then the template)
+    rejected_reason_text: str | None = None

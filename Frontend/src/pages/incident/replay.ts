@@ -7,6 +7,13 @@ import { byStep } from "../../lib/dto";
 import { qk } from "../../hooks/queryKeys";
 
 export const REPLAY_STEP_MS = 3000;
+export const REPLAY_FIRST_MS = 700;
+/** One tick of the player: after the delay advance a step, or report done when everything is shown. Returns cancel. */
+export function scheduleReplayStep(shown: number, total: number, stepMs: number, onStep: () => void, onDone: () => void): () => void {
+  if (shown >= total) { onDone(); return () => {}; }
+  const t = setTimeout(onStep, shown === 0 ? REPLAY_FIRST_MS : stepMs);
+  return () => clearTimeout(t);
+}
 const sortAttempts = (a: Attempt[]) => [...a].sort(byStep);
 
 /** Prefer the recorded take; otherwise the newest finished run with attempts. */
@@ -27,9 +34,7 @@ export function useReplayPlayer(runId: string | null, stepMs = devStepMs() ?? RE
   useEffect(() => { setShown(0); setPlaying(true); }, [runId]);
   useEffect(() => {
     if (!playing || !total) return;
-    if (shown >= total) { setPlaying(false); return; }
-    const t = setTimeout(() => setShown((n) => n + 1), shown === 0 ? 700 : stepMs);
-    return () => clearTimeout(t);
+    return scheduleReplayStep(shown, total, stepMs, () => setShown((n) => n + 1), () => setPlaying(false));
   }, [playing, shown, total, stepMs]);
   const seek = useCallback((n: number) => { setPlaying(false); setShown(Math.max(0, Math.min(total, n))); }, [total]);
   const toggle = useCallback(() => {

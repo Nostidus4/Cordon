@@ -120,7 +120,40 @@ expectTypeOf<DiffQ<S["SimulateRequest"], T.SimulateRequest>>().toEqualTypeOf<Kno
 expectTypeOf<DiffQ<S["DraftRequest"], T.DraftProposalRequest>>().toEqualTypeOf<Known<never, never, never>>();
 // ProposeRequest <-> CreateProposalRequest
 expectTypeOf<DiffQ<S["ProposeRequest"], T.CreateProposalRequest>>().toEqualTypeOf<Known<never, never, never>>();
+// B05 Tx Guardian (CITY-003)
+// TxCheckOut <-> TxCheck
+expectTypeOf<DiffR<S["TxCheckOut"], T.TxCheck>>().toEqualTypeOf<Known<never, never, never>>();
+// PreparedTx <-> PreparedTx
+expectTypeOf<DiffQ<S["PreparedTx"], T.PreparedTx>>().toEqualTypeOf<Known<never, never, never>>();
+// StateDiff <-> StateDiff
+expectTypeOf<DiffR<S["StateDiff"], T.StateDiff>>().toEqualTypeOf<Known<never, never, never>>();
+// TxFlow <-> TxFlow
+expectTypeOf<DiffR<S["TxFlow"], T.TxFlow>>().toEqualTypeOf<Known<never, never, never>>();
+// TxApproval <-> TxApproval
+expectTypeOf<DiffR<S["TxApproval"], T.TxApproval>>().toEqualTypeOf<Known<never, never, never>>();
+// TxFinding <-> TxFinding
+expectTypeOf<DiffR<S["TxFinding"], T.TxFinding>>().toEqualTypeOf<Known<never, never, never>>();
+// TxNumber <-> TxNumber
+expectTypeOf<DiffR<S["TxNumber"], T.TxNumber>>().toEqualTypeOf<Known<never, never, never>>();
+// SentTx <-> SentTx
+expectTypeOf<DiffR<S["SentTx"], T.SentTx>>().toEqualTypeOf<Known<never, never, never>>();
 
+// Copilot (CITY-004): PreparedTxOut / DraftDetails / DraftResult / CopilotDraftOut / CopilotReply / CopilotEvalOut and requests
+expectTypeOf<DiffR<S["PreparedTxOut"], T.CopilotPreparedTx>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffR<S["DraftDetails"], T.CopilotDraftDetails>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffR<S["DraftResult"], T.CopilotDraftResult>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffR<S["CopilotDraftOut"], T.CopilotDraft>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffR<S["CopilotNumber"], T.CopilotNumber>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffR<S["CopilotReply"], T.CopilotReply>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffR<S["CopilotEvalOut"], T.CopilotEval>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffR<S["EvalCase"], T.CopilotEvalCase>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffR<S["EvalBlocked"], T.CopilotEvalBlocked>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffR<S["EvalAccuracy"], T.CopilotEvalAccuracy>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffQ<S["CopilotRequest"], T.CopilotRequest>>().toEqualTypeOf<Known<never, never, never>>();
+expectTypeOf<DiffQ<S["ConfirmRequest"], T.CopilotConfirmRequest>>().toEqualTypeOf<Known<never, never, never>>();
+
+// ViolationOut <-> Violation (CITY-005)
+expectTypeOf<DiffR<S["ViolationOut"], T.Violation>>().toEqualTypeOf<Known<never, never, never>>();
 // SSE type list must match Backend schemas/stream.py SSE_EVENT_TYPES (API_CONTRACT §5).
 expectTypeOf<T.StreamMessageType>().toEqualTypeOf<
   "event" | "attempt" | "graph_updated" | "proposal_updated" | "agent_run" | "city_updated" | "incident_updated" | "reset"
