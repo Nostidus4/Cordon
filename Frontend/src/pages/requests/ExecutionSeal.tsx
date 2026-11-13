@@ -27,13 +27,13 @@ export function ExecutionBurst({ show, version }: { show: boolean; version: numb
 }
 
 /** Permanent banner for executed proposals with the Map link. */
-export function ExecutedBanner({ version, at, className }: { version: number | null; at: string | null; className?: string }) {
+export function ExecutedBanner({ version, at, className }: { version: number | null; at: number | null; className?: string }) {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={cn("flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-ok/45 bg-ok-soft px-4 py-3", className)} data-tour="req-executed">
       <span className="grid size-9 place-items-center rounded-full bg-ok/20 text-ok"><ShieldCheck className="size-5" aria-hidden /></span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-ok">Đã thực thi · policy v{version ?? "?"}</p>
-        <p className="text-xs text-[#a9f0dc]">Hội đồng duyệt đủ 2/3{at ? `, ${new Date(at).toLocaleTimeString("vi-VN")}` : ""}. Bản đồ đã được vẽ lại theo chính sách mới.</p>
+        <p className="text-xs text-[#a9f0dc]">Hội đồng duyệt đủ 2/3{at ? `, ${new Date(at * 1000).toLocaleTimeString("vi-VN")}` : ""}. Bản đồ đã được vẽ lại theo chính sách mới.</p>
       </div>
       <Link to="/map" className="inline-flex items-center gap-1.5 rounded-full bg-ok px-4 py-2 text-sm font-bold text-[#04261d] shadow-[var(--shadow-glow-ok)] transition-all hover:brightness-110">
         Xem trên Map <ArrowUpRight className="size-4" aria-hidden />

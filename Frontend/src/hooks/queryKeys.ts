@@ -14,6 +14,9 @@ export const qk = {
   building: (id: string) => ["building", id] as const,
   faults: ["faults"] as const,
   violations: (limit = 50) => ["violations", limit] as const,
+  copilotDrafts: ["copilotDrafts"] as const,
+  copilotEval: ["copilotEval"] as const,
   agentRuns: ["agentRuns"] as const,
+  txChecks: ["txChecks"] as const,
   incidents: (status: "open" | "all" = "open") => ["incidents", status] as const,
 };

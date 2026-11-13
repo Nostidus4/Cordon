@@ -42,8 +42,8 @@ export default function MapPage() {
   }, [graph, params, select]);
   useEffect(() => () => select(null), [select]);
 
-  const flagged = useMemo(() => new Set((findings ?? []).filter((f) => f.severity === "HIGH" && f.resolvedByProposal == null).map((f) => f.principalId)), [findings]);
-  const openFindings = useMemo(() => (findings ?? []).filter((f) => f.resolvedByProposal == null), [findings]);
+  const flagged = useMemo(() => new Set((findings ?? []).filter((f) => f.severity === "HIGH").map((f) => f.principalId)), [findings]);
+  const openFindings = useMemo(() => (findings ?? []), [findings]);
 
   // announce a live policy change (graph_updated -> refetch -> new policyVersion)
   const prevPolicy = useRef<number | null>(null);

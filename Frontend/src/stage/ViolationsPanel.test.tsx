@@ -11,10 +11,13 @@ const v = (o: Partial<Violation>): Violation => ({
   id: 7, ts: 1_700_000_000, source: "agent", key: "key_agent_rebalance", keyLabel: "Trợ lý Cân đối", principalId: "minh", district: "Anh Minh", action: "pay",
   reasonCode: "RECIPIENT_NOT_ALLOWED", txHash: "0x" + "ab".repeat(32), simulated: true, ref: "attempt:7", ...o,
 });
+const m = (n: number) => ({ raw: String(BigInt(n) * 1_000_000n), display: n.toLocaleString("vi-VN") });
 const run = (o: Partial<AgentRun>): AgentRun => ({
-  id: "1", decision: { action: "swap", tokenIn: "tUSDC", tokenOut: "tTKB", amountIn: { raw: "5000000000", display: "5.000" }, tTKBShareBefore: 0, targetShare: 20 },
-  reasonText: "Tỉ trọng tTKB đang là 0% thấp hơn mục tiêu 20%, nên đổi 5.000 tUSDC sang tTKB.", reasonSource: "template", reasonHash: "0xaa", txHash: "0xbb", simulated: true,
-  outcome: "ok", reasonCode: null, createdAt: "", reasonHashOnChain: "0xaa", reasonHashVerified: true, rejectedReasonText: null, ...o,
+  id: 1, ts: 1_700_000_000, outcome: "swapped", attemptId: null, steps: null, untrustedInput: null, injectionIgnored: null,
+  decision: { tokenIn: "tUSDC", tokenOut: "tTKB", amountIn: m(5000), gap: m(20000), ttkbWeightBps: 0, targetBps: 2000, totalValue: m(100000) },
+  balances: { vaultTusdc: m(100000), vaultTtkb: m(0), ttkbValueInTusdc: m(0), keyRemaining: m(20000), districtRemaining: m(30000) },
+  reasonText: "Tỉ trọng tTKB đang là 0% thấp hơn mục tiêu 20%, nên đổi 5.000 tUSDC sang tTKB.", reasonSource: "template", reasonHash: "0xaa", txHash: "0xbb",
+  reasonCode: null, reasonHashOnChain: "0xaa", reasonHashVerified: true, rejectedReasonText: null, ...o,
 });
 
 describe("ViolationsList", () => {

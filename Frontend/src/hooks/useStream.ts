@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import { useConnStore } from "../store/connStore";
 import { toast } from "../store/uiStore";
 import type { Attempt, CityStates, Incident, StreamListener, StreamMessage, StreamMessageType } from "../types";
 import { qk } from "./queryKeys";
@@ -21,6 +22,8 @@ export function useStreamBridge() {
   const navigate = useNavigate();
   const navRef = useRef(navigate);
   navRef.current = navigate;
+  // SSE came back after a drop: refetch everything so events missed meanwhile are not lost
+  useEffect(() => useConnStore.subscribe((s, prev) => { if (s.sseOpen && !prev.sseOpen) qc.invalidateQueries(); }), [qc]);
   useEffect(() => api.subscribe((m: StreamMessage) => {
     switch (m.type) {
       case "event":

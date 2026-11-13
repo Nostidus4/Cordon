@@ -271,7 +271,14 @@ def _f05(rt: Runtime) -> list[dict[str, Any]]:
         )
     for s in ATTACK_STEPS:
         a = att.run_spend(
-            rt, s.signer, s.action, s.params, run_id=None, step=s.step, display_time=s.display_time
+            rt,
+            s.signer,
+            s.action,
+            s.params,
+            run_id=None,
+            step=s.step,
+            display_time=s.display_time,
+            guard_source="attacker",
         )
         actions.append(_attempt_action(f"Bước {s.step}: {_step_label(s)}", a))
     return actions
@@ -287,7 +294,7 @@ def _step_label(s: Any) -> str:
 def _f06(rt: Runtime) -> list[dict[str, Any]]:
     _require_usable_key(rt, agent_service.AGENT_SEED)
     run = agent_service.run_once(rt, untrusted_input=AGENT_INJECTION_TEXT)
-    att_rec = next((a for a in rt.stores.attempts if a.id == run["attemptId"]), None)
+    att_rec = next((a for a in rt.stores.attempts.all() if a.id == run["attemptId"]), None)
     actions = [
         {
             "labelVi": "Chạy agent với văn bản lạ: quyết định do rule engine, không đọc văn bản",
@@ -316,7 +323,7 @@ def _f07(rt: Runtime) -> list[dict[str, Any]]:
         run = agent_service.run_once(
             rt, llm_reason=False
         )  # many rounds: template reason, no LLM wait
-        att_rec = next((a for a in rt.stores.attempts if a.id == run["attemptId"]), None)
+        att_rec = next((a for a in rt.stores.attempts.all() if a.id == run["attemptId"]), None)
         if run["outcome"] == "no_action":
             if i == 0:
                 raise _not_applicable(

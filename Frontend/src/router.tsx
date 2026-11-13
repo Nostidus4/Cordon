@@ -43,13 +43,13 @@ const basename = import.meta.env.BASE_URL.replace(/\/+$/, "") || undefined;
 
 export const router = createBrowserRouter([
   // the stage: a single element for "/" and "/s/:scene" so the canvas never remounts between scenes
-  { path: "/", element: <Suspense fallback={<RouteSkeleton kind="stage" />}><StagePage /></Suspense>, children: [{ index: true }, { path: "s/:scene" }] },
+  { path: "/", element: <Suspense fallback={<RouteSkeleton kind="stage" />}><StagePage /></Suspense>, children: [{ index: true, element: null }, { path: "s/:scene", element: null }] },
   {
     element: <Suspense fallback={<RouteSkeleton kind="full" />}><Root /></Suspense>,
     children: [
       { path: "city", element: <CityRoute /> },
       // one element for /he-thong and /he-thong/:tab so the live feed never remounts between tabs
-      { path: "he-thong", element: <Suspense fallback={<RouteSkeleton kind="full" />}><SystemPage /></Suspense>, children: [{ index: true }, { path: ":tab" }] },
+      { path: "he-thong", element: <Suspense fallback={<RouteSkeleton kind="full" />}><SystemPage /></Suspense>, children: [{ index: true, element: null }, { path: ":tab", element: null }] },
       {
         path: "chi-tiet",
         element: <Suspense fallback={<RouteSkeleton kind="full" />}><AppShell /></Suspense>,

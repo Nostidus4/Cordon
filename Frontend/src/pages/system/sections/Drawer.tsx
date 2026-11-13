@@ -1,4 +1,5 @@
 // Right-hand drawer: everything about one attempt (check trace, raw JSON, related chain events).
+import { attemptLabel, eventKey, isoOfSec, stepOf, timeOf } from "../../../lib/dto";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -44,10 +45,10 @@ function DrawerBody({ attempt: a, onClose }: { attempt: Attempt; onClose: () => 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <Chip t={tone} mono>{a.outcome === "ok" ? "OK" : a.outcome === "reverted" ? "REVERTED" : "BLOCKED_AT_PROTOCOL"}</Chip>
-            <Chip>bước {a.step} · {a.scenarioTime}</Chip>
-            <span className="sx-ref">{fmtClock(a.ts)}</span>
+            <Chip>bước {stepOf(a)} · {timeOf(a)}</Chip>
+            <span className="sx-ref">{fmtClock(isoOfSec(a.ts))}</span>
           </div>
-          <h2 className="font-toy" style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.15, margin: 0 }}>{a.action.label}</h2>
+          <h2 className="font-toy" style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.15, margin: 0 }}>{attemptLabel(a)}</h2>
           <p className="mono" style={{ margin: "6px 0 0", wordBreak: "break-all" }}>{callSignature(a)}</p>
         </div>
         <button ref={closeRef} type="button" className="toy-btn" data-c="cream" data-size="xs" onClick={onClose} aria-label="Đóng"><X size={16} aria-hidden /></button>
@@ -87,7 +88,7 @@ function DrawerBody({ attempt: a, onClose }: { attempt: Attempt; onClose: () => 
           <h3 className="sx-h3">Sự kiện liên quan <Chip t={related.length ? "info" : undefined}>{related.length}</Chip></h3>
           {related.length === 0 ? <p className="sx-sub tight">{a.outcome === "ok" ? "Chưa thấy event cùng tx (indexer có thể chậm)." : "Lệnh bị chặn không sinh event (spec §6.3). Lý do lấy từ eth_call / RPC."}</p> : (
             <div className="grid gap-2">{related.map((e) => (
-              <div key={e.id}>
+              <div key={eventKey(e)}>
                 <div className="mb-1 flex flex-wrap items-center gap-2"><Chip t="info" mono>{e.name}</Chip><span className="sx-ref">block {e.block} · log {e.logIndex}</span></div>
                 <JsonView value={e.payload} maxHeight={200} />
               </div>

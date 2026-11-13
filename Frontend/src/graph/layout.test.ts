@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { GraphSnapshot } from "../types";
 import { buildGraph, seedState, applyCalls, changeToCalls, U } from "../lib/mock/core";
+import { money } from "../lib/format";
 import { DIM, computeLayout, districtCols } from "./layout";
 
 const v1 = (): GraphSnapshot => buildGraph(seedState(), 100);
 const v2 = (): GraphSnapshot => {
   const s = seedState();
-  applyCalls(s, changeToCalls(s, { kind: "consolidate", into: "minh", keys: ["key_agent_data", "key_agent_intl_pay", "key_agent_rebalance", "key_svc_payment"], sharedCapRaw: U(30000).toString() }));
+  applyCalls(s, changeToCalls(s, { kind: "merge_district", into: "minh", keys: ["key_agent_data", "key_agent_intl_pay", "key_agent_rebalance", "key_svc_payment"], districtCap: money(U(30000)) }));
   return buildGraph(s, 101);
 };
 const overlap = (a: { x: number; y: number; w: number; h: number }, b: typeof a) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;

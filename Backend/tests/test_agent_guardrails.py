@@ -23,11 +23,11 @@ async def test_injection_does_not_change_amount_token_or_dex() -> None:
     async with llm_app(ScriptedLlm(reason_turn(OBEY))) as (_, rt, c):
         await to_v2(c)
         with_text = agent_service.run_once(rt, untrusted_input=INJECTION)
-        att_with = next(a for a in rt.stores.attempts if a.id == with_text["attemptId"])
+        att_with = next(a for a in rt.stores.attempts.all() if a.id == with_text["attemptId"])
     async with llm_app(ScriptedLlm(reason_turn(OBEY))) as (_, rt, c):
         await to_v2(c)
         without = agent_service.run_once(rt)
-        att_without = next(a for a in rt.stores.attempts if a.id == without["attemptId"])
+        att_without = next(a for a in rt.stores.attempts.all() if a.id == without["attemptId"])
     assert _decision_shape(with_text) == _decision_shape(without)
     for f in ("action", "amount", "token", "to", "outcome", "reason_code"):
         assert getattr(att_with, f) == getattr(att_without, f), f

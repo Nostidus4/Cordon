@@ -2,18 +2,22 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Building, Link2, Landmark } from "lucide-react";
 import { Button, Card, CardHeader, StatusChip } from "../../components/ui";
-import { toBase } from "../../lib/format";
+import { useDistrict } from "../../hooks/useDistrict";
+import { money, toBase } from "../../lib/format";
 import type { Proposal, ProposedChange } from "../../types";
 import { RequestAssistant } from "./AssistantSlot";
 import { BeforeAfterInline } from "./BeforeAfter";
 
-export const COUNCIL_DISTRICT_CHANGE: ProposedChange = { kind: "council_district", id: "council_ops", keys: ["key_agent_rebalance"], capRaw: toBase(100000).toString() };
+export const councilDistrictChange = (rebalanceKey: string): ProposedChange =>
+  ({ kind: "create_district", principalId: "council_ops", label: "Khu do Hội đồng sở hữu", owner: "council", keys: [rebalanceKey], districtCap: money(toBase(100000)) });
 export const isScene5 = (p: Pick<Proposal, "id">) => p.id === 12 || p.id === 13;
 
 export function Scene5Panel({ proposal, linked, onOpen, onDraft, treasury }: {
   proposal: Proposal; linked: Proposal | undefined; onOpen: (id: number) => void; onDraft: (c: ProposedChange) => void; treasury?: bigint;
 }) {
   const conflictProposal = proposal.id === 13 ? proposal : linked;
+  // the backend takes key addresses, not seed ids
+  const rebalanceKey = useDistrict("agent_rebalance").data?.keys[0]?.address ?? "key_agent_rebalance";
   return (
     <div className="space-y-4">
       {linked ? (
@@ -43,7 +47,7 @@ export function Scene5Panel({ proposal, linked, onOpen, onDraft, treasury }: {
             <div key={k} className="rounded-lg border border-ok/25 bg-black/20 px-2 py-2"><dt className="text-[10.5px] uppercase tracking-wider text-faint">{k}</dt><dd className="tnum mt-0.5 text-[13px] font-bold text-ok">{v}</dd></div>
           ))}
         </dl>
-        <Button size="sm" variant="success" className="mt-3" icon={<Building className="size-4" />} onClick={() => onDraft(COUNCIL_DISTRICT_CHANGE)}>Soạn đề xuất khu Hội đồng</Button>
+        <Button size="sm" variant="success" className="mt-3" icon={<Building className="size-4" />} onClick={() => onDraft(councilDistrictChange(rebalanceKey))}>Soạn đề xuất khu Hội đồng</Button>
       </motion.div>
     </div>
   );

@@ -28,7 +28,7 @@ def _source(rt: Runtime, a: AttemptRec) -> str:
 
 def tag_fault(rt: Runtime, fault_id: str, after_attempt_id: int) -> None:
     """Mark the attempts a fault injection created (id > `after_attempt_id`)."""
-    for a in rt.stores.attempts:
+    for a in rt.stores.attempts.all():
         if a.id > after_attempt_id:
             rt.stores.fault_attempts[a.id] = fault_id
 
@@ -52,6 +52,6 @@ def violation_out(rt: Runtime, a: AttemptRec) -> dict[str, Any]:
 
 
 def list_violations(rt: Runtime, limit: int = 50) -> list[dict[str, Any]]:
-    bad = [a for a in rt.stores.attempts if a.outcome != "ok" and a.reason_code]
+    bad = [a for a in rt.stores.attempts.all() if a.outcome != "ok" and a.reason_code]
     bad.sort(key=lambda a: (a.ts, a.id), reverse=True)
     return [violation_out(rt, a) for a in bad[:limit]]

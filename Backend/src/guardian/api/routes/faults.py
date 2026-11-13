@@ -20,7 +20,7 @@ async def list_faults():  # type: ignore[no-untyped-def]
     dependencies=[Depends(demo_signing("faults.inject"))],
 )
 async def inject(fault_id: str, rt: RuntimeDep):  # type: ignore[no-untyped-def]
-    before = max((a.id for a in rt.stores.attempts), default=0)
+    before = max((a.id for a in rt.stores.attempts.all()), default=0)
     out = faults.inject(rt, fault_id)
     violations.tag_fault(rt, fault_id, before)  # so the violations board can say "fault"
     return out
