@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", case_sensitive=False)
 
     chain_mode: Literal["sim", "l1"] = "sim"
+    # Empty = in-memory stores (as today). Postgres: postgresql+asyncpg://guardian:<pw>@localhost:5432/guardian
+    database_url: str = ""
     # CHAIN_MODE=l1: JSON-RPC endpoint and the file with the deployed addresses (relative paths
     # resolve against Backend/).
     l1_rpc_url: str = "http://127.0.0.1:9650/ext/bc/guardian/rpc"

@@ -51,7 +51,9 @@ Cần `uv`, Node 22 và (tuỳ chọn) Docker.
     make setup      # cài phụ thuộc Backend + Frontend, hook pre-commit
     make dev-web    # giao diện tại http://localhost:5173 (mặc định dùng backend giả lập trong trình duyệt)
     make dev-api    # API FastAPI tại http://localhost:8000 (dùng với VITE_API_MODE=live)
+    cp .env.example .env           # đặt POSTGRES_PASSWORD (docker compose cần biến này)
     docker compose up --build -d   # api :8000, web :8080
+    make db-up db-migrate          # (tuỳ chọn) Postgres 16 + alembic upgrade head
 
 ## Kiểm thử
 
