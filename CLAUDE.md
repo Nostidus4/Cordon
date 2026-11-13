@@ -45,6 +45,15 @@ Delegate không mở rộng quyền. Luôn hỏi người dùng trước khi: co
 
 Private key chỉ dùng **testnet**, nằm trong `.env*` (không commit). `DEMO_MODE` chỉ bật trên Guardian L1 test.
 
+## Ý tưởng cốt lõi (người dùng chốt, không đổi)
+
+1. AI agent và các thẻ (khoá) tiêu tiền của công ty, nhưng không ai cầm toàn quyền.
+2. Chain chặn bằng luật: hạn mức thẻ, hạn mức chung của **khu**, whitelist. Một thẻ lộ chỉ thiệt trong khu của nó.
+3. **Siết** thì làm ngay (tự động hoặc một thành viên Hội đồng); **nới** luôn cần Hội đồng 2/3. Không có đường tự động nào được nới.
+4. Thành phố 3D cho người xem thấy toàn bộ điều trên, từ dữ liệu thật.
+
+**Phép thử trước khi thêm tính năng hoặc ghép đề UniHack mới:** chỉ làm khi nó (a) thêm một nơi tiêu tiền / một agent mới mà vẫn bị cùng bộ luật đó chặn, hoặc (b) làm việc chặn / khôi phục mạnh hơn hay dễ thấy hơn. Không đạt cả hai (ví dụ sản phẩm xã hội cho cá nhân, game) thì không làm; báo người dùng. Mỗi khu mới cắm vào theo khuôn ở `docs/spec/CITY_OPS.md` (registry, luật đổi màu, sự cố gây được, quy tắc responder).
+
 ## Context project
 
 - **Spec gốc:** BA spec v0.8 (bản local của người dùng, không nằm trong repo). Viện dẫn theo mục `§x.y`. Mức ưu tiên: P0 bắt buộc cho bản demo, P1 nếu dư thời gian, P2 không làm.

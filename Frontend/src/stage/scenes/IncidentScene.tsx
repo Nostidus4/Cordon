@@ -130,7 +130,7 @@ export function IncidentScene() {
   return (
     <>
       {/* left: what would have happened without Cordon (simulated) */}
-      <div className="absolute bottom-24 left-6">
+      <div className="absolute bottom-24 left-6" data-slot="scene-left">
         <ToyCard tone="red" className="w-[310px] px-5 pb-4 pt-4" label="Không có Cordon, mô phỏng">
           <div className="flex items-center justify-between gap-2">
             <div className="font-toy text-[17px] font-bold leading-tight" style={{ color: "var(--ink)" }}>Không có Cordon</div>
@@ -147,7 +147,7 @@ export function IncidentScene() {
       </div>
 
       {/* right: with Cordon (live) */}
-      <div className="absolute right-6 top-24 flex w-[min(350px,calc(100vw-48px))] flex-col gap-3">
+      <div className="absolute right-6 top-24 flex w-[min(350px,calc(100vw-48px))] flex-col gap-3" data-slot="scene-right">
         {!policyV2 && !preparing ? (
           <ToyCard className="p-4" label="Cần policy v2">
             <div className="font-toy text-[20px] font-bold leading-tight" style={{ color: "var(--ink)" }}>Khu anh Minh chưa có cổng chung</div>
@@ -189,7 +189,7 @@ export function IncidentScene() {
       </div>
 
       {/* bottom: the toy action buttons in story order; the next one pulses */}
-      <div className="absolute inset-x-0 bottom-10 flex justify-center px-4">
+      <div className="pointer-events-none absolute bottom-10 left-1/2 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 justify-center" data-slot="scene-bottom">
         {replay ? (
           <ToyCard className="flex items-center gap-4 px-5 py-3" label="Xem lại">
             <span className="font-toy text-[17px] font-bold" style={{ color: "var(--ink)" }}>Xem lại bản đã lưu · {player.shown}/{player.total}</span>

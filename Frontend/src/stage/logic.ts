@@ -6,7 +6,7 @@ import { leftStateAtStep, leftStepFromAttempts } from "../pages/incident/leftSim
 import { KEY_CAP } from "../shared/scenario4";
 import { fmtDisplay, fmtPercent, percentOf } from "../lib/format";
 import type { Attempt, GraphSnapshot, Proposal, SimResult } from "../types";
-import type { BuildingCode, CityStageProps, SceneId } from "./contract";
+import type { CityStageProps, SceneId } from "./contract";
 
 // ---------- scenes & routes ----------
 export const STAGE_SCENES = ["look", "try", "fix", "incident", "request"] as const;
@@ -98,10 +98,7 @@ export function nextIncidentAction(n: Pick<IncidentNumbers, "agentDone" | "attac
 }
 
 // ---------- plain-words labels ----------
-export const BUILDING_NAME: Record<BuildingCode, string> = {
-  B01: "Hội đồng duyệt", B02: "Tòa Giáo Dục", B03: "Kho tiền", B04: "Tòa Tiêu Dùng",
-  B05: "Tòa An Toàn", B06: "Tòa Tăng Trưởng", B07: "Tòa Trách Nhiệm", B08: "Quảng trường",
-};
+export { BUILDING_NAME } from "../shared/buildings";
 const RECIPIENT_VI: Record<string, string> = { vendor_data_api: "Nhà cung cấp dữ liệu", vendor_cloud: "Nhà cung cấp máy chủ", vendor_intl_design: "Hãng thiết kế nước ngoài", stranger_wallet: "Ví lạ" };
 export const recipientVi = (id: string) => RECIPIENT_VI[id] ?? id;
 const SIGNER_SHORT: Record<string, string> = {

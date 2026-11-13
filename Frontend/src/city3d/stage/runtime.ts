@@ -104,7 +104,7 @@ export class StageRuntime {
         const pn = graph.nodes.find((n) => n.id === `p:${d.principalId}`);
         let f = this.fences.get(d.principalId);
         if (!f) {
-          f = { id: `p:${d.principalId}`, principalId: d.principalId, label: d.label, kind: d.kind, cap: null, capRaw: null, spentRaw: null, locked: false, lock: 0,
+          f = { id: `p:${d.principalId}`, principalId: d.principalId, label: d.label ?? pn?.label ?? d.principalId, kind: d.kind ?? pn?.data.kind, cap: null, capRaw: null, spentRaw: null, locked: false, lock: 0,
             alpha: 0, alphaT: 1, cx: 0, cz: 0, hx: MIN_HALF, hz: MIN_HALF, slot: this.nextSlot++, nPins: 0, seen: false };
           this.fences.set(d.principalId, f);
         }

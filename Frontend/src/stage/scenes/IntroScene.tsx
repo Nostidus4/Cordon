@@ -12,8 +12,8 @@ export function IntroScene() {
   const start = () => nav("/s/look");
   usePrimaryAction(start);
   return (
-    <div className="absolute inset-x-0 bottom-12 flex justify-center px-6 sm:justify-start sm:pl-10">
-      <ToyCard className="w-[min(520px,100%)] px-8 pb-7 pt-6" label="Mở đầu">
+    <div className="pointer-events-none absolute inset-x-0 bottom-12 flex justify-center px-6 sm:justify-start sm:pl-10">
+      <ToyCard className="w-[min(520px,100%)] px-8 pb-7 pt-6" label="Mở đầu" data-slot="scene-left" data-intro>
         <div className="mb-3 flex items-end justify-between gap-3">
           <CordonLogo tone="dark" height={40} title="Cordon" />
           <div className="flex items-end gap-1.5" aria-hidden><PersonIcon size={40} /><RobotIcon size={40} /><ServerIcon size={40} /></div>
