@@ -46,7 +46,7 @@ function RuleList({ d }: { d: BuildingDetail }) {
   return (
     <ul className="m-0 mt-1 flex list-none flex-col gap-1 p-0" aria-label="Các luật đổi màu">
       {d.rules.map((r) => {
-        const t = STATE_TONE[r.state];
+        const t = STATE_TONE[r.state === "worst" ? d.state : r.state]; // B08.worst takes the colour it currently resolves to
         return (
           <li key={r.id} data-rule={r.id} data-active={r.active ? "true" : "false"} className="flex items-start gap-2 rounded-[12px] px-2 py-1 text-[13px] leading-snug"
             style={{ background: r.active ? t.soft : "transparent", border: `2px solid ${r.active ? t.dot : "transparent"}`, color: "var(--ink)", fontWeight: r.active ? 700 : 500 }}>

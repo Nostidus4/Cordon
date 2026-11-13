@@ -5,7 +5,8 @@ export type RuleState = "normal" | "warning" | "incident" | "recovery";
 
 export interface BuildingRule {
   id: string;
-  state: RuleState;
+  /** "worst" only for B08.worst: the worst state of the seven other buildings. */
+  state: RuleState | "worst";
   /** Vietnamese sentence describing the condition. */
   whenVi: string;
 }
@@ -61,7 +62,7 @@ export const BUILDING_REGISTRY: BuildingInfo[] = [
       { id: "B07.high", state: "warning", whenVi: "Còn cờ rủi ro mức cao đang mở" }] },
   { id: "B08", name: "Trung tâm sự cố", module: "responder", topic: "—",
     summaryVi: "Theo dõi cả thành phố. Tự khoanh vùng khi có sự cố, rồi xin Hội đồng duyệt để hồi phục.",
-    rules: [{ id: "B08.worst", state: "normal", whenVi: "Lấy trạng thái xấu nhất của 7 tòa còn lại" }] },
+    rules: [{ id: "B08.worst", state: "worst", whenVi: "Lấy trạng thái xấu nhất của 7 tòa còn lại" }] },
 ];
 
 export const BUILDING_IDS: BuildingId[] = BUILDING_REGISTRY.map((b) => b.id);
