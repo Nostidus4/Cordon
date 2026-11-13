@@ -7,12 +7,15 @@ from guardian.api.routes import (
     agent,
     assistant,
     attempts,
+    buildings,
     demo,
     districts,
     events,
+    faults,
     findings,
     graph,
     health,
+    incidents,
     org,
     proposals,
     scenario,
@@ -36,3 +39,6 @@ api_router.include_router(assistant.router)
 api_router.include_router(agent.router)
 api_router.include_router(scenario.router)
 api_router.include_router(demo.router)
+api_router.include_router(buildings.router)
+api_router.include_router(faults.router)
+api_router.include_router(incidents.router)

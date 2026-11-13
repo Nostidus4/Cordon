@@ -269,6 +269,13 @@ def describe_vi(calls: list[Call], snapshot: PolicySnapshot | None = None) -> li
             out.append(f'Tạo khu mới "{a["label"]}" ({a["id"]}) do Hội đồng sở hữu.')
         elif fn == "addKey":
             out.append(f"Gắn {key_name(a['key'])} vào {dist_name(a['id'])}.")
+        elif fn == "deactivateKey":
+            out.append(f"Tắt {key_name(a['key'])}.")
+        elif fn == "unlockPrincipal":
+            pid = a.get("principalId") or a.get("principal_id") or a["id"]
+            out.append(f"Mở khoá {dist_name(pid)}.")
+        elif fn == "unpauseAll":
+            out.append("Mở lại cả kho (bỏ dừng khẩn cấp).")
         elif fn == "bumpPolicyVersion":
             out.append("Tăng phiên bản chính sách (policy version).")
         else:

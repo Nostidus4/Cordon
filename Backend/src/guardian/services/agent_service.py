@@ -45,10 +45,19 @@ def agent_run_out(r: AgentRunRec) -> dict[str, Any]:
         "reasonCode": r.reason_code,
         "attemptId": r.attempt_id,
         "balances": r.balances,
+        "steps": r.steps or None,
+        "untrustedInput": r.untrusted_input,
+        "injectionIgnored": r.injection_ignored,
     }
 
 
-def run_once(rt: Runtime) -> dict[str, Any]:
+def _step(key: str, label: str, status: str, **detail: Any) -> dict[str, Any]:
+    return {"key": key, "labelVi": label, "status": status, "detail": detail}
+
+
+def run_once(rt: Runtime, untrusted_input: str | None = None) -> dict[str, Any]:
+    """One round. `untrusted_input` (CITY_OPS F06) is foreign text handed to the agent: it is recorded and shown,
+    but neither `decide` nor the amount/token/DEX ever read it, so `injection_ignored` is true by construction."""
     snap = rt.snapshot()
     ks = rt.key_by_seed(AGENT_SEED, snap)
     district = snap.principals.get(ks.principal_id)
@@ -70,18 +79,56 @@ def run_once(rt: Runtime) -> dict[str, Any]:
         "districtRemaining": views.mny_or_none(d_left),
     }
     decision = decide(usdc, ttkb_value, k_left, d_left)
+    steps = [_step("read", "Đọc số dư và hạn mức", "ok", **balances)]
+    fallback = False
     if decision is None:
+        fallback = True
         # Drift exists but today's limits are used up: still ask the chain (simulate) so the
         # refusal is recorded with the real reason code (spec Epic D1).
         decision = decide(usdc, ttkb_value, DEFAULT_CONFIG.max_amount_in, None)
     run_id = rt.stores.next_id()
+    extra = {
+        "untrusted_input": untrusted_input,
+        "injection_ignored": True if untrusted_input else None,
+    }
     if decision is None:
+        steps += [
+            _step("decide", "Quyết định theo luật", "skipped", action="none"),
+            _step("simulate", "Giả lập trước khi gửi", "skipped"),
+            _step("send", "Gửi giao dịch", "skipped"),
+            _step("explain", "Giải thích", "skipped"),
+        ]
         rec = AgentRunRec(
-            run_id, rt.now(), "no_action", None, None, None, None, None, None, None, balances
+            run_id,
+            rt.now(),
+            "no_action",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            balances,
+            steps,
+            **extra,
         )
         return _finish(rt, rec)
+    steps.append(
+        _step(
+            "decide",
+            "Quyết định theo luật",
+            "ok",
+            action="swap",
+            fallbackToMaxAmount=fallback,
+            **decision_out(decision),  # type: ignore[arg-type]
+        )
+    )
     text, source = write_reason(decision)
     rh = reason_hash(text)
+    explain = _step(
+        "explain", "Giải thích", "ok", reasonText=text, reasonSource=source, reasonHash=rh
+    )
     params = {
         "dex": "mock_dex",
         "token_in": decision.token_in,
@@ -94,7 +141,19 @@ def run_once(rt: Runtime) -> dict[str, Any]:
     sim_reason = rt.chain.simulate_swap(
         AGENT_SEED, "mock_dex", sel, decision.token_in, decision.token_out, decision.amount_in, 0
     )
+    steps.append(
+        _step(
+            "simulate",
+            "Giả lập trước khi gửi",
+            "blocked" if sim_reason is not None else "ok",
+            reasonCode=sim_reason.value if sim_reason else None,
+        )
+    )
     if sim_reason is not None:
+        steps += [
+            _step("send", "Gửi giao dịch", "skipped", reasonCode=sim_reason.value),
+            explain,
+        ]
         a = att.add_attempt(
             rt,
             scenario_run_id=None,
@@ -129,10 +188,23 @@ def run_once(rt: Runtime) -> dict[str, Any]:
             sim_reason.value,
             a.id,
             balances,
+            steps,
+            **extra,
         )
         return _finish(rt, rec)
     a = att.run_spend(rt, AGENT_SEED, "swap", params, source="agent")
     outcome = "swapped" if a.outcome == "ok" else "reverted"
+    steps += [
+        _step(
+            "send",
+            "Gửi giao dịch",
+            "ok" if a.outcome == "ok" else "blocked",
+            txHash=a.tx_hash,
+            reasonCode=a.reason_code,
+            simulated=a.simulated,
+        ),
+        explain,
+    ]
     rec = AgentRunRec(
         run_id,
         rt.now(),
@@ -145,6 +217,8 @@ def run_once(rt: Runtime) -> dict[str, Any]:
         a.reason_code,
         a.id,
         balances,
+        steps,
+        **extra,
     )
     return _finish(rt, rec)
 
