@@ -75,5 +75,6 @@ async def test_migration_roundtrip() -> None:
         _alembic("downgrade", "base")
         assert await tables() - {"alembic_version"} == set()
         assert await enums() == 0
+        _alembic("upgrade", "head")  # later tests (postgres-parametrised API suite) need the schema
     finally:
         await engine.dispose()

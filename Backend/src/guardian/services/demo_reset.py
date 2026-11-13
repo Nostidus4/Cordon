@@ -37,7 +37,9 @@ async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
     if not rt.is_l1:
         rt.chain.reset()
         rt.event_log.clear()
-    rt.stores.clear()
+    # at startup the stores are freshly built and may hold persisted attempts/runs
+    if not startup:
+        rt.stores.clear()
     seeded: int | None = None
     if not rt.is_l1:
         _seed_request_12(rt)

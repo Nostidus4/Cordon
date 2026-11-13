@@ -108,7 +108,7 @@ async def _run(llm: Any, **kw: Any) -> tuple[dict[str, Any], Any, Any]:
     async with llm_app(llm, **kw) as (_, rt, c):
         await to_v2(c)
         run = agent_service.run_once(rt)
-        att = next(a for a in rt.stores.attempts if a.id == run["attemptId"])
+        att = next(a for a in rt.stores.attempts.all() if a.id == run["attemptId"])
         return run, att, rt
 
 

@@ -377,7 +377,7 @@ def _attempt_facts(rt: Runtime) -> list[AttemptFacts]:
             a.reason_code,
             a.scenario_run_id,
         )
-        for a in rt.stores.attempts
+        for a in rt.stores.attempts.all()
     ]
 
 
@@ -744,7 +744,7 @@ def _verify(rt: Runtime, inc: IncidentRec) -> None:
     own = set(inc.trigger.get("attemptIds", ()))
     newer = [
         a.ts
-        for a in rt.stores.attempts
+        for a in rt.stores.attempts.all()
         if a.id not in own
         and a.ts >= since
         and a.outcome != "ok"

@@ -46,7 +46,15 @@ meta(key PK, value)    -- policy_version, last_block_l1, last_block_c, graph_ver
 
 ## Trạng thái hiện tại
 
-Đủ model SQLAlchemy ở `Backend/src/guardian/models/*`, migration baseline `Backend/alembic/versions/0001_baseline.py` (upgrade/downgrade chạy trong job CI `db`). Postgres local: đặt `POSTGRES_PASSWORD` trong `.env` ở gốc repo, `make db-up` rồi `make db-migrate`. `DATABASE_URL` (Backend) rỗng thì API chạy với `Stores` trong RAM như cũ; chưa có repository nào ghi DB (DB-002, DB-003).
+Model SQLAlchemy ở `Backend/src/guardian/models/*`, migration `0001_baseline` và `0002_persist_attempts_runs` (job CI `db`). Postgres local: đặt `POSTGRES_PASSWORD` trong `.env` ở gốc repo, `make db-up` rồi `make db-migrate`.
+
+DB-002: với `DATABASE_URL` có giá trị, **events, attempts và scenario_runs** được lưu vào Postgres và còn nguyên sau khi API restart; `DATABASE_URL` rỗng thì chạy trong RAM như cũ. Proposals, agent runs, assistant logs vẫn trong RAM (DB-003).
+
+- Interface: `AttemptStore`, `ScenarioRunStore` (`services/runtime.py`), `EventSink` (`workers/indexer.py`). Service chỉ dùng interface; sửa tại chỗ một `AttemptRec`/`ScenarioRunRec` thì gọi `.save(...)`.
+- Cài đặt Postgres (`repositories/pg.py`) là write-through cache: nạp toàn bộ lúc khởi động, đọc từ RAM, mỗi thay đổi ghi thẳng DB. Service và indexer là code đồng bộ nên gọi repository async qua `db/bridge.py` (một thread riêng có event loop và engine riêng). `PgEventSink` ghi `events` bằng `INSERT ... ON CONFLICT DO NOTHING` trên `(tx_hash, log_index)`, con trỏ nằm ở `meta.last_block_l1`. Chế độ sim không ghi events vào DB (chain sim nằm trong RAM).
+- Migration 0002 vì schema 0001 không chứa được những gì service đã tạo: attempt ngoài scene 4 (không có run/step, hoặc CLI ngoài báo run id lạ) nên `scenario_run_id`/`step` cho phép NULL và bỏ foreign key; thêm outcome `blocked`; `scenario_runs` thêm `delay`, `policy_version`, `error`. Downgrade xoá các hàng 0001 không chứa được.
+- Khi khởi động, `demo_reset(startup=True)` không còn xoá stores nên attempts/runs đã lưu được giữ. `POST /api/demo/reset` xoá `attempts` và `scenario_runs`, không đụng `events`.
+- Chạy test với Postgres: `TEST_DATABASE_URL=postgresql+asyncpg://... uv run pytest -q --ignore=tests/chain_l1 -k "not l1"` trong `Backend/` (fixture `app` chạy cả hai chế độ; DB này bị TRUNCATE, đừng trỏ vào DB dev). Không đặt biến thì phần Postgres bị skip.
 
 ## Issue
 
