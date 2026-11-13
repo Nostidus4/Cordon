@@ -59,9 +59,8 @@ class ProposalState:
 class ChainPort(Protocol):
     """Chain boundary. Contract (API-001): signer/member/key/to are hex addresses only.
 
-    shortcut: app code (attempt/agent/attacker/council services) still passes seed ids
-    ("key_minh", "tUSDC", "lan") and the sim resolves them; an L1 adapter needs a seed->address
-    step at the call sites first (see docs/spec/API_CONTRACT.md section 1).
+    shortcut: app code still passes seed ids ("key_minh", "tUSDC", "lan"); both sim and the L1
+    adapter (`_addr`/`_need_member`) resolve them. Converting at the call sites is CHN-004 (#53).
     Sync on purpose: an L1 adapter runs web3 calls off the event loop behind one lock.
     """
 

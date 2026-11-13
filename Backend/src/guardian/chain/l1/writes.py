@@ -383,7 +383,7 @@ class L1Writes:
         try:
             encoded = self._encoder.encode(calls)
         except ChainRevert as e:
-            return TxResult("reverted", e.reason, None, None, [], e.name, False)
+            return TxResult("reverted", reason_code=e.reason, error_raw=e.name, simulated=False)
         subject = id_to_bytes32(subject_principal) if subject_principal else bytes(32)
         res = self._council_tx(
             member,
