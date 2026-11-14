@@ -2,6 +2,10 @@
 
 Trạng thái: **FROZEN** từ **2026-11-12** (issue `CTR-001`). Mọi thay đổi chữ ký hàm, event hay custom error cần **một PR riêng** đổi cùng lúc: tài liệu này, `contracts/src/interfaces/*.sol` và bản sao ABI cho backend (`Backend/src/guardian/chain/abis/`, sinh bằng `make abis`), và phải báo cho người giữ nhánh backend. Test `Backend/tests/test_contract_abi.py` fail nếu ba nơi này lệch nhau.
 
+Lịch sử đổi giao diện sau khi đóng băng (mỗi lần một PR riêng, bản sao ABI cùng PR):
+
+- 2026-11-14: timelock cho Council (#77): `timelockDelay()`, `etaOf(id)`, `veto(id)`, event `Queued`/`Vetoed`, lỗi `TimelockNotReady(uint64)`; constructor `GuardianCouncil` nhận thêm `timelockDelay_`. `Proposal`/`getProposal` không đổi. Vẫn FROZEN.
+
 Người dùng tài liệu: dev contract (cài đặt), dev backend (adapter `chain/l1`, indexer, attacker). Đặc tả hành vi: [README.md](README.md) mục 3, 4.3, 6; module: [contracts](../modules/contracts/README.md).
 
 Nguồn sự thật: file `.sol` là nguồn của ABI; tài liệu này là nguồn của **ý nghĩa** (ai được gọi, siết hay nới, thứ tự kiểm tra, ánh xạ sang reason code và sang `ChainEvent`).
@@ -162,10 +166,13 @@ interface IGuardianCouncil {
     function approvedBy(uint256 id, address member) external view returns (bool);
     function proposalCount() external view returns (uint256);
     function getProposal(uint256 id) external view returns (Proposal memory);
+    function timelockDelay() external view returns (uint64);                 // giây, bất biến; 0 = không timelock
+    function etaOf(uint256 id) external view returns (uint64);               // lúc sớm nhất được execute; 0 = chưa vào hàng chờ
 
     function propose(string calldata title, bytes32 subjectPrincipal, Call[] calldata calls, bytes32 riskReportHash) external returns (uint256 id);
     function approve(uint256 id) external;          // revert ConflictOfInterest nếu memberPrincipal == subjectPrincipal; tự execute khi đủ THRESHOLD
-    function execute(uint256 id) external;
+    function execute(uint256 id) external;          // NeedsThreshold nếu chưa đủ; TimelockNotReady(eta) nếu chưa tới eta
+    function veto(uint256 id) external;             // mọi member, chỉ khi proposal đang chờ (đã đủ THRESHOLD, chưa execute/cancel)
     function cancel(uint256 id) external;           // chỉ người đề xuất
 
     // siết: 1 member, không cần proposal; chỉ được gọi đúng các hàm siết
@@ -180,6 +187,8 @@ interface IGuardianCouncil {
     event Executed(uint256 indexed id);
     event Cancelled(uint256 indexed id);
     event EmergencyAction(address indexed member, string action, bytes32 subject);
+    event Queued(uint256 indexed id, uint64 eta);
+    event Vetoed(uint256 indexed id, address indexed member);
 
     error NotCouncilMember();
     error NotTightening();
@@ -192,10 +201,13 @@ interface IGuardianCouncil {
     error UnknownCall();
     error BadCallArgs();
     error UnknownProposal();
+    error TimelockNotReady(uint64 eta);
 }
 ```
 
 Quy tắc:
+
+- **Timelock (#77):** `timelockDelay` đặt trong constructor, bất biến, không có setter (rút ngắn nó là một việc nới). `timelockDelay == 0`: hành vi như cũ, `approve` đủ `THRESHOLD` thì thực thi ngay. `timelockDelay > 0`: khi `approve` đạt `THRESHOLD`, proposal vào hàng chờ (`eta = block.timestamp + timelockDelay`, phát `Queued(id, eta)`), chưa thực thi gì; từ `eta`, một member gọi `execute(id)` (trước đó revert `TimelockNotReady(eta)`). Một member bất kỳ gọi `veto(id)` khi proposal đang chờ thì proposal bị huỷ (phát `Cancelled(id)` rồi `Vetoed(id, member)`): chặn là việc siết nên 1 member đủ và không kiểm xung đột lợi ích. `veto` ngoài trạng thái chờ revert `ProposalNotOpen`. Hàm siết (`emergencyLock`, `lowerCap`, ...) vẫn tức thì khi đang có proposal chờ.
 
 - `calls[].target` chỉ được là `PrincipalRegistry`, `PolicyVault` hoặc hai precompile AllowList; ngoài ra revert `TargetNotAllowed`. Trên precompile chỉ có `setEnabled`/`setNone`, cộng `setAdmin(successor)` **chỉ khi `successor` là contract khác chính Council** (Council kế nhiệm của demo-reset, OPS-003); `setAdmin` tới EOA hoặc tới chính nó là `UnknownCall`, calldata sai độ dài là `BadCallArgs`, `setManager` vẫn bị cấm. Council **kết thúc** proposal bằng `vault.bumpPolicyVersion()`.
 - Xung đột lợi ích: member có `memberPrincipal == subjectPrincipal` không được `approve`. Nếu proposal chuyển khoá sang khu của member (ví dụ giao agent cho `huy`), proposal phải khai `subjectPrincipal = huy`.
@@ -223,7 +235,7 @@ Quy tắc:
 
 9 custom error đầu ứng với 9 `ReasonCode` do contract sinh; `BLOCKED_AT_PROTOCOL` chỉ đến từ lỗi RPC của Tx AllowList (giao dịch không vào được mempool) nên không có custom error. Mã hạn mức khu chuẩn là `DISTRICT_DAILY_CAP` (chữ `PRINCIPAL_DAILY_CAP` trong bản spec gốc là lỗi, đã chốt).
 
-Lỗi không có reason code (chỉ giữ tên trong `error_raw`; khai báo trong `Backend/src/guardian/chain/errors.py` `OTHER_ERRORS`): `NotCouncil`, `NotTopUpOperator`, `UnknownPair`, `NotCouncilMember`, `NotTightening`, `NeedsThreshold`, `ConflictOfInterest`, `AlreadyApproved`, `ProposalNotOpen`, `NotProposer`, `TargetNotAllowed`, `UnknownCall`, `BadCallArgs`, `UnknownProposal`, `KeyAlreadyRegistered`, `PrincipalNotFound`, `PrincipalExists`. Lỗi chỉ có ở contract (ngoài interface đóng băng, `CONTRACT_ONLY_ERRORS`): `SubjectMismatch`, `InvalidSetup`, `ZeroAddress`, `ZeroCouncil`; sim cũng phát `SubjectMismatch` (cùng luật suy ra khu bị ảnh hưởng). (`OTHER_ERRORS` còn `InsufficientBalance`, `InsufficientTreasury`: chỉ sim phát; trên chain đó là revert của ERC-20 / không có tương đương.) Bảng mã nguồn: `Backend/src/guardian/shared/reason_codes.py` ↔ `Frontend/src/shared/reasonCodes.ts`. Selector từng lỗi: mục 9.1.
+Lỗi không có reason code (chỉ giữ tên trong `error_raw`; khai báo trong `Backend/src/guardian/chain/errors.py` `OTHER_ERRORS`): `NotCouncil`, `NotTopUpOperator`, `UnknownPair`, `NotCouncilMember`, `NotTightening`, `NeedsThreshold`, `ConflictOfInterest`, `AlreadyApproved`, `ProposalNotOpen`, `NotProposer`, `TargetNotAllowed`, `UnknownCall`, `BadCallArgs`, `UnknownProposal`, `TimelockNotReady`, `KeyAlreadyRegistered`, `PrincipalNotFound`, `PrincipalExists`. Lỗi chỉ có ở contract (ngoài interface đóng băng, `CONTRACT_ONLY_ERRORS`): `SubjectMismatch`, `InvalidSetup`, `ZeroAddress`, `ZeroCouncil`; sim cũng phát `SubjectMismatch` (cùng luật suy ra khu bị ảnh hưởng). (`OTHER_ERRORS` còn `InsufficientBalance`, `InsufficientTreasury`: chỉ sim phát; trên chain đó là revert của ERC-20 / không có tương đương.) Bảng mã nguồn: `Backend/src/guardian/shared/reason_codes.py` ↔ `Frontend/src/shared/reasonCodes.ts`. Selector từng lỗi: mục 9.1.
 
 ## 6. Event ↔ `ChainEvent` ([API_CONTRACT.md](API_CONTRACT.md) mục 2)
 
@@ -300,6 +312,7 @@ Tỉ giá cố định `1 tTKB = 1 tUSDC` (tính theo giá trị, có chuyển d
 | `RecipientNotAllowed()` | `0x4ccc1eec` | IPolicyVault |
 | `SlippageTooHigh()` | `0x850c6f76` | IPolicyVault |
 | `TargetNotAllowed()` | `0x48cbf26d` | IGuardianCouncil |
+| `TimelockNotReady(uint64)` | `0x72942d97` | IGuardianCouncil |
 | `TokenNotAllowed()` | `0xa29c4986` | IPolicyVault |
 | `UnknownCall()` | `0x35c169a5` | IGuardianCouncil |
 | `UnknownPair()` | `0xfee00694` | IMockDEX |
@@ -326,10 +339,12 @@ Tỉ giá cố định `1 tTKB = 1 tUSDC` (tính theo giá trị, có chuyển d
 | `PrincipalLocked(bytes32,address)` | `0x687bd57c668543349f8fee10d1228a623d5c8ea68691bb91d448fc482f0fd427` | IPolicyVault |
 | `PrincipalUnlocked(bytes32)` | `0x71358498c9ecc7ebec24f3f32b30e5838f7e36aa16e9ea1837f1479659deafbe` | IPolicyVault |
 | `Proposed(uint256,address,bytes32,string,bytes32)` | `0x53044b00ae03a91775e6aa41a1385f051ca12d5cf216782dbb8092fde77ae630` | IGuardianCouncil |
+| `Queued(uint256,uint64)` | `0xa4f50f71d0bb6f254eff547fe5bb3bdd77437bed32876d5893b97511eda093cf` | IGuardianCouncil |
 | `Swapped(address,bytes32,address,address,address,uint256,uint256,uint256,uint256,uint256,bytes32)` | `0xcb21102926f824ae487554f7bda88a63bbc32019fa9897c2155958bcc4f3d2ee` | IPolicyVault |
 | `TopUpOperatorChanged(address,address)` | `0xfa6bb50023b6d053abe4b6f4298d6111d11be2a1da6cbb6cf5c2c373facc8fa1` | IPolicyVault |
 | `TopUpRecorded(bytes32,uint256)` | `0xe6fdc65f95ab4849a1aa3c5dbd29341a3daa102740fdb23ffe246e1c82b7d6c6` | IPolicyVault |
 | `Unpaused()` | `0xa45f47fdea8a1efdd9029a5691c7f759c32b7c698632b563573e155625d16933` | IPolicyVault |
+| `Vetoed(uint256,address)` | `0x39b857f68d9ecd1ecf4c3ab1bac3399c34c6f719a32e79b5f68756b2cf9962cf` | IGuardianCouncil |
 
 ## 10. Tiêu chí đóng băng (`CTR-001`), đã đạt 2026-11-12
 

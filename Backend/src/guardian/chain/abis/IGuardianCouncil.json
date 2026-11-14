@@ -103,6 +103,25 @@
         "type": "uint256"
       }
     ],
+    "name": "etaOf",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
     "name": "execute",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -335,6 +354,32 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "timelockDelay",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "veto",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -442,6 +487,44 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "eta",
+        "type": "uint64"
+      }
+    ],
+    "name": "Queued",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "member",
+        "type": "address"
+      }
+    ],
+    "name": "Vetoed",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "AlreadyApproved",
     "type": "error"
@@ -484,6 +567,17 @@
   {
     "inputs": [],
     "name": "TargetNotAllowed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "eta",
+        "type": "uint64"
+      }
+    ],
+    "name": "TimelockNotReady",
     "type": "error"
   },
   {

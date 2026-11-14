@@ -57,6 +57,8 @@ Khoá duy nhất: `(tx_hash, log_index)` (indexer idempotent). Payload dùng **c
 | `Proposed` | `id, proposer, subjectPrincipal (ASCII hoặc null), title, riskReportHash` |
 | `Approved` | `id, member` |
 | `Executed`, `Cancelled` | `id` |
+| `Queued` | `id, eta` (timelock, #77) |
+| `Vetoed` | `id, member` (luôn đi kèm `Cancelled`) |
 | `EmergencyAction` | `member, action, subject` (theo [CONTRACTS.md](CONTRACTS.md) mục 4) |
 | `AllowListRoleSet` (khi khoá bị `setNone`/`setEnabled` trên Tx AllowList) | `{key, role, by}` (role 0 none, 1 enabled, 2 admin). Trên L1 là log `RoleSet` của precompile; indexer chuẩn hoá về tên này. `chain/sim` phát một event cho mỗi khoá khi khoá/mở khoá khu (`by` = địa chỉ Council); mock frontend chưa phát (mục 7) |
 

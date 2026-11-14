@@ -43,6 +43,7 @@ OTHER_ERRORS: frozenset[str] = frozenset(
         "UnknownCall",
         "BadCallArgs",
         "UnknownProposal",
+        "TimelockNotReady",
         "KeyAlreadyRegistered",
         "PrincipalNotFound",
         "PrincipalExists",
@@ -64,9 +65,11 @@ _SELECTOR_TO_ERROR: dict[str, str] = {
     "0x" + keccak(text=f"{name}()")[:4].hex(): name for name in ERROR_TO_REASON
 }
 
-# Every custom error the adapter can meet, all argument-less: selector -> name.
+# Every custom error the adapter can meet: selector -> name. All are argument-less except the ones in
+# `_ERROR_ARGS` (the timelock's `TimelockNotReady(uint64 eta)`).
+_ERROR_ARGS: dict[str, str] = {"TimelockNotReady": "uint64"}
 _ALL_SELECTORS: dict[str, str] = {
-    "0x" + keccak(text=f"{name}()")[:4].hex(): name
+    "0x" + keccak(text=f"{name}({_ERROR_ARGS.get(name, '')})")[:4].hex(): name
     for name in (*ERROR_TO_REASON, *OTHER_ERRORS, *CONTRACT_ONLY_ERRORS)
 }
 ERROR_STRING_SELECTOR = "0x08c379a0"  # Error(string)
