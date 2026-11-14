@@ -111,6 +111,15 @@ contract GuardianCouncilTimelockTest is MayLabsBase {
         assertEq(vault.principalDailyCap(MINH), 50_000e6, "loosening has not happened yet");
     }
 
+    function test_approvalAfterQueueLeavesEtaUnchanged() public {
+        uint256 id = _queued();
+        uint64 eta = gc.etaOf(id);
+        vm.warp(block.timestamp + 10);
+        _approve(MEMBER_TRANG, id);
+        assertEq(gc.getProposal(id).approvals, 3);
+        assertEq(gc.etaOf(id), eta, "third approval must not re-queue");
+    }
+
     function test_executeBeforeEtaReverts() public {
         uint256 id = _queued();
         uint64 eta = gc.etaOf(id);

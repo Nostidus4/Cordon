@@ -591,7 +591,7 @@ class SimChain:
             p.approved_by.add(tx.sender)
             p.approvals += 1
             tx.emit("Approved", {"id": p.id, "member": tx.sender})
-            if p.approvals >= THRESHOLD:
+            if p.approvals == THRESHOLD:
                 if self.timelock_s == 0:
                     self._execute_proposal(tx, p)
                 else:

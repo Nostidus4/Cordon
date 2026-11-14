@@ -169,7 +169,7 @@ contract GuardianCouncil is IGuardianCouncil {
         approvedBy[id][msg.sender] = true;
         uint8 n = ++s.approvals;
         emit Approved(id, msg.sender);
-        if (n >= THRESHOLD) {
+        if (n == THRESHOLD) {
             if (timelockDelay == 0) {
                 _execute(id, s);
             } else {
