@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     indexer_reorg_window: int = 5  # blocks re-read each cycle (shallow reorg repair)
     indexer_confirmations: int = 0  # blocks behind head to wait before indexing
     # CHAIN_MODE=l1 + DEMO_MODE (signing with test keys) is accepted only on these chain ids:
-    # 31337 = anvil, 424242 = the local Guardian L1 genesis. Add the test L1's id to enable it there.
-    demo_chain_ids: list[int] = Field(default_factory=lambda: [31337, 424242])
+    # 31337 = anvil, 424242 = the local Guardian L1 genesis, 845357 = the Guardian L1 on Fuji (testnet, #30).
+    demo_chain_ids: list[int] = Field(default_factory=lambda: [31337, 424242, 845357])
     # None = "decide from chain_mode": on in sim, off otherwise (spec §8.6: never on a real network).
     demo_mode: bool | None = None
     cors_origins: list[str] = Field(

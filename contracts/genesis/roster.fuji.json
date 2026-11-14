@@ -1,0 +1,20 @@
+{
+  "_note": "Fuji roster (addresses only). Private keys are in Backend/.env.fuji (gitignored). deployer = the Avalanche CLI key fuji_deployer. Deployer P-Chain address: P-fuji1m6dlg3sjq5hcqx9e0c9ajuk787ytccm9sxt4r7.",
+  "chainId": 845357,
+  "tokenSymbol": "GAI",
+  "deployer": "0x6683cF6bA03d55127848361fc084B289DfCC812F",
+  "enabled": {
+    "council_trang": "0x33A540bA630ef36c16887782CF73E4678149E51e",
+    "council_lan": "0xa5d72AeeBC380251494215e44753E30E0730e36A",
+    "council_huy": "0xf9eed7Fdd84cd3D31975846507ca95d2FF0C1e7F",
+    "key_agent_rebalance": "0xd1fA26ECd68A5CE5Fd81F19D5dAfff32098649Ec",
+    "key_agent_data": "0xa03354D070EFa3922Ae74021f3731059C65BD269",
+    "key_agent_intl_pay": "0x576Cc913b7A658332a4B85aA87257750cad3bB2E",
+    "key_svc_payment": "0xEd6d12320c8c53A2D059A4af14dCfDc0f340a1E2",
+    "key_minh": "0xd5B1EDf1710CAEb8B9b5e6c77BE4Db7DCAEecC67",
+    "key_huy_1": "0x8D9649689C144e78e38D36CbfC48D656feA8d619",
+    "key_huy_2": "0x995fd9d64422d8Dda21d3c6C2a2D0a63cbBE41E5",
+    "key_lan": "0x3d6519a7314e1A41a15C132f03517E248fB0c5CB",
+    "backend_demo_signer": "0x5f1f8E5748EE64346da6889585E91B84fECe1b45"
+  }
+}
