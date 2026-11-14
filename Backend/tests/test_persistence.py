@@ -261,13 +261,15 @@ async def test_proposal_12_executed_survives_restart(pg_schema: None) -> None:
         before_hashes = {x["txHash"] for x in attempts if x["txHash"]}
         before_hashes |= {e.tx_hash for e in a.state.runtime.event_log}
         graph_v = a.state.runtime.graph_version
-        assert p12["status"] == "executed" and org["policyVersion"] == 2
+        assert (
+            p12["status"] == "executed" and org["policyVersion"] == 3
+        )  # v2 (scene 4 needs it) + #12
     async with running(database_url=TEST_DB) as b, http(b) as c:
         rt = b.state.runtime
         assert rt.restored
         assert (await c.get("/api/proposals/12")).json() == p12
         assert pids((await c.get("/api/proposals")).json()) == listed == [13, 12]
-        assert (await c.get("/api/org")).json()["policyVersion"] == 2
+        assert (await c.get("/api/org")).json()["policyVersion"] == 3
         assert (await c.get("/api/attempts")).json() == attempts
         assert rt.graph_version > graph_v  # persisted, then bumped by the startup reset
         # the chain went on from where it was: new txs get new hashes
@@ -307,7 +309,7 @@ async def test_state_is_rebuilt_from_events_only(pg_schema: None) -> None:
         want = a.state.runtime.snapshot()
         assert any(p.locked for p in want.principals.values())
         assert any(k.spent_today for k in want.keys.values())
-        assert want.policy_version == 2
+        assert want.policy_version == 3  # v2 (scene 4 needs it) + #12
     engine = create_async_engine(TEST_DB)
     async with engine.begin() as conn:
         await conn.execute(
