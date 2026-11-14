@@ -79,13 +79,19 @@ def log_params(dep: CChainDeployment) -> dict[str, Any]:
     }
 
 
+def _range_too_large(exc: Exception) -> bool:
+    """The RPC refused the block range (public nodes cap eth_getLogs, e.g. Fuji: 100 blocks, code -32602)."""
+    text = " ".join(str(a) for a in exc.args).lower() + " " + str(exc).lower()
+    return "block range" in text or "range too large" in text or "-32602" in text
+
+
 class CChainSource:
     """`LogSource` over the C-Chain: Transfer logs treasury -> escrow as `ChainEvent`s."""
 
-    def __init__(self, w3: Web3, dep: CChainDeployment, *, log_chunk: int = 2000) -> None:
+    def __init__(self, w3: Web3, dep: CChainDeployment, *, log_chunk: int = 100) -> None:
         self.w3, self.dep = w3, dep
         self.start_block = dep.deploy_block
-        self._chunk = log_chunk
+        self._chunk = max(1, log_chunk)
 
     @classmethod
     def from_settings(cls, settings: Any) -> CChainSource:
@@ -100,7 +106,7 @@ class CChainSource:
             raise ChainReadError(
                 f"C-Chain RPC chain id {w3.eth.chain_id} != deployments chainId {dep.chain_id}"
             )
-        return cls(w3, dep)
+        return cls(w3, dep, log_chunk=int(getattr(settings, "cchain_log_chunk", 100)))
 
     @property
     def ws_url(self) -> str | None:
@@ -113,9 +119,20 @@ class CChainSource:
         out: list[ChainEvent] = []
         ts_cache: dict[int, int] = {}
         flt = log_params(self.dep)
-        for lo in range(first, last + 1, self._chunk):
+        lo = first
+        while lo <= last:
             hi = min(lo + self._chunk - 1, last)
-            for lg in self.w3.eth.get_logs({**flt, "fromBlock": lo, "toBlock": hi}):
+            try:
+                logs = self.w3.eth.get_logs({**flt, "fromBlock": lo, "toBlock": hi})
+            except Exception as exc:
+                if self._chunk > 1 and _range_too_large(exc):
+                    self._chunk = max(
+                        1, self._chunk // 2
+                    )  # keep the smaller size for the next cycles
+                    continue
+                raise
+            lo = hi + 1
+            for lg in logs:
                 block = int(lg["blockNumber"])
                 if block not in ts_cache:
                     ts_cache[block] = int(self.w3.eth.get_block(block)["timestamp"])

@@ -89,6 +89,14 @@ The Guardian L1 runs on Fuji. IDs and addresses: `Backend/deployments/fuji-l1-ch
 | RPC / ws | `http://127.0.0.1:9650/ext/bc/<blockchain id>/rpc` and `/ws` (local to the validator host) |
 | Versions | avalanchego v1.15.3, Subnet-EVM v1.15.3 (shipped inside the avalanchego release), Avalanche CLI 1.9.7 |
 
+Run the Backend against the Fuji L1 (`CHAIN_MODE=l1`): `python3 infra/l1/fuji_env.py` (needs `eth_account`; use `Backend/.venv/bin/python`) checks every key against the roster, writes `infra/l1/seed.l1-fuji.json` and `Backend/.env.l1-fuji` (ignored, mode 600: chain settings, `GUARDIAN_SEED_FILE` and a copy of every `L1_KEY_*` from `Backend/.env.fuji`; values never printed). `RPC_URL` / `WS_URL` in the environment override the URLs from `fuji-l1-chain.json`. Then:
+
+```
+cd Backend && set -a && . ./.env.l1-fuji && set +a && uv run guardian-api
+```
+
+Without `GUARDIAN_SEED_FILE` the API stops with `bad signer configuration: L1_KEY_KEY_MINH derives ..., seed expects ...`. The C-Chain indexer reads logs in chunks of `CCHAIN_LOG_CHUNK` blocks (default 100, the public Fuji RPC limit) and halves the chunk by itself if the RPC says the range is too large.
+
 Verified on the Fuji L1 (real output):
 - `eth_chainId` = 845357; deployer holds the 1000 GAI genesis alloc.
 - `readAllowList` on the Tx AllowList: deployer=2, key_minh=1, a fresh address=0.

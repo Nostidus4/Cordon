@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     cchain_deployments_file: str = ""
     cchain_rpc_url: str = ""
     cchain_ws_url: str = ""
+    # Blocks per eth_getLogs call on the C-Chain. The public Fuji RPC rejects more than 100 (-32602); the reader also
+    # halves this on a "block range too large" answer. (The L1 source keeps its own 2000.)
+    cchain_log_chunk: int = Field(default=100, ge=1)
     indexer_reorg_window: int = 5  # blocks re-read each cycle (shallow reorg repair)
     indexer_confirmations: int = 0  # blocks behind head to wait before indexing
     # CHAIN_MODE=l1 + DEMO_MODE (signing with test keys) is accepted only on these chain ids:
