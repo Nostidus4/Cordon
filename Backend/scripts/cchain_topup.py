@@ -33,6 +33,7 @@ from typing import Any
 from eth_account import Account
 from eth_utils import to_checksum_address
 from web3 import Web3
+from web3.middleware import ExtraDataToPOAMiddleware
 
 BACKEND = Path(__file__).resolve().parents[1]
 DECIMALS = 6
@@ -194,6 +195,10 @@ def run_topup(
 
     cw = Web3(Web3.HTTPProvider(c_rpc))
     lw = Web3(Web3.HTTPProvider(l1_rpc))
+    # Avalanche C-Chain and Subnet-EVM headers carry more than 32 bytes of extraData; without this web3.py rejects
+    # every block it reads (ExtraDataLengthError), as on the first Fuji run. Anvil does not, so tests missed it.
+    for w in (cw, lw):
+        w.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
     if cw.eth.chain_id != c_deployment["chainId"]:
         raise TopUpError(
             f"C-Chain RPC chain id {cw.eth.chain_id} != deployment {c_deployment['chainId']}"
