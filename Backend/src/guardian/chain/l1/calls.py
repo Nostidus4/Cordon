@@ -10,10 +10,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from eth_abi.exceptions import DecodingError
 from eth_utils import to_checksum_address
 from web3.contract import Contract
 
 from guardian.chain.errors import ChainRevert
+from guardian.chain.l1.events import bytes32_to_id
 from guardian.chain.precompiles import TX_ALLOWLIST
 
 KEY_KINDS = {"HUMAN": 0, "AGENT": 1, "SERVICE": 2}
@@ -159,3 +161,66 @@ class CallEncoder:
 
 def _unknown_fn(contract: Contract, fn: str) -> bool:
     return not any(i.get("type") == "function" and i.get("name") == fn for i in contract.abi)
+
+
+KIND_NAMES = {v: k for k, v in KEY_KINDS.items()}
+
+
+class CallDecoder:
+    """The inverse of `CallEncoder`: `(target, calldata)` of a Council call -> the symbolic call in the graph
+    vocabulary (`principalId`, `toId`, `cap` as a decimal string, checksum addresses), as `proposal_service`
+    stores it.
+
+    A call it cannot read (target outside the three allowed ones, unknown selector, bad calldata) is kept raw:
+    `{"target": "<address>", "fn": "<0x selector>", "args": {"data": "<0x calldata>"}}`. The implicit
+    `bumpPolicyVersion` the Council runs at the end is not part of the stored calls; the caller adds it."""
+
+    def __init__(self, registry: Contract, vault: Contract, tx_allowlist: Contract):
+        self._targets: dict[str, tuple[str, Contract]] = {
+            to_checksum_address(registry.address): ("registry", registry),
+            to_checksum_address(vault.address): ("vault", vault),
+            to_checksum_address(TX_ALLOWLIST): ("tx_allowlist", tx_allowlist),
+        }
+
+    def decode(self, calls: list[tuple[str, bytes]]) -> list[dict[str, Any]]:
+        return [self.decode_one(t, d) for t, d in calls]
+
+    def decode_one(self, target: str, data: bytes) -> dict[str, Any]:
+        address = to_checksum_address(target)
+        raw = "0x" + bytes(data).hex()
+        known = self._targets.get(address)
+        if known is not None:
+            name, contract = known
+            try:
+                fn, args = contract.decode_function_input(raw)
+                return {
+                    "target": name,
+                    "fn": fn.fn_name,
+                    "args": self._args(name, fn.fn_name, dict(args)),
+                }
+            except (ValueError, TypeError, LookupError, DecodingError):
+                pass  # unknown selector or calldata that does not fit it: keep it raw below
+        return {"target": address, "fn": raw[:10], "args": {"data": raw}}
+
+    @staticmethod
+    def _args(target: str, fn: str, a: dict[str, Any]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for k, v in a.items():
+            if k == "id" and target == "vault":
+                k = "principalId"
+            elif k == "to" and fn == "setRecipientAllowed":
+                k = "recipient"
+            elif k == "addr":
+                k = "address"
+            if isinstance(v, bytes):
+                v = bytes32_to_id(v) if k in ("id", "principalId", "toId") else "0x" + v.hex()
+            elif k == "kind" and isinstance(v, int):
+                v = KIND_NAMES.get(v, str(v))
+            elif isinstance(v, bool):
+                pass
+            elif isinstance(v, int):
+                v = str(v)  # cap, like `graph.changes.to_calls`
+            elif isinstance(v, str) and v.startswith("0x") and len(v) == 42:
+                v = to_checksum_address(v)
+            out[k] = v
+        return out
