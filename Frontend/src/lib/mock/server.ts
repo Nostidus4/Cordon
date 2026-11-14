@@ -765,7 +765,7 @@ export const mockApi = {
   async getHealth(): Promise<Health> {
     await lat();
     const lastAgent = agentRuns[agentRuns.length - 1];
-    return { status: "ok", chainMode: "sim", demoMode: true, simulated: true, l1Block: currentBlock(), cChainBlock: 41_902_118 + Math.floor((Date.now() - bootAt) / 2000), indexerLagBlocks: 0,
+    return { status: "ok", chainMode: "sim", demoMode: true, simulated: true, l1Block: currentBlock(), cChainBlock: 41_902_118 + Math.floor((Date.now() - bootAt) / 2000), lastBlockC: null, indexerLagBlocks: 0,
       policyVersion: S.policyVersion, policyLabel: S.policyVersion, graphVersion: S.graphVersion,
       agent: { status: "idle", lastRunAt: lastAgent ? lastAgent.ts : null }, lastBlockAt: nowSec(), blockStalled: false };
   },

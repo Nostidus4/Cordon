@@ -1002,6 +1002,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/topups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Topups */
+        get: operations["get_topups_api_topups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/txguard/check": {
         parameters: {
             query?: never;
@@ -1873,6 +1890,8 @@ export interface components {
             l1Block: number;
             /** Lastblockat */
             lastBlockAt?: number | null;
+            /** Lastblockc */
+            lastBlockC?: number | null;
             /** Policylabel */
             policyLabel: number;
             /** Policyversion */
@@ -2652,6 +2671,29 @@ export interface components {
             };
             /** Title */
             title: string;
+        };
+        /**
+         * TopUpOut
+         * @description One simulated top-up: the C-Chain transfer (treasury -> escrow) and the L1 `TopUpRecorded`, joined by the
+         *     C-Chain tx hash. UI label: "nạp tiền giả lập".
+         */
+        TopUpOut: {
+            amount: components["schemas"]["Money"];
+            /** Cchainblock */
+            cChainBlock?: number | null;
+            /** Cchaintxhash */
+            cChainTxHash: string;
+            /** L1Block */
+            l1Block?: number | null;
+            /** L1Txhash */
+            l1TxHash?: string | null;
+            /** Linked */
+            linked: boolean;
+            /**
+             * Simulated
+             * @default true
+             */
+            simulated: boolean;
         };
         /** Totals */
         Totals: {
@@ -4424,6 +4466,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_topups_api_topups_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopUpOut"][];
                 };
             };
         };

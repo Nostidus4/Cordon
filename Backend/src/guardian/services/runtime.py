@@ -440,6 +440,8 @@ class Runtime:
         self.scenario_tasks: dict[str, asyncio.Task[None]] = {}
         self.event_log: deque[ChainEvent] = deque(maxlen=EVENT_LOG_SIZE)
         self.indexer: Indexer | None = None
+        self.c_indexer: Indexer | None = None  # C-Chain top-up transfers (IDX-002); None = off
+        self.c_sink: Any = None
         # sim mints a block per tx only, so an idle sim demo is not a stall
         self.block_watch = BlockWatch(self.clock, stall_after=60.0 if self.is_l1 else None)
         self.sse_latency = LatencyStats()
@@ -513,7 +515,7 @@ class Runtime:
 
         The first cycle (backfill from the deployment block) runs synchronously so `event_log` is
         complete before the first request; after it, only new events reach SSE."""
-        from guardian.workers.indexer import Indexer, InMemoryEventSink, L1ChainSource
+        from guardian.workers.indexer import Indexer, InMemoryEventSink, L1ChainSource, l1_watcher
 
         s = self.settings
         sink: Any = InMemoryEventSink()
@@ -523,9 +525,11 @@ class Runtime:
             sink = PgEventSink(self.stores.bridge)
             if not self.event_log:  # history survives a restart (a reload keeps the log it has)
                 self.event_log.extend(sink.recent(EVENT_LOG_SIZE))
+        source = L1ChainSource(self.chain)
         self.indexer = Indexer(
-            L1ChainSource(self.chain),
+            source,
             sink,
+            watcher=l1_watcher(s, source),
             publish=self._on_chain_event,
             poll_interval=s.l1_poll_interval_seconds,
             reorg_window=s.indexer_reorg_window,
@@ -534,6 +538,43 @@ class Runtime:
         self.indexer.sync_once()
         self._live = True
         self.indexer.start()
+        self._start_cchain_indexer()
+
+    def _start_cchain_indexer(self) -> None:
+        """IDX-002: follow the C-Chain treasury -> escrow transfer. Off unless CCHAIN_DEPLOYMENTS_FILE is set.
+        A C-Chain that is down or still unconfigured never blocks the L1 side: the loop retries with back-off
+        and the error shows up as `INDEXER_ERROR`-style state in its status."""
+        s = self.settings
+        if not s.cchain_deployments_file:
+            return
+        from guardian.chain.cchain import CChainSource, log_params
+        from guardian.workers.indexer import Indexer, InMemoryEventSink
+        from guardian.workers.ws_source import LogWatcher
+
+        source = CChainSource.from_settings(
+            s
+        )  # a bad file raises at startup: clear, nothing half-started
+        sink: Any = InMemoryEventSink()
+        if self.stores.bridge is not None:
+            from guardian.repositories.pg import PgEventSink
+
+            sink = PgEventSink(self.stores.bridge, chain="c")
+        ws_url = s.cchain_ws_url or source.ws_url
+        self.c_sink = sink
+        self.c_indexer = Indexer(
+            source,
+            sink,
+            label="c",
+            watcher=LogWatcher(ws_url, log_params(source.dep)) if ws_url else None,
+            poll_interval=s.l1_poll_interval_seconds,
+            reorg_window=s.indexer_reorg_window,
+            confirmations=s.indexer_confirmations,
+        )
+        try:
+            self.c_indexer.sync_once()
+        except Exception:  # C-Chain RPC down at boot: the loop below keeps retrying
+            log.exception("C-Chain initial sync failed; retrying in the background")
+        self.c_indexer.start()
 
     def reload_deployment(self) -> None:
         """L1 only (demo-reset, OPS-003): switch to the deployment the deployments file holds NOW, no restart.
@@ -549,6 +590,9 @@ class Runtime:
         if self.indexer is not None:
             self.indexer.stop()
             self.indexer = None
+        if self.c_indexer is not None:
+            self.c_indexer.stop()
+            self.c_indexer = None
         old = self.chain
         self._live = False
         self.chain = new_chain
@@ -590,6 +634,8 @@ class Runtime:
         self._unsubscribe()
         if self.indexer is not None:
             self.indexer.stop()
+        if self.c_indexer is not None:
+            self.c_indexer.stop()
         close = getattr(self.chain, "close", None)
         if close is not None:
             close()
