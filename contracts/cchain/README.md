@@ -77,3 +77,18 @@ NETWORK=fuji I_UNDERSTAND=fuji RPC_URL=<L1 rpc> bash infra/l1/fuji-bootstrap.sh
 ```
 
 `VerifySeed` now accepts a vault balance at or above the seed funding, because the top-up adds to it. The handover's `TOP_UP_OPERATOR` is the roster's `backend_demo_signer` (the frozen vault starts with the deployer as operator and `Handover` refuses the deployer). Tested on two anvils in `Backend/tests/chain_l1/test_fuji_bootstrap.py`.
+
+## Top-up after a demo reset (`DEMO_RESET_TOPUP=1`)
+
+`infra/l1/demo-reset.sh` deploys a fresh contract set and hands it over, so a new vault has no `TopUpRecorded` and `/api/topups` would show the old C-Chain transfer as `linked: false`. With `DEMO_RESET_TOPUP=1` (default off) the reset runs an optional step **3b topup** between "3 seed" and "4 switch": the same simulated top-up as above, against the NEW vault, while the deployer is still the new set's tUSDC minter and `topUpOperator` (step 4 moves the minters, step 4b the operator). Amount: `DEMO_RESET_TOPUP_AMOUNT` whole tUSDC (default 200000).
+
+- Needs the C-Chain deployment file (`fuji-c.json`; local: `local-c.json` or `CCHAIN_DEPLOYMENTS`); without a treasury in it the step is skipped with a log line.
+- On Fuji each run costs about 0.011 AVAX of C-Chain gas from owners 1..3 (hence default off); before anything is sent it checks that they hold at least 0.003 AVAX each (as `fuji-bootstrap.sh` does) and fails otherwise.
+- Idempotent: skipped when the new vault already has a `TopUpRecorded`, and a re-run that resumes after step 4 never repeats it. The C-Chain multisig execute tx hash (the `cChainTxHash`) is logged.
+- `VerifySeed` accepts a vault balance at or above the seed funding, so the check after the top-up passes.
+
+```bash
+DEMO_RESET_TOPUP=1 I_UNDERSTAND=fuji RPC_URL=<L1 rpc> infra/l1/fuji-run.sh bash infra/l1/demo-reset.sh
+```
+
+Tested on two anvils in `Backend/tests/chain_l1/test_demo_reset_topup.py`.
