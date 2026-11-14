@@ -64,3 +64,16 @@ NETWORK=fuji I_UNDERSTAND=fuji make topup AMOUNT=200000   # needs Backend/deploy
 ```
 
 Estimated cost on C-Chain at 25 gwei: deploy about 2.3M gas = 0.06 AVAX; one top-up about 0.43M gas = 0.011 AVAX (owner 1 about 0.008, owners 2 and 3 about 0.0015 each). Fund owners 1 to 3 with a little AVAX first.
+
+## One-shot Fuji bring-up (`infra/l1/fuji-bootstrap.sh`)
+
+Runs the L1 deploy, seed (with the Council timelock, `COUNCIL_TIMELOCK_S`, default 60), the C-Chain treasury, the simulated top-up, the handover and both verifies, in that order. Each step checks whether it is already done and skips it; the script stops at the first error, so a re-run continues. `infra/l1/fuji_env.py` first checks that every key in `Backend/.env.fuji` (and the deployer key `~/.avalanche-cli/key/fuji_deployer.pk`) derives its roster address, writes the git-ignored `infra/l1/seed.l1-fuji.json`, and (`--cchain-keys`) adds the `CCHAIN_*` keys to `.env.fuji` when missing.
+
+```bash
+# plan only, sends nothing (also prints the AVAX each key needs):
+NETWORK=fuji I_UNDERSTAND=fuji RPC_URL=<L1 rpc> bash infra/l1/fuji-bootstrap.sh --dry-run
+# the real run:
+NETWORK=fuji I_UNDERSTAND=fuji RPC_URL=<L1 rpc> bash infra/l1/fuji-bootstrap.sh
+```
+
+`VerifySeed` now accepts a vault balance at or above the seed funding, because the top-up adds to it. The handover's `TOP_UP_OPERATOR` is the roster's `backend_demo_signer` (the frozen vault starts with the deployer as operator and `Handover` refuses the deployer). Tested on two anvils in `Backend/tests/chain_l1/test_fuji_bootstrap.py`.
