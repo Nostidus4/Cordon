@@ -424,7 +424,7 @@ class Runtime:
 
                 chain = build_l1_chain(settings)  # L1StartupError: clear, no traceback to read
             else:
-                chain = new_sim_chain()
+                chain = new_sim_chain(settings.council_timelock_s)
         self.chain: Any = chain  # ChainPort + the extras both implementations have (balance...)
         if self.is_l1:
             ensure_test_chain(settings, int(self.chain.w3.eth.chain_id))
@@ -447,6 +447,7 @@ class Runtime:
         self._last_city: list[tuple[str, str, str]] | None = None
         self._in_responder = False  # set by responder.react
         self._responder_task: asyncio.Task[None] | None = None
+        self._keeper_task: asyncio.Task[None] | None = None
         self._unsubscribe: Callable[[], None] = lambda: None
         self._init_payroll()
         if self.is_l1:
@@ -578,7 +579,26 @@ class Runtime:
 
         self._responder_task = asyncio.get_running_loop().create_task(loop())
 
+    def start_keeper(self, interval: float = 1.0) -> None:
+        """Timelock keeper (#77): executes queued proposals once their eta passes (needs DEMO_MODE to sign)."""
+        if self._keeper_task is not None or self.settings.council_timelock_s <= 0:
+            return
+        from guardian.services import timelock_keeper
+
+        async def loop() -> None:
+            while True:
+                await asyncio.sleep(interval)
+                try:
+                    timelock_keeper.tick(self)
+                except Exception:
+                    log.exception("timelock keeper tick failed")
+
+        self._keeper_task = asyncio.get_running_loop().create_task(loop())
+
     async def shutdown(self) -> None:
+        if self._keeper_task is not None:
+            self._keeper_task.cancel()
+            self._keeper_task = None
         if self._responder_task is not None:
             self._responder_task.cancel()
             self._responder_task = None

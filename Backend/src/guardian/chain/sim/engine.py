@@ -84,9 +84,16 @@ class _Tx:
 
 
 class SimChain:
-    def __init__(self, seed: dict[str, Any] | None = None, clock: Callable[[], int] | None = None):
+    def __init__(
+        self,
+        seed: dict[str, Any] | None = None,
+        clock: Callable[[], int] | None = None,
+        timelock_s: int = 0,
+    ):
         self._seed = copy.deepcopy(seed if seed is not None else load_seed())
         self._clock = clock or (lambda: int(time.time()))
+        # Council timelock (#77), immutable like the contract's `timelockDelay`; 0 = execute at once
+        self.timelock_s = timelock_s
         self._subs: list[Callable[[ChainEvent], None]] = []
         self._load()
 
@@ -501,6 +508,8 @@ class SimChain:
             sorted(p.approved_by),
             p.executed,
             p.cancelled,
+            p.eta or None,
+            p.vetoed_by,
         )
 
     def direct_call(self, member: str, call: dict[str, Any]) -> TxResult:
@@ -582,15 +591,60 @@ class SimChain:
             p.approved_by.add(tx.sender)
             p.approvals += 1
             tx.emit("Approved", {"id": p.id, "member": tx.sender})
-            if p.approvals >= THRESHOLD:
-                for c in p.calls:
-                    if c.get("fn") != "bumpPolicyVersion":  # implicit: bumped once, below
-                        self._apply_call(tx, c)
-                self._apply_vault(tx, "bumpPolicyVersion", {})  # exactly once per executed proposal
-                p.executed = True
-                tx.emit("Executed", {"id": p.id})
+            if p.approvals == THRESHOLD:
+                if self.timelock_s == 0:
+                    self._execute_proposal(tx, p)
+                else:
+                    p.eta = tx.ts + self.timelock_s
+                    tx.emit("Queued", {"id": p.id, "eta": p.eta})
 
         return self._transact(require_hex(member), "approve", body)
+
+    def _execute_proposal(self, tx: _Tx, p: Proposal) -> None:
+        for c in p.calls:
+            if c.get("fn") != "bumpPolicyVersion":  # implicit: bumped once, below
+                self._apply_call(tx, c)
+        self._apply_vault(tx, "bumpPolicyVersion", {})  # exactly once per executed proposal
+        p.executed = True
+        tx.emit("Executed", {"id": p.id})
+
+    def execute_proposal(self, member: str, proposal_id: int) -> TxResult:
+        """Council `execute(id)`: a queued proposal from its `eta`. Below the threshold `NeedsThreshold`
+        (without a timelock that is every open proposal: `approve` already executed it)."""
+
+        def body(tx: _Tx) -> None:
+            self._need_member(tx)
+            p = self._open_proposal(proposal_id)
+            if p.approvals < THRESHOLD:
+                raise ChainRevert("NeedsThreshold")
+            if tx.ts < p.eta:
+                raise ChainRevert("TimelockNotReady")
+            self._execute_proposal(tx, p)
+
+        return self._transact(require_hex(member), "execute", body)
+
+    def veto(self, member: str, proposal_id: int) -> TxResult:
+        """Any member stops a queued proposal (a tightening: no conflict-of-interest check)."""
+
+        def body(tx: _Tx) -> None:
+            self._need_member(tx)
+            p = self._open_proposal(proposal_id)
+            if not p.eta:
+                raise ChainRevert("ProposalNotOpen")
+            p.cancelled = True
+            p.vetoed_by = tx.sender
+            tx.emit("Cancelled", {"id": p.id})
+            tx.emit("Vetoed", {"id": p.id, "member": tx.sender})
+
+        return self._transact(require_hex(member), "veto", body)
+
+    def _open_proposal(self, proposal_id: int) -> Proposal:
+        p = self.council.proposals.get(proposal_id)
+        if p is None:
+            raise ChainRevert("UnknownProposal")
+        if p.executed or p.cancelled:
+            raise ChainRevert("ProposalNotOpen")
+        return p
 
     def cancel(self, member: str, proposal_id: int) -> TxResult:
         def body(tx: _Tx) -> None:

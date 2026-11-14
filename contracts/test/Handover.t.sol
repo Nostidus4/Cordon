@@ -31,7 +31,7 @@ contract HandoverTest is MayLabsBase {
         registry = new PrincipalRegistry(predicted);
         vault = new PolicyVault(address(registry), predicted, address(tUSDC), address(dex), ops);
         gc = new GuardianCouncil(
-            [MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], [bytes32(0), LAN, HUY], address(registry), address(vault)
+            [MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], [bytes32(0), LAN, HUY], address(registry), address(vault), 0
         );
         assertEq(address(gc), predicted);
     }

@@ -34,7 +34,7 @@ abstract contract ResetBase is L1Common {
         vm.startBroadcast(pkOf(memberSeedId(seed, pick[1])));
         gc.approve(id);
         vm.stopBroadcast();
-        console.log("proposal executed", id);
+        logPassed(council, id);
     }
 
     function memberSeedId(string memory seed, uint256 i) internal pure returns (string memory) {
@@ -79,8 +79,6 @@ contract ResetOpen is ResetBase {
 /// @dev Env: `DEPLOYER_PK`, `TOP_UP_OPERATOR`, `L1_KEY_COUNCIL_*`, `SEED_FILE`, `NETWORK`, `DEPLOYMENTS_OUT` (the new
 ///      set), optional `OLD_DEPLOYMENTS`.
 contract ResetSwitch is ResetBase {
-    uint256 internal constant NEXT_REQUEST_ID = 12;
-
     function run() external {
         simulateAllowLists();
         Dep memory old = loadDeploymentFrom(oldDeploymentsPath());
@@ -107,13 +105,6 @@ contract ResetSwitch is ResetBase {
         MintableToken(nw.tSCAM).setMinter(nw.council);
         vm.stopBroadcast();
 
-        Call[] memory fin = new Call[](3);
-        fin[0] = Call(nw.vault, abi.encodeCall(IPolicyVault.setTopUpOperator, (ops)));
-        fin[1] = Call(TX_ALLOWLIST, abi.encodeWithSignature("setNone(address)", deployer));
-        fin[2] = Call(DEPLOYER_ALLOWLIST, abi.encodeWithSignature("setNone(address)", deployer));
-        passProposal(nw.council, seed, "Doi khoa van hanh nap quy", bytes32(0), fin);
-
-        _fillCounter(nw, seed, ops);
         console.log("reset switch done; new council", nw.council);
     }
 
@@ -152,6 +143,35 @@ contract ResetSwitch is ResetBase {
             }
             passProposal(old.council, seed, "Demo reset: mo lai cac khoa da bi khoa", owner[i], calls);
         }
+    }
+}
+
+/// @title ResetFinish
+/// @notice Demo-reset step 4b, after `ResetSwitch` (and, with a Council timelock, after the OLD Council's queued
+///         proposals were executed so the NEW Council is admin of both lists):
+///         the NEW Council moves the vault top-up operator to the ops key and removes the deployer from both lists,
+///         so the deployer ends with no role (`VerifyHandover` passes); then filler proposals (proposed and cancelled)
+///         bring the new Council's counter to 11, so the next proposal, request #12 (spec 10.4), gets id 12.
+/// @dev Env as `ResetSwitch`. With a timelock the `fin` proposal is only queued: `Execute` runs it.
+contract ResetFinish is ResetBase {
+    uint256 internal constant NEXT_REQUEST_ID = 12;
+
+    function run() external {
+        simulateAllowLists();
+        Dep memory nw = loadDeployment();
+        string memory seed = vm.readFile(seedPath());
+        address deployer = vm.addr(vm.envUint("DEPLOYER_PK"));
+        address ops = vm.envAddress("TOP_UP_OPERATOR");
+        require(ops != address(0) && ops != deployer, "TOP_UP_OPERATOR must be set and not the deployer");
+
+        Call[] memory fin = new Call[](3);
+        fin[0] = Call(nw.vault, abi.encodeCall(IPolicyVault.setTopUpOperator, (ops)));
+        fin[1] = Call(TX_ALLOWLIST, abi.encodeWithSignature("setNone(address)", deployer));
+        fin[2] = Call(DEPLOYER_ALLOWLIST, abi.encodeWithSignature("setNone(address)", deployer));
+        passProposal(nw.council, seed, "Doi khoa van hanh nap quy", bytes32(0), fin);
+
+        _fillCounter(nw, seed, ops);
+        console.log("reset finish done; new council", nw.council);
     }
 
     /// @dev Propose and cancel (the proposer cancels its own) until the counter is `NEXT_REQUEST_ID - 1`.

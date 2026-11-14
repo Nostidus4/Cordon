@@ -17,7 +17,7 @@ Nguồn mã: `Backend/src/guardian/chain/base.py`, `Backend/src/guardian/domain/
 | Chi tiêu (khoá gọi) | `pay`, `swap`, `raw_call` | trả `TxResult` |
 | Dry-run | `simulate_pay`, `simulate_swap` | trả `ReasonCode \| None`, không gửi tx |
 | Council siết (1 người) | `emergency_lock`, `emergency_pause`, `lower_key_cap`, `lower_district_cap`, `revoke_allow`, `deactivate_key` | |
-| Council nới (2/3) | `propose` (trả `TxResult`, id ở `proposal_id`), `approve`, `cancel` | tự execute khi đủ 2 phiếu |
+| Council nới (2/3) | `propose` (trả `TxResult`, id ở `proposal_id`), `approve`, `cancel`, `execute_proposal`, `veto` | delay 0: tự execute khi đủ 2 phiếu; delay > 0 (#77): vào hàng chờ (`eta`), `execute_proposal` từ `eta`, `veto` bởi 1 member; `ProposalState.eta/queued/vetoed_by` |
 | Đọc / stream | `snapshot() -> PolicySnapshot`, `events_since(block)`, `subscribe(cb) -> unsubscribe` | |
 
 `TxResult.status ∈ {ok, reverted, blocked_at_protocol}`:
@@ -57,6 +57,8 @@ Khoá duy nhất: `(tx_hash, log_index)` (indexer idempotent). Payload dùng **c
 | `Proposed` | `id, proposer, subjectPrincipal (ASCII hoặc null), title, riskReportHash` |
 | `Approved` | `id, member` |
 | `Executed`, `Cancelled` | `id` |
+| `Queued` | `id, eta` (timelock, #77) |
+| `Vetoed` | `id, member` (luôn đi kèm `Cancelled`) |
 | `EmergencyAction` | `member, action, subject` (theo [CONTRACTS.md](CONTRACTS.md) mục 4) |
 | `AllowListRoleSet` (khi khoá bị `setNone`/`setEnabled` trên Tx AllowList) | `{key, role, by}` (role 0 none, 1 enabled, 2 admin). Trên L1 là log `RoleSet` của precompile; indexer chuẩn hoá về tên này. `chain/sim` phát một event cho mỗi khoá khi khoá/mở khoá khu (`by` = địa chỉ Council); mock frontend chưa phát (mục 7) |
 
@@ -87,6 +89,8 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 | POST | `/proposals/draft` | từ `findingId` hoặc `change` → `calls` + `riskReport` (chưa gửi chain) | có |
 | GET / POST | `/proposals`, `/proposals/{proposal_id}` | danh sách, tạo (demo signer) | có |
 | POST | `/proposals/{proposal_id}/approve` | `{member}` (demo signer) | có |
+| POST | `/proposals/{proposal_id}/execute` | `{member}` (demo signer; timelock #77, từ `eta`) | có |
+| POST | `/proposals/{proposal_id}/veto` | `{member}` (demo signer; mọi member, chỉ khi đang chờ) | có |
 | POST | `/actions/lock`, `/actions/pause` | demo signer, `emergencyLock` / `emergencyPause` | có |
 | POST | `/assistant/ask` | `{question, context}` → `AssistantAnswer` (+ `numbersVerified`). Câu cố định: mẫu + tool. Câu tự do (`questionId = "free_text"`): chỉ khi LLM bật (LLM, tool chỉ đọc, mọi số được verifier kiểm; sai/lỗi/timeout 15 s → câu mặc định, `numbersVerified=false`); LLM tắt thì 422 `UNKNOWN_QUESTION` | có |
 | GET | `/assistant/logs` | bảng `assistant_logs`, cũ nhất trước, `?limit=` (mặc định 200) | có (CITY_OPS) |

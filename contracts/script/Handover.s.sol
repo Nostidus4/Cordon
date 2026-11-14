@@ -74,6 +74,7 @@ contract Handover is L1Common {
         vm.startBroadcast(pkOf("council_lan"));
         GuardianCouncil(d.council).approve(id);
         vm.stopBroadcast();
+        logPassed(d.council, id);
 
         // 5. the deployer gives up its own roles, Tx AllowList last
         vm.startBroadcast(deployerPk);

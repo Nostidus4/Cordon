@@ -75,3 +75,7 @@ class ProposalOut(CamelModel):
     created_at: int
     executed_at: int | None = None
     executed_tx_hash: str | None = None
+    # timelock (#77): `eta` = earliest execution (unix s) once the threshold was reached, `queued` while waiting
+    eta: int | None = None
+    queued: bool = False
+    vetoed_by: str | None = None  # Council member id who vetoed

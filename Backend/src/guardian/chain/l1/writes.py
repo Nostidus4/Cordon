@@ -409,6 +409,12 @@ class L1Writes:
     def cancel(self, member: str, proposal_id: int) -> TxResult:
         return self._council_tx(member, "cancel", int(proposal_id))
 
+    def execute_proposal(self, member: str, proposal_id: int) -> TxResult:
+        return self._council_tx(member, "execute", int(proposal_id))
+
+    def veto(self, member: str, proposal_id: int) -> TxResult:
+        return self._council_tx(member, "veto", int(proposal_id))
+
     def apply_policy_v2(self) -> list[TxResult]:
         """Seed policy v2 via propose + the approvals listed in the seed (same as `SimChain`)."""
         v2 = self._seed["policy_v2"]

@@ -20,7 +20,9 @@ import {L1Common, console} from "./L1Common.sol";
 ///      Deployment order fixes the nonce offsets: registry +0, tUSDC +1, tTKB +2, tSCAM +3, MockDEX +4,
 ///      EvilDEX +5, Vault +6, Council +7. `topUpOperator` starts as the deployer on purpose: `Handover.s.sol`
 ///      moves it to the ops key through a Council proposal and `VerifyHandover.s.sol` checks it left the deployer.
-///      Env: `DEPLOYER_PK`, `SEED_FILE` (Council members and their districts), `NETWORK` (`local`|`fuji`).
+///      Env: `DEPLOYER_PK`, `SEED_FILE` (Council members and their districts), `NETWORK` (`local`|`fuji`),
+///      optional `COUNCIL_TIMELOCK_S` (Council timelock in seconds, default 0). With a timelock the bootstrap scripts (Seed,
+///      Handover, PolicyV2, Reset) only queue their proposals; `infra/l1/contracts.sh` then runs `Execute`.
 contract Deploy is L1Common {
     /// @dev DEX liquidity: 1.000.000 of each side (tUSDC has 6 decimals, tTKB 18).
     uint256 internal constant DEX_TUSDC = 1_000_000e6;
@@ -53,6 +55,9 @@ contract Deploy is L1Common {
         private
         returns (Dep memory d)
     {
+        // #77: seconds a fully approved proposal waits before it executes; immutable in the Council
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint64 timelock = uint64(vm.envOr("COUNCIL_TIMELOCK_S", uint256(0)));
         address predicted = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 7);
         vm.startBroadcast(pk);
         d.registry = address(new PrincipalRegistry(predicted));
@@ -65,7 +70,7 @@ contract Deploy is L1Common {
         d.mockDex = address(new MockDEX(predicted, approved));
         d.evilDex = address(new EvilDEX(predicted, approved));
         d.vault = address(new PolicyVault(d.registry, predicted, d.tUSDC, d.mockDex, deployer));
-        d.council = address(new GuardianCouncil(members, districts, d.registry, d.vault));
+        d.council = address(new GuardianCouncil(members, districts, d.registry, d.vault, timelock));
         require(d.council == predicted, "council address prediction is off");
         TestUSDC(d.tUSDC).mint(d.mockDex, DEX_TUSDC);
         TestTokenB(d.tTKB).mint(d.mockDex, DEX_TTKB);
