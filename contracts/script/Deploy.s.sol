@@ -21,8 +21,8 @@ import {L1Common, console} from "./L1Common.sol";
 ///      EvilDEX +5, Vault +6, Council +7. `topUpOperator` starts as the deployer on purpose: `Handover.s.sol`
 ///      moves it to the ops key through a Council proposal and `VerifyHandover.s.sol` checks it left the deployer.
 ///      Env: `DEPLOYER_PK`, `SEED_FILE` (Council members and their districts), `NETWORK` (`local`|`fuji`),
-///      optional `COUNCIL_TIMELOCK_S` (Council timelock in seconds, default 0). The bootstrap scripts (Seed,
-///      Handover, PolicyV2, Reset) execute proposals in the same run and need a Council with timelock 0.
+///      optional `COUNCIL_TIMELOCK_S` (Council timelock in seconds, default 0). With a timelock the bootstrap scripts (Seed,
+///      Handover, PolicyV2, Reset) only queue their proposals; `infra/l1/contracts.sh` then runs `Execute`.
 contract Deploy is L1Common {
     /// @dev DEX liquidity: 1.000.000 of each side (tUSDC has 6 decimals, tTKB 18).
     uint256 internal constant DEX_TUSDC = 1_000_000e6;

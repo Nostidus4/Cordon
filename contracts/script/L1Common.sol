@@ -103,10 +103,17 @@ abstract contract L1Common is Script {
         return vm.parseJsonAddress(seed, string.concat(".council[", vm.toString(i), "].address"));
     }
 
-    /// @dev The bootstrap scripts approve and expect execution in the same run, which a Council with a timelock
-    ///      (`COUNCIL_TIMELOCK_S` > 0, #77) does not allow: its proposals only queue.
-    function requireNoTimelock(address council) internal view {
-        require(IGuardianCouncil(council).timelockDelay() == 0, "bootstrap needs a Council with timelock 0");
+    /// @dev Two-phase bootstrap (#77). Phase 1 (these scripts) proposes and approves: with `timelockDelay == 0` the
+    ///      proposal executes inside the second `approve`; with a delay it is only queued and this logs its `eta`.
+    ///      Phase 2 is `Execute.s.sol` (run by `infra/l1/contracts.sh` once the chain's time has reached the eta).
+    function logPassed(address council, uint256 id) internal view {
+        IGuardianCouncil c = IGuardianCouncil(council);
+        if (c.timelockDelay() == 0) {
+            console.log("proposal executed", id);
+        } else {
+            console.log("proposal queued, execute after eta; id", id);
+            console.log("  eta", uint256(c.etaOf(id)));
+        }
     }
 
     /// @notice `readAllowList(addr)` on a precompile through a real `eth_call` (needs `--rpc-url`).

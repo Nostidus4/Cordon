@@ -30,6 +30,12 @@ Chủ trì: Nostidus4 · Issue: `L1-001`, `L1-002`, `L1-003` · Spec: [../../spe
 
 Sau bàn giao deployer không còn role, nên `ResetOpen` nhờ Council cũ `setEnabled` deployer; bộ mới được deploy và seed; Council cũ chuyển admin hai precompile sang Council mới bằng một proposal (`setAdmin(mới)` x2, `setNone(cũ)` x2, chỉ được vì Council cho phép `setAdmin` tới một contract khác); `ResetSwitch` xong thì deployer không còn role (`VerifyHandover` pass) và Council cũ không còn role. Xem `docs/DEVELOPMENT.md`.
 
+### Timelock của Council (#77): `COUNCIL_TIMELOCK_S`
+
+`timelockDelay` của `GuardianCouncil` **bất biến** (đặt lúc deploy, không có setter), nên phải chọn **trước khi deploy Fuji**: `COUNCIL_TIMELOCK_S=60 NETWORK=fuji I_UNDERSTAND=fuji make deploy-contracts` (khuyến nghị **60 giây** cho demo; để 0 thì chain thật sẽ không bao giờ có timelock). Backend dùng cùng giá trị (`COUNCIL_TIMELOCK_S` trong `.env`) để bật keeper; sim dùng nó làm độ trễ của chain giả lập.
+
+Bootstrap hai pha khi delay > 0: các bước đưa proposal (`seed`, `handover`, `policy-v2`, `reset-open`, `reset-switch`, `reset-finish`) chỉ propose + approve, proposal vào hàng chờ và script in `id` + `eta`; ngay sau đó `infra/l1/contracts.sh` chờ đến khi block timestamp của chain đạt eta (poll `cast block latest -f timestamp`), rồi chạy `Execute.s.sol` (khoá Trang gọi `execute(id)` theo thứ tự id cho mọi proposal đang chờ), rồi mới sang bước kế (`verify-seed` / `verify-handover` luôn chạy sau). Subnet-EVM chỉ tạo block khi có giao dịch, nên trong lúc chờ script gửi một giao dịch tự chuyển 0 từ khoá Trang để có block mới, và thử lại `execute` nếu gặp `TimelockNotReady`. `FAST_FORWARD=1` (chỉ `NETWORK=local` trên node có `evm_increaseTime`, như anvil) dịch đồng hồ thay vì chờ; không bao giờ dùng trên Fuji. Delay 0: không chờ, hành vi như cũ. Demo-reset thêm bước `4b finish` (`ResetFinish`: Council mới đổi `topUpOperator`, gỡ deployer, đẩy counter về 11) và mỗi bước đưa proposal tốn khoảng một timelock (khoảng 4 phút với 60 s). Kiểm chứng trên anvil: `Backend/tests/chain_l1/test_bootstrap_timelock.py` (deploy, seed, handover, VerifySeed, VerifyHandover với delay 0 và 30; chuỗi reset với delay 30).
+
 ## Nghiệm thu
 
 - RPC trả block; giao dịch từ địa chỉ ngoài AllowList bị từ chối (D1).
