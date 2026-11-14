@@ -37,6 +37,9 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
     )
     scenario_delay_seconds: float = 3.0
+    # Council timelock in seconds (#77). sim: the chain's immutable delay. l1: must equal the deployed
+    # Council's `timelockDelay` (deploy script env of the same name); it only switches the keeper on. 0 = off.
+    council_timelock_s: int = 0
     rate_limit_per_minute: int = 120
 
     # LLM (assistant free text + agent reason). Credentials come from the SDK chain (ANTHROPIC_API_KEY, ...).

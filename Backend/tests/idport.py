@@ -25,6 +25,8 @@ _METHODS = [
     "propose",
     "approve",
     "cancel",
+    "execute_proposal",
+    "veto",
     "balance",
 ]
 

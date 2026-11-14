@@ -241,7 +241,7 @@ function nextProposalId(): number { let n = 14; while (S.proposals.some((p) => p
 /** Draft -> stored proposal (backend ProposalOut shape; `members`/`approvalCount` are filled live by `liveProposal`). */
 function toProposal(d: ProposalDraft, id: number, proposer: MemberId): Proposal {
   const { classification: _c, requiresCouncil: _r, sent: _s, ...body } = d;
-  return { ...body, id, proposer, approvals: [], approvalCount: 0, members: [], threshold: 2, status: "open", reportBasis: "live", createdAt: nowSec(), executedAt: null, executedTxHash: null };
+  return { ...body, id, proposer, approvals: [], approvalCount: 0, members: [], threshold: 2, status: "open", reportBasis: "live", createdAt: nowSec(), executedAt: null, executedTxHash: null, eta: null, queued: false, vetoedBy: null };
 }
 function addProposal(change: ProposedChange, proposer: MemberId, id?: number, findingId: string | null = null, title?: string): Proposal {
   const existing = S.proposals.find((p) => p.status === "open" && JSON.stringify(p.change) === JSON.stringify(change));
@@ -795,6 +795,9 @@ export const mockApi = {
   async draftProposal(req: DraftProposalRequest): Promise<ProposalDraft> { await lat(); return buildDraft(resolveChange(req), req.findingId ?? null); },
   async createProposal(req: CreateProposalRequest): Promise<Proposal> { await lat(); memberOf(req.member); return liveProposal(addProposal(resolveChange(req), req.member, undefined, req.findingId ?? null, req.title)); },
   async approveProposal(id: number, member: MemberId): Promise<Proposal> { await lat(); return approve(id, member); },
+  // the mock Council has no timelock (delay 0): nothing is ever queued, so there is nothing to execute or veto
+  async executeProposal(): Promise<Proposal> { await lat(); throw new ApiError("NeedsThreshold", "Mock không có timelock", 409); },
+  async vetoProposal(): Promise<Proposal> { await lat(); throw new ApiError("ProposalNotOpen", "Mock không có timelock", 409); },
   async getProposals(): Promise<Proposal[]> { await lat(); return S.proposals.map(liveProposal).sort((a, b) => b.id - a.id); },
   async lockDistrict(req: LockRequest): Promise<ActionResult> {
     await lat(); memberOf(req.member);

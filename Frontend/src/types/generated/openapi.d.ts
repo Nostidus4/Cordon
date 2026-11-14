@@ -896,6 +896,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/proposals/{proposal_id}/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Execute */
+        post: operations["execute_api_proposals__proposal_id__execute_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/proposals/{proposal_id}/veto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Veto */
+        post: operations["veto_api_proposals__proposal_id__veto_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scenario/runs": {
         parameters: {
             query?: never;
@@ -2461,6 +2495,8 @@ export interface components {
             createdAt: number;
             /** Descriptionvi */
             descriptionVi: string[];
+            /** Eta */
+            eta?: number | null;
             /** Executedat */
             executedAt?: number | null;
             /** Executedtxhash */
@@ -2473,6 +2509,11 @@ export interface components {
             members: components["schemas"]["MemberApproval"][];
             /** Proposer */
             proposer: string;
+            /**
+             * Queued
+             * @default false
+             */
+            queued: boolean;
             /** Reportbasis */
             reportBasis: string;
             /** Riskreport */
@@ -2489,6 +2530,8 @@ export interface components {
             threshold: number;
             /** Title */
             title: string;
+            /** Vetoedby */
+            vetoedBy?: string | null;
             /** Warnings */
             warnings: components["schemas"]["WarningOut"][];
         };
@@ -4276,6 +4319,76 @@ export interface operations {
         };
     };
     approve_api_proposals__proposal_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    execute_api_proposals__proposal_id__execute_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    veto_api_proposals__proposal_id__veto_post: {
         parameters: {
             query?: never;
             header?: never;

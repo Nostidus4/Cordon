@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {Script, console} from "forge-std/Script.sol";
 
+import {IGuardianCouncil} from "../src/interfaces/IGuardianCouncil.sol";
 import {KeyKind} from "../src/interfaces/IPrincipalRegistry.sol";
 
 /// @notice Shared plumbing of the L1 scripts (L1-002): the deployments file, the seed file and the two precompiles.
@@ -100,6 +101,19 @@ abstract contract L1Common is Script {
     /// @dev Council member address by position (trang, lan, huy) as the seed lists them.
     function memberAt(string memory seed, uint256 i) internal pure returns (address) {
         return vm.parseJsonAddress(seed, string.concat(".council[", vm.toString(i), "].address"));
+    }
+
+    /// @dev Two-phase bootstrap (#77). Phase 1 (these scripts) proposes and approves: with `timelockDelay == 0` the
+    ///      proposal executes inside the second `approve`; with a delay it is only queued and this logs its `eta`.
+    ///      Phase 2 is `Execute.s.sol` (run by `infra/l1/contracts.sh` once the chain's time has reached the eta).
+    function logPassed(address council, uint256 id) internal view {
+        IGuardianCouncil c = IGuardianCouncil(council);
+        if (c.timelockDelay() == 0) {
+            console.log("proposal executed", id);
+        } else {
+            console.log("proposal queued, execute after eta; id", id);
+            console.log("  eta", uint256(c.etaOf(id)));
+        }
     }
 
     /// @notice `readAllowList(addr)` on a precompile through a real `eth_call` (needs `--rpc-url`).

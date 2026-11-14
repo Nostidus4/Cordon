@@ -41,7 +41,7 @@ contract GuardianCouncilTest is MayLabsBase {
         vault = new PolicyVault(address(registry), predicted, address(tUSDC), address(dex), topUpOp);
 
         gc = new GuardianCouncil(
-            [MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], [bytes32(0), LAN, HUY], address(registry), address(vault)
+            [MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], [bytes32(0), LAN, HUY], address(registry), address(vault), 0
         );
         assertEq(address(gc), predicted, "council address prediction");
         txAllowList.__seedRole(address(gc), 2);
@@ -182,13 +182,13 @@ contract GuardianCouncilTest is MayLabsBase {
     function test_constructorRejectsBadSetup() public {
         bytes32[3] memory p = [bytes32(0), LAN, HUY];
         vm.expectRevert(GuardianCouncil.InvalidSetup.selector);
-        new GuardianCouncil([address(0), MEMBER_LAN, MEMBER_HUY], p, address(registry), address(vault));
+        new GuardianCouncil([address(0), MEMBER_LAN, MEMBER_HUY], p, address(registry), address(vault), 0);
         vm.expectRevert(GuardianCouncil.InvalidSetup.selector);
-        new GuardianCouncil([MEMBER_TRANG, MEMBER_TRANG, MEMBER_HUY], p, address(registry), address(vault));
+        new GuardianCouncil([MEMBER_TRANG, MEMBER_TRANG, MEMBER_HUY], p, address(registry), address(vault), 0);
         vm.expectRevert(GuardianCouncil.InvalidSetup.selector);
-        new GuardianCouncil([MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], p, address(0), address(vault));
+        new GuardianCouncil([MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], p, address(0), address(vault), 0);
         vm.expectRevert(GuardianCouncil.InvalidSetup.selector);
-        new GuardianCouncil([MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], p, address(registry), address(0));
+        new GuardianCouncil([MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], p, address(registry), address(0), 0);
     }
 
     // ------------------------------------------------- T9: tighten with 1 member
@@ -654,7 +654,7 @@ contract GuardianCouncilTest is MayLabsBase {
 
     function test_setAdmin_toSuccessorContract_handsOverBothPrecompiles() public {
         GuardianCouncil next = new GuardianCouncil(
-            [MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], [bytes32(0), LAN, HUY], address(registry), address(vault)
+            [MEMBER_TRANG, MEMBER_LAN, MEMBER_HUY], [bytes32(0), LAN, HUY], address(registry), address(vault), 0
         );
         Call[] memory calls = new Call[](4);
         calls[0] = _call(TX_ALLOWLIST, abi.encodeCall(IAllowList.setAdmin, (address(next))));

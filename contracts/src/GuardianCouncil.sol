@@ -51,6 +51,10 @@ contract GuardianCouncil is IGuardianCouncil {
 
     uint8 public constant THRESHOLD = 2;
 
+    /// @notice Seconds between reaching the threshold and the earliest execution (#77). Immutable on purpose: a
+    ///         setter would let two members shorten the window, which is itself a loosening. 0 = execute at once.
+    uint64 public immutable timelockDelay;
+
     address public immutable registry;
     address public immutable vault;
 
@@ -71,6 +75,8 @@ contract GuardianCouncil is IGuardianCouncil {
         bool executed;
         bool cancelled;
         uint64 createdAt;
+        /// @dev 0 = not queued; set when the threshold is reached while `timelockDelay > 0`
+        uint64 eta;
     }
 
     mapping(uint256 id => Stored) private _proposals;
@@ -84,10 +90,18 @@ contract GuardianCouncil is IGuardianCouncil {
 
     /// @param members_ `[trang, lan, huy]`
     /// @param principals_ district of each member, `bytes32(0)` for none (`[0, lan, huy]` in the seed)
-    constructor(address[3] memory members_, bytes32[3] memory principals_, address registry_, address vault_) {
+    /// @param timelockDelay_ seconds a fully approved proposal waits before it can execute (0 = no timelock)
+    constructor(
+        address[3] memory members_,
+        bytes32[3] memory principals_,
+        address registry_,
+        address vault_,
+        uint64 timelockDelay_
+    ) {
         if (registry_ == address(0) || vault_ == address(0)) revert InvalidSetup();
         registry = registry_;
         vault = vault_;
+        timelockDelay = timelockDelay_;
         for (uint256 i; i < 3; ++i) {
             address m = members_[i];
             if (m == address(0) || _isMember[m]) revert InvalidSetup();
@@ -111,6 +125,10 @@ contract GuardianCouncil is IGuardianCouncil {
         p.executed = s.executed;
         p.cancelled = s.cancelled;
         p.createdAt = s.createdAt;
+    }
+
+    function etaOf(uint256 id) external view returns (uint64) {
+        return _stored(id).eta;
     }
 
     // ------------------------------------------------------------- proposals
@@ -151,16 +169,38 @@ contract GuardianCouncil is IGuardianCouncil {
         approvedBy[id][msg.sender] = true;
         uint8 n = ++s.approvals;
         emit Approved(id, msg.sender);
-        if (n >= THRESHOLD) _execute(id, s);
+        if (n == THRESHOLD) {
+            if (timelockDelay == 0) {
+                _execute(id, s);
+            } else {
+                // forge-lint: disable-next-line(unsafe-typecast)
+                uint64 eta = uint64(block.timestamp) + timelockDelay;
+                s.eta = eta;
+                emit Queued(id, eta);
+            }
+        }
     }
 
-    /// @dev `approve` executes as soon as the threshold is reached, so a proposal is never open with enough approvals
-    ///      and this reverts `NeedsThreshold` for every open proposal. It exists for the frozen ABI and as the
-    ///      explicit "one member cannot push a loosening through" answer.
+    /// @dev Without a timelock `approve` executes as soon as the threshold is reached, so a proposal is never open
+    ///      with enough approvals and this reverts `NeedsThreshold` for every open proposal (the explicit "one member
+    ///      cannot push a loosening through" answer). With a timelock it runs a queued proposal from `eta`.
     function execute(uint256 id) external onlyMember {
         Stored storage s = _open(id);
         if (s.approvals < THRESHOLD) revert NeedsThreshold();
+        // the timelock is measured in minutes or longer: validator timestamp drift is irrelevant
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp < s.eta) revert TimelockNotReady(s.eta);
         _execute(id, s);
+    }
+
+    /// @notice Any member stops a queued proposal. Blocking is a tightening, so one member is enough and there is no
+    ///         conflict-of-interest check.
+    function veto(uint256 id) external onlyMember {
+        Stored storage s = _open(id);
+        if (s.eta == 0) revert ProposalNotOpen();
+        s.cancelled = true;
+        emit Cancelled(id);
+        emit Vetoed(id, msg.sender);
     }
 
     function cancel(uint256 id) external onlyMember {

@@ -50,6 +50,13 @@ class ProposalState:
     approved_by: list[str]  # member addresses
     executed: bool = False
     cancelled: bool = False
+    eta: int | None = None  # timelock (#77): earliest execution time (unix s), None = never queued
+    vetoed_by: str | None = None  # member address that vetoed, None otherwise
+
+    @property
+    def queued(self) -> bool:
+        """Threshold reached under a timelock and not yet executed or cancelled."""
+        return self.eta is not None and not self.executed and not self.cancelled
 
     @property
     def status(self) -> Literal["open", "executed", "cancelled"]:
@@ -113,6 +120,10 @@ class ChainPort(Protocol):
     ) -> TxResult: ...  # status ok -> proposal_id set; revert -> reason_code/error_raw, no raise
     def approve(self, member: str, proposal_id: int) -> TxResult: ...
     def cancel(self, member: str, proposal_id: int) -> TxResult: ...
+    def execute_proposal(
+        self, member: str, proposal_id: int
+    ) -> TxResult: ...  # queued, from eta (#77)
+    def veto(self, member: str, proposal_id: int) -> TxResult: ...  # any member, while queued (#77)
 
     # --- read / stream ---
     @property

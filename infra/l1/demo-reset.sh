@@ -10,14 +10,18 @@
 #   2 deploy   fresh tokens, DEXes, Registry, Vault, Council                                         [Deploy]
 #   3 seed     policy v1 through real Council proposals + 200.000 tUSDC in the vault                  [Seed]
 #   4 switch   re-enable locked keys, old Council hands the precompiles to the new one and drops its
-#              role, minters + top-up operator move, deployer loses its roles, counter -> 11          [ResetSwitch]
+#              role, minters move to the new Council                                                  [ResetSwitch]
+#   4b finish  new Council: top-up operator moves, deployer loses its roles, counter -> 11          [ResetFinish]
+#              With a Council timelock (COUNCIL_TIMELOCK_S > 0, set when the Council was deployed) every step that
+#              passes proposals waits for the chain clock to reach the eta, then runs `Execute` (contracts.sh does it),
+#              so a reset takes about one timelock per step 1, 3, 4 and 4b (60 s each when COUNCIL_TIMELOCK_S=60).
 #   5 verify   VerifySeed + VerifyHandover on the new set, old Council has no role left
 #   6 publish  policyBaseline into the file, atomic rename, POST /api/demo/reset (API reloads)
 #
 # NETWORK=local (default): public test keys only. NETWORK=fuji needs I_UNDERSTAND=fuji and the variables listed in
 # infra/l1/contracts.sh (RPC_URL, DEPLOYER_PK, SEED_FILE, TOP_UP_OPERATOR, L1_KEY_COUNCIL_*); not run in CI.
 # API_URL (default http://localhost:8000) is the backend to notify. A failed step leaves the live deployments file
-# untouched; once step 4 has passed the new file is kept as <file>.next and a re-run resumes at step 5.
+# untouched; once step 4 has passed the new file is kept as <file>.next and a re-run resumes at step 4b/5.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -103,8 +107,13 @@ finalize() {
 if [[ -f "$NEXT" ]]; then
   nc="$(jget "$NEXT" "['contracts']['council']")"
   if [[ "$(role "$TX_ALLOWLIST" "$nc")" == "2" ]]; then
-    log "resuming: $NEXT holds a finished set (Council $nc is admin)"
+    log "resuming: $NEXT holds a set whose Council $nc is admin"
     export NETWORK
+    export DEPLOYMENTS_OUT="$REL_NEXT"
+    # step 4b is not idempotent: run it only when VerifyHandover says the new set is not finished yet
+    if ! bash "$CONTRACTS" verify-handover >/dev/null 2>&1; then
+      step "4b finish" bash "$CONTRACTS" reset-finish
+    fi
     finalize
     exit 0
   fi
@@ -126,4 +135,5 @@ step "2 deploy" bash "$CONTRACTS" deploy
 step "3 seed" bash "$CONTRACTS" seed
 KEEP_NEXT=1 # the switch may already have moved the precompile admin: a re-run resumes from the file
 step "4 switch" bash "$CONTRACTS" reset-switch
+step "4b finish" bash "$CONTRACTS" reset-finish
 finalize

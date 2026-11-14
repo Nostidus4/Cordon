@@ -26,6 +26,7 @@ def create_app(settings: Settings | None = None, runtime: Runtime | None = None)
         app.state.runtime = rt
         await demo_reset(rt, startup=True)  # seed request #12 so the app starts at scene 1
         rt.start_responder_ticker()
+        rt.start_keeper()
         try:
             yield
         finally:

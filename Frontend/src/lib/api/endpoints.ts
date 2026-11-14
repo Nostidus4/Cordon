@@ -26,6 +26,9 @@ export interface Api {
   draftProposal(req: DraftProposalRequest): Promise<ProposalDraft>;
   createProposal(req: CreateProposalRequest): Promise<Proposal>;
   approveProposal(id: number, member: MemberId): Promise<Proposal>;
+  /** Timelock (#77): run a queued proposal from its eta / one member stops it while queued (demo mode). */
+  executeProposal(id: number, member: MemberId): Promise<Proposal>;
+  vetoProposal(id: number, member: MemberId): Promise<Proposal>;
   getProposals(): Promise<Proposal[]>;
   lockDistrict(req: LockRequest): Promise<ActionResult>;
   pauseAll(req: PauseRequest): Promise<ActionResult>;
@@ -78,6 +81,8 @@ export const liveApi: Api = {
   draftProposal: (req) => http("POST", "/proposals/draft", req),
   createProposal: (req) => http("POST", "/proposals", req),
   approveProposal: (id, member) => http("POST", `/proposals/${id}/approve`, { member }),
+  executeProposal: (id, member) => http("POST", `/proposals/${id}/execute`, { member }),
+  vetoProposal: (id, member) => http("POST", `/proposals/${id}/veto`, { member }),
   getProposals: () => http("GET", "/proposals"),
   lockDistrict: (req) => http("POST", "/actions/lock", req),
   pauseAll: (req) => http("POST", "/actions/pause", req),

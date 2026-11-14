@@ -45,7 +45,9 @@ contract Seed is L1Common {
         TestUSDC(d.tUSDC).mint(d.vault, funding);
         vm.stopBroadcast();
 
-        console.log("seeded; vault policyVersion", IPolicyVault(d.vault).policyVersion());
+        console.log(
+            "seeded (queued proposals still need Execute); vault policyVersion", IPolicyVault(d.vault).policyVersion()
+        );
     }
 
     /// @dev Proposer `proposerId` proposes and approves, `secondId` approves: that is the 2 of 3.
@@ -64,7 +66,7 @@ contract Seed is L1Common {
         vm.startBroadcast(pkOf(secondId));
         council.approve(id);
         vm.stopBroadcast();
-        console.log("proposal executed", id);
+        logPassed(address(council), id);
     }
 
     /// @dev Seed arrays, parsed once.

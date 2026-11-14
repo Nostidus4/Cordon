@@ -57,7 +57,8 @@ def test_rpc_error_tags(message: str, tag: str | None) -> None:
 
 @pytest.mark.parametrize("name", sorted({*ERROR_TO_REASON, *OTHER_ERRORS, *CONTRACT_ONLY_ERRORS}))
 def test_every_known_custom_error_decodes_by_selector(name: str) -> None:
-    info = decode_revert("0x" + keccak(text=f"{name}()")[:4].hex())
+    args = "uint64" if name == "TimelockNotReady" else ""  # the only error with an argument
+    info = decode_revert("0x" + keccak(text=f"{name}({args})")[:4].hex())
     assert info.name == name and info.raw == name and info.reason == ERROR_TO_REASON.get(name)
 
 

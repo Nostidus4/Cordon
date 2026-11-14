@@ -252,11 +252,41 @@ def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
             record_conflict(rt, member, proposal_id)
         raise ChainRevert(res.error_raw or "reverted", res.reason_code)
     cp = rt.chain.proposal_state(proposal_id)
-    if cp.executed and rec.executed_at is None:
-        rec.executed_at = rt.now()
-        rec.executed_tx_hash = res.tx_hash
-        rt.stores.proposals.save(rec)
+    _mark_executed(rt, rec, cp.executed, res.tx_hash)
     rt.notify_state_changed((proposal_id,), graph=cp.executed)
+    return proposal_out(rt, proposal_id)
+
+
+def _mark_executed(rt: Runtime, rec: ProposalRec, executed: bool, tx_hash: str | None) -> None:
+    if executed and rec.executed_at is None:
+        rec.executed_at = rt.now()
+        rec.executed_tx_hash = tx_hash
+        rt.stores.proposals.save(rec)
+
+
+def _tx_on_proposal(rt: Runtime, proposal_id: int, member: str, fn: str) -> ProposalRec:
+    require_member(rt.snapshot(), member)
+    rec = rt.stores.proposals.get(proposal_id)
+    if rec is None:
+        raise ApiError(404, "PROPOSAL_NOT_FOUND", f"Không có đề xuất #{proposal_id}.")
+    res = getattr(rt.chain, fn)(rt.addr(member), proposal_id)
+    if res.status != "ok":
+        raise ChainRevert(res.error_raw or "reverted", res.reason_code)
+    _mark_executed(rt, rec, rt.chain.proposal_state(proposal_id).executed, res.tx_hash)
+    return rec
+
+
+def execute(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
+    """Run a queued proposal (#77). Before its eta the chain says `TimelockNotReady`."""
+    _tx_on_proposal(rt, proposal_id, member, "execute_proposal")
+    rt.notify_state_changed((proposal_id,), graph=True)
+    return proposal_out(rt, proposal_id)
+
+
+def veto(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
+    """Any member stops a queued proposal (#77): blocking is a tightening, one member is enough."""
+    _tx_on_proposal(rt, proposal_id, member, "veto")
+    rt.notify_state_changed((proposal_id,), graph=False)
     return proposal_out(rt, proposal_id)
 
 
@@ -281,6 +311,8 @@ def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
             reason = "Đề xuất không còn mở."
         elif m.id in approved:
             reason = "Đã duyệt."
+        elif cp.queued:
+            reason = "Đã đủ phiếu, đang chờ hết giờ."
         elif is_conf:
             reason = (
                 f"{m.label} sẽ nhận thêm quyền ở khu này nên không được duyệt (xung đột lợi ích)."
@@ -320,6 +352,9 @@ def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
         "createdAt": rec.created_at,
         "executedAt": rec.executed_at,
         "executedTxHash": rec.executed_tx_hash,
+        "eta": cp.eta,
+        "queued": cp.queued,
+        "vetoedBy": by_addr.get(cp.vetoed_by) if cp.vetoed_by else None,
     }
 
 
