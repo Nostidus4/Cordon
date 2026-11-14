@@ -1,1 +1,25 @@
-{}
+{
+  "chainId": 845357,
+  "deployBlock": 59,
+  "deployedAt": 1794638570,
+  "contracts": {
+    "registry": "0xc7C7879c8493845bB5651FC079Ea318D8dF9eB29",
+    "vault": "0x19415a753D1cE9FC3C9F385879F5Ca250Eb50efD",
+    "council": "0x7A819Bb0ebf6045B38F9f428eCadb2E9546A31bf",
+    "mockDex": "0xAf45f25f63b352842C0604CF147c7C5249af390B",
+    "evilDex": "0x4b2948b7d93438a36949BAf2fa6cECd06C199247",
+    "tUSDC": "0xC431fBB796EbdE11c69fE72A0BdC11dB72301119",
+    "tTKB": "0xD33721aBFA03f2D3Fb211Dd8b50ECf796c22A58E",
+    "tSCAM": "0x8d219C65dE2E068a3d4975668692bdcf8124904a"
+  },
+  "precompiles": {
+    "contractDeployerAllowList": "0x0200000000000000000000000000000000000000",
+    "txAllowList": "0x0200000000000000000000000000000000000002"
+  },
+  "members": {
+    "trang": "0x33A540bA630ef36c16887782CF73E4678149E51e",
+    "lan": "0xa5d72AeeBC380251494215e44753E30E0730e36A",
+    "huy": "0xf9eed7Fdd84cd3D31975846507ca95d2FF0C1e7F"
+  },
+  "policyBaseline": 4
+}

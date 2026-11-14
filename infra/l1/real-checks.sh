@@ -8,15 +8,29 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export PATH="$HOME/.foundry/bin:$HOME/bin:$PATH"
-[[ -f "$ROOT/infra/l1/.env.l1-local" ]] || { echo "no local L1 running: make l1-local-up" >&2; exit 1; }
-RPC_URL="$(grep '^RPC_URL=' "$ROOT/infra/l1/.env.l1-local" | cut -d= -f2-)"
-DEP="$ROOT/Backend/deployments/local-l1.json"
-ENVF="$ROOT/Backend/.env.l1-local"
+# NETWORK=fuji (I_UNDERSTAND=fuji): the same checks on the Fuji Guardian L1 (#31). Needs RPC_URL in the environment,
+# reads Backend/deployments/fuji-l1.json and the keys of Backend/.env.fuji, and the deployer key from the Avalanche
+# CLI key file. Keys are never printed.
+if [[ "${NETWORK:-local}" == "fuji" ]]; then
+  [[ "${I_UNDERSTAND:-}" == "fuji" ]] || { echo "NETWORK=fuji needs I_UNDERSTAND=fuji" >&2; exit 1; }
+  : "${RPC_URL:?NETWORK=fuji: set RPC_URL (the Guardian L1 validator RPC)}"
+  DEP="$ROOT/Backend/deployments/fuji-l1.json"
+  ENVF="$ROOT/Backend/.env.fuji"
+else
+  [[ -f "$ROOT/infra/l1/.env.l1-local" ]] || { echo "no local L1 running: make l1-local-up" >&2; exit 1; }
+  RPC_URL="$(grep '^RPC_URL=' "$ROOT/infra/l1/.env.l1-local" | cut -d= -f2-)"
+  DEP="$ROOT/Backend/deployments/local-l1.json"
+  ENVF="$ROOT/Backend/.env.l1-local"
+fi
 TX_ALLOWLIST="0x0200000000000000000000000000000000000002"
 DEPLOYER_ALLOWLIST="0x0200000000000000000000000000000000000000"
 DEAD="0x000000000000000000000000000000000000dEaD"
 # Public ewoq key shipped with the Avalanche CLI (local network only).
 DEPLOYER_PK="0x56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027" # gitleaks:allow
+if [[ "${NETWORK:-local}" == "fuji" ]]; then
+  DEPLOYER_PK="$(tr -d ' \n\r' <"${FUJI_DEPLOYER_KEY_FILE:-$HOME/.avalanche-cli/key/fuji_deployer.pk}")"
+  [[ "$DEPLOYER_PK" == 0x* ]] || DEPLOYER_PK="0x$DEPLOYER_PK"
+fi
 INIT_CODE="0x600a600c600039600a6000f3602a60005260206000f3"
 
 jget() { python3 -c "import json,sys;d=json.load(open('$DEP'));print(eval('d'+sys.argv[1]))" "$1"; }
