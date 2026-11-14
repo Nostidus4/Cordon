@@ -23,6 +23,8 @@ EVENT_VI = {
     "Approved": "Một thành viên Hội đồng đã duyệt",
     "Executed": "Đề xuất đã được thực hiện",
     "Cancelled": "Đề xuất đã bị huỷ",
+    "Queued": "Đề xuất đủ phiếu, chờ hết giờ mới thực thi",
+    "Vetoed": "Một thành viên đã phủ quyết đề xuất",
     "Paid": "Kho chi tiền",
     "Swapped": "Kho đổi token",
     "Paused": "Cả kho bị dừng khẩn cấp",
@@ -38,7 +40,7 @@ EVENT_VI = {
 }
 # chain events each building's rules read
 EVENT_NAMES: dict[str, tuple[str, ...]] = {
-    "B01": ("Proposed", "Approved", "Executed", "Cancelled"),
+    "B01": ("Proposed", "Approved", "Queued", "Vetoed", "Executed", "Cancelled"),
     "B03": ("Paused", "Unpaused", "CapChanged", "AllowChanged", "Paid", "Swapped"),
     "B05": (
         "PrincipalLocked",

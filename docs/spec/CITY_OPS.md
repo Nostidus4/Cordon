@@ -27,7 +27,8 @@ Luật đổi màu giữ nguyên luật hiện có trong docstring của `servic
 | `<Bxx>.incident_recovering` | recovery | Sự cố của tòa đang hồi phục (mục 4) |
 | `B01.conflict` | incident | Vừa có lần duyệt bị chặn vì xung đột lợi ích |
 | `B01.executed` | recovery | Một đề xuất vừa được thực thi |
-| `B01.pending` | warning | Có đề xuất chờ Hội đồng duyệt |
+| `B01.pending` | warning | Có đề xuất chờ Hội đồng duyệt (chưa đủ phiếu) |
+| `B01.queued` | warning | Có đề xuất nới luật đang chờ hết giờ (timelock, #77): đã đủ 2/3 phiếu, chưa tới `eta` |
 | `B02.unverified` | warning | Câu trả lời gần nhất có số liệu chưa kiểm chứng |
 | `B03.paused` | incident | Cả kho đang dừng |
 | `B03.near_cap` | warning | Một khu đã dùng ≥ 80% hạn mức chung hôm nay |
@@ -151,6 +152,7 @@ Một khu/khoá chỉ có một sự cố mở tại một thời điểm (gộp
 - `GET /api/incidents/{id}` → `IncidentOut` (`404 INCIDENT_NOT_FOUND`)
 - SSE mới: `incident_updated` → `IncidentOut` (thêm vào `SSE_EVENT_TYPES` ↔ `STREAM_TYPES`; frontend cũ bỏ qua type lạ nên an toàn).
 - Hội đồng duyệt bằng endpoint có sẵn `POST /proposals/{id}/approve`.
+- Timelock (#77, `COUNCIL_TIMELOCK_S` > 0): đủ 2 phiếu thì đề xuất vào hàng chờ (`ProposalOut.queued`, `eta`), sự cố vẫn `awaiting_council` đến khi đề xuất được thực thi. `POST /proposals/{id}/execute` `{member}` (từ `eta`) và `POST /proposals/{id}/veto` `{member}` (mọi thành viên, chỉ khi đang chờ; `ProposalOut.vetoedBy`), cả hai cần DEMO_MODE. Keeper trong API (`services/timelock_keeper.py`) tự gọi execute khi tới `eta`, chỉ với DEMO_MODE; không có DEMO_MODE thì B01.queued ghi "chờ một thành viên thực thi".
 
 ## 5. Ranh giới
 - Không đổi contract Solidity, không đổi `ChainPort`. Responder và faults chỉ gọi method `ChainPort` / service có sẵn, nên chạy giống nhau ở sim và l1.
@@ -250,7 +252,7 @@ Mỗi nháp được đưa qua một `Checkpoint` (`assistant/copilot/checkpoint
 
 **UI.** `ViolationsPanel` trong ngăn kéo B03 và B07; `AgentGuardPanel` trong B06 (văn bản lạ, "đã bỏ qua", quyết định không đổi, lệnh chuyển thẳng bị chặn, nhãn hash).
 
-**Hoãn.** Timelock đổi luật (hiện ở B01) cần quyết định interface contract mới, tách thành issue riêng; chưa làm ở đây.
+**Timelock đổi luật** (B01): đã làm ở #77 (interface Council đổi có phép, xem CONTRACTS.md mục lịch sử).
 ## 10. Quỹ lương (B04, CITY-006)
 
 Xem [PAYROLL.md](PAYROLL.md): bộ contract riêng, agent chỉ allocate/unwind trong whitelist, bậc thang rút về trước T-1, công tắc khẩn cấp, demo một tháng trong 10 phút. Luật màu B04 thêm `B04.payroll_kill` và `B04.payroll_at_risk` (bảng mục 1).

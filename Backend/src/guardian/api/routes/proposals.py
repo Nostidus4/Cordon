@@ -44,6 +44,24 @@ async def get_proposal(proposal_id: int, rt: RuntimeDep):  # type: ignore[no-unt
 
 
 @router.post(
+    "/proposals/{proposal_id}/execute",
+    response_model=ProposalOut,
+    dependencies=[Depends(demo_signing("proposals.execute"))],
+)
+async def execute(proposal_id: int, body: ApproveRequest, rt: RuntimeDep):  # type: ignore[no-untyped-def]
+    return ps.execute(rt, proposal_id, body.member)
+
+
+@router.post(
+    "/proposals/{proposal_id}/veto",
+    response_model=ProposalOut,
+    dependencies=[Depends(demo_signing("proposals.veto"))],
+)
+async def veto(proposal_id: int, body: ApproveRequest, rt: RuntimeDep):  # type: ignore[no-untyped-def]
+    return ps.veto(rt, proposal_id, body.member)
+
+
+@router.post(
     "/proposals/{proposal_id}/approve",
     response_model=ProposalOut,
     dependencies=[Depends(demo_signing("proposals.approve"))],

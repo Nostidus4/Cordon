@@ -49,6 +49,7 @@ BUILDINGS: tuple[BuildingDef, ...] = (
             RuleDef("B01.conflict", "incident", "Vừa có lần duyệt bị chặn vì xung đột lợi ích"),
             RuleDef("B01.executed", "recovery", "Một đề xuất vừa được thực hiện"),
             RuleDef("B01.pending", "warning", "Có đề xuất chờ Hội đồng duyệt"),
+            RuleDef("B01.queued", "warning", "Có đề xuất nới luật đang chờ hết giờ"),
         ),
     ),
     BuildingDef(
