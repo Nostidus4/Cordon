@@ -95,6 +95,34 @@ Verified on the Fuji L1 (real output):
 - key_minh self-transfer: `status 1`, block 0 -> 1 (Subnet-EVM mines on transactions only).
 - A funded address that is not on the list: `cannot issue transaction from non-allow listed address: 0x7D5b…8Ab5`, no hash, no block. Same string as the local table above.
 
+### Contracts on the Fuji L1 (#31, 2026-11-14)
+
+`Backend/deployments/fuji-l1.json` (current set after `demo-reset`) and `Backend/deployments/fuji-c.json` (C-Chain treasury). Bootstrap: `NETWORK=fuji I_UNDERSTAND=fuji RPC_URL=<validator rpc> bash infra/l1/fuji-bootstrap.sh` (`--dry-run` first). Single scripts with the same environment: `I_UNDERSTAND=fuji RPC_URL=... infra/l1/fuji-run.sh bash infra/l1/contracts.sh <step>` (also `real-checks.sh t15|t8`, `demo-reset.sh`).
+
+| Contract | Address |
+|---|---|
+| registry | `0xc7C7879c8493845bB5651FC079Ea318D8dF9eB29` |
+| vault | `0x19415a753D1cE9FC3C9F385879F5Ca250Eb50efD` |
+| council | `0x7A819Bb0ebf6045B38F9f428eCadb2E9546A31bf` |
+| tUSDC | `0xC431fBB796EbdE11c69fE72A0BdC11dB72301119` |
+| tTKB | `0xD33721aBFA03f2D3Fb211Dd8b50ECf796c22A58E` |
+| tSCAM | `0x8d219C65dE2E068a3d4975668692bdcf8124904a` |
+| mockDex | `0xAf45f25f63b352842C0604CF147c7C5249af390B` |
+| evilDex | `0x4b2948b7d93438a36949BAf2fa6cECd06C199247` |
+
+Council timelock **60 s** (`COUNCIL_TIMELOCK_S=60`, immutable). C-Chain (Fuji 43113): multisig 3/5 `0xD000D0cE700B455A360C27c87A230F5A2c197D4D`, tUSDC `0x65954209aa3cf99eb77A90e55cD1dD3e94b1Fc02`, escrow `0xF9f119A52B11FB6b92a7fB87e3B775C17d91ef3A`.
+
+Verified on Fuji (real output):
+- Bootstrap: deploy → seed (2 proposals queued, executed after the timelock) → C-Chain treasury (2.000.000 tUSDC) → simulated top-up 200.000 (C-Chain multisig execute `0x0ff7b4a7…ee22`, L1 `TopUpRecorded` with that hash) → handover → `VerifySeed` PASS, `VerifyHandover` PASS (deployer has no role and no power left).
+- After handover: `readAllowList(deployer)` = 0 and `readAllowList(Council)` = 2 on both allow lists; a deploy from the deployer is rejected (`tx.origin … is not authorized to deploy a contract`); T15 PASS.
+- `PolicyV2`: policyVersion baseline+1 (label v2), 5 keys in `minh`, `principalDailyCap(minh)` = 30.000.
+- T8: `lan` calls `emergencyLock(minh)`; the 5 keys read role 0 and each next transaction is rejected with `cannot issue transaction from non-allow listed address`, no hash.
+- `demo-reset` (with the timelock, 337 s): fresh set, Council `0x7A819Bb0ebf6045B38F9f428eCadb2E9546A31bf`, 11 proposals (next is #12), policy v1, `key_minh` role 1, vault 200.000 tUSDC.
+
+Known limits:
+- The first top-up run moved the C-Chain side, then web3.py failed on the L1 receipt (`ExtraDataLengthError`, fixed in #92); the L1 mint and `recordTopUp` of that run were sent by hand with `cast`.
+- The top-up (L1 mint) works only before a handover, so after `demo-reset` the new vault has no `TopUpRecorded`. To show a top-up after a reset, the reset needs a top-up step between seed and switch (follow-up).
+
 ### How it was deployed (and why it is not the plain CLI path)
 
 1. **CLI vs Fuji API.** The public Fuji API dropped `platform.getBalance`; CLI 1.9.7 (latest) still calls it. `infra/l1/fuji_proxy.py` (127.0.0.1:9655) sends P-Chain calls (`/ext/bc/P`, `/ext/P`) to `avalanche-fuji-p-chain-rpc.publicnode.com` and everything else to `api.avax-test.network`; the CLI uses it via `--endpoint`.
