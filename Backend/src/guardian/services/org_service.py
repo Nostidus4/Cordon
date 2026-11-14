@@ -62,6 +62,10 @@ def health(rt: Runtime) -> dict[str, Any]:
                 "INDEXER_ERROR",
                 any(st is not None and st.last_error is not None for st in (status, c_status)),
             ),
+            (
+                "RPC_RATE_LIMITED",
+                any(st is not None and st.rate_limited for st in (status, c_status)),
+            ),
             ("SSE_SLOW", (sse["maxMs"] or 0) > SSE_SLOW_MS),
         )
         if on

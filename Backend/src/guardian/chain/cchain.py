@@ -10,6 +10,7 @@ Deployment file: `Backend/deployments/{fuji,local}-c.json` (written by the OPS-0
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -115,8 +116,10 @@ class CChainSource:
     def head(self) -> int:
         return int(self.w3.eth.block_number)
 
-    def events_between(self, first: int, last: int) -> list[ChainEvent]:
-        out: list[ChainEvent] = []
+    def event_chunks(self, first: int, last: int) -> Iterator[tuple[int, int, list[ChainEvent]]]:
+        """Yield `(lo, hi, events)` per eth_getLogs call, oldest first, so the caller can persist progress
+        chunk by chunk (an error later in the range then loses only the failing chunk). Block timestamps come
+        from the log's `blockTimestamp` when the RPC includes it, else one `get_block` per block (cached)."""
         ts_cache: dict[int, int] = {}
         flt = log_params(self.dep)
         lo = first
@@ -131,11 +134,18 @@ class CChainSource:
                     )  # keep the smaller size for the next cycles
                     continue
                 raise
-            lo = hi + 1
+            out: list[ChainEvent] = []
             for lg in logs:
                 block = int(lg["blockNumber"])
                 if block not in ts_cache:
-                    ts_cache[block] = int(self.w3.eth.get_block(block)["timestamp"])
+                    given = lg.get("blockTimestamp")
+                    ts_cache[block] = (
+                        int(given, 16)
+                        if isinstance(given, str)
+                        else int(given)
+                        if given is not None
+                        else int(self.w3.eth.get_block(block)["timestamp"])
+                    )
                 out.append(
                     ChainEvent(
                         EVENT_NAME,
@@ -152,5 +162,9 @@ class CChainSource:
                         True,  # a simulated top-up: test token, no real value
                     )
                 )
-        out.sort(key=lambda e: (e.block, e.log_index))
-        return out
+            out.sort(key=lambda e: (e.block, e.log_index))
+            yield lo, hi, out
+            lo = hi + 1
+
+    def events_between(self, first: int, last: int) -> list[ChainEvent]:
+        return [ev for _, _, evs in self.event_chunks(first, last) for ev in evs]
