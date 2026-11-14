@@ -9,6 +9,9 @@
 #   1 open     old Council enables the deployer (the deployer has no role after the handover)        [ResetOpen]
 #   2 deploy   fresh tokens, DEXes, Registry, Vault, Council                                         [Deploy]
 #   3 seed     policy v1 through real Council proposals + 200.000 tUSDC in the vault                  [Seed]
+#   3b topup   OPTIONAL, DEMO_RESET_TOPUP=1 (default off): SIMULATED top-up of the NEW vault from the C-Chain treasury
+#              (multisig -> escrow on C-Chain, then L1 mint + recordTopUp), so /api/topups shows a linked
+#              top-up after the reset. See below.                                                       [infra/cchain/cchain.sh topup]
 #   4 switch   re-enable locked keys, old Council hands the precompiles to the new one and drops its
 #              role, minters move to the new Council                                                  [ResetSwitch]
 #   4b finish  new Council: top-up operator moves, deployer loses its roles, counter -> 11          [ResetFinish]
@@ -17,6 +20,18 @@
 #              so a reset takes about one timelock per step 1, 3, 4 and 4b (60 s each when COUNCIL_TIMELOCK_S=60).
 #   5 verify   VerifySeed + VerifyHandover on the new set, old Council has no role left
 #   6 publish  policyBaseline into the file, atomic rename, POST /api/demo/reset (API reloads)
+#
+# 3b topup (DEMO_RESET_TOPUP=1): only possible here. The L1 tUSDC minter and the vault topUpOperator are the deployer
+#   until step 4 (minters) and 4b (operator) move them to the new Council, and after that nobody can mint (the Council
+#   cannot call a token). So the step sits between 3 and 4. Amount: DEMO_RESET_TOPUP_AMOUNT whole tUSDC (default 200000).
+#   Each run spends about 0.011 AVAX of Fuji C-Chain gas from the multisig owners 1..3 (hence default off). Needs the
+#   C-Chain deployment file (Backend/deployments/fuji-c.json, local: local-c.json or CCHAIN_DEPLOYMENTS) with a
+#   treasury; without it the step is skipped with a log line. On fuji, owners 1..3 (CCHAIN_OWNER_KEY_1..3, from
+#   Backend/.env.fuji via infra/l1/fuji-run.sh) must hold >= 0.003 AVAX: checked BEFORE anything is sent. The step
+#   logs the C-Chain multisig execute tx hash (the cChainTxHash of the TopUpRecorded event). It is skipped when the new
+#   vault already has a TopUpRecorded; a re-run that resumes after step 4 never repeats it (the new set is already
+#   topped up). Test overrides: DEMO_RESET_DEP_NAME (file name in Backend/deployments), DEMO_RESET_CONTRACTS_SH, and
+#   RPC_URL (NETWORK=local) to point at a throwaway node.
 #
 # NETWORK=local (default): public test keys only. NETWORK=fuji needs I_UNDERSTAND=fuji and the variables listed in
 # infra/l1/contracts.sh (RPC_URL, DEPLOYER_PK, SEED_FILE, TOP_UP_OPERATOR, L1_KEY_COUNCIL_*); not run in CI.
@@ -28,7 +43,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export PATH="$HOME/.foundry/bin:$HOME/bin:$PATH"
 export NETWORK="${NETWORK:-local}"
 API_URL="${API_URL:-http://localhost:8000}"
-CONTRACTS="$ROOT/infra/l1/contracts.sh"
+CONTRACTS="${DEMO_RESET_CONTRACTS_SH:-$ROOT/infra/l1/contracts.sh}"
+CCHAIN="$ROOT/infra/cchain/cchain.sh"
 T0=$SECONDS
 LOGDIR="$(mktemp -d "${TMPDIR:-/tmp}/demo-reset.XXXXXX")"
 
@@ -50,14 +66,17 @@ if [[ "$NETWORK" == "fuji" ]]; then
   [[ "${I_UNDERSTAND:-}" == "fuji" ]] || fail "NETWORK=fuji needs I_UNDERSTAND=fuji"
 else
   [[ "$NETWORK" == "local" ]] || fail "NETWORK must be local or fuji"
-  [[ -f "$ROOT/infra/l1/.env.l1-local" ]] || fail "no local L1 running: make l1-local-bootstrap"
-  RPC_URL="$(grep '^RPC_URL=' "$ROOT/infra/l1/.env.l1-local" | cut -d= -f2-)"
+  if [[ -z "${RPC_URL:-}" ]]; then
+    [[ -f "$ROOT/infra/l1/.env.l1-local" ]] || fail "no local L1 running: make l1-local-bootstrap"
+    RPC_URL="$(grep '^RPC_URL=' "$ROOT/infra/l1/.env.l1-local" | cut -d= -f2-)"
+  fi
 fi
 : "${RPC_URL:?RPC_URL is not set}"
 
-DEP="$ROOT/Backend/deployments/$NETWORK-l1.json"
+DEP_NAME="${DEMO_RESET_DEP_NAME:-$NETWORK-l1.json}"
+DEP="$ROOT/Backend/deployments/$DEP_NAME"
 NEXT="$DEP.next"
-REL_NEXT="../Backend/deployments/$NETWORK-l1.json.next" # forge resolves it from contracts/
+REL_NEXT="../Backend/deployments/$DEP_NAME.next" # forge resolves it from contracts/
 TX_ALLOWLIST="0x0200000000000000000000000000000000000002"
 DEPLOYER_ALLOWLIST="0x0200000000000000000000000000000000000000"
 role() { cast call --rpc-url "$RPC_URL" "$1" "readAllowList(address)(uint256)" "$2" | awk '{print $1}'; }
@@ -71,6 +90,54 @@ step() { # step <label> <contracts.sh step> [env assignments are inherited]
     fail "$label failed (full log: $LOGDIR/${label// /-}.log)"
   fi
   log "$label done in $((SECONDS - t))s"
+}
+
+# --- optional step 3b: simulated top-up of the new vault (DEMO_RESET_TOPUP=1), see the header
+TOPUP_ON=0
+TOPUP_AMOUNT="${DEMO_RESET_TOPUP_AMOUNT:-200000}"
+topup_preflight() { # decides TOPUP_ON; fails BEFORE anything is sent when the owners cannot pay the gas
+  [[ "${DEMO_RESET_TOPUP:-0}" == "1" ]] || return 0
+  [[ "$TOPUP_AMOUNT" =~ ^[0-9]+$ && "$TOPUP_AMOUNT" -gt 0 ]] || fail "DEMO_RESET_TOPUP_AMOUNT must be a positive whole number of tUSDC"
+  if [[ "$NETWORK" == "fuji" ]]; then
+    C_FILE="$ROOT/Backend/deployments/fuji-c.json"
+    export CCHAIN_RPC_URL="${CCHAIN_RPC_URL:-https://api.avax-test.network/ext/bc/C/rpc}"
+  else
+    C_FILE="${CCHAIN_DEPLOYMENTS:-$ROOT/Backend/deployments/local-c.json}"
+    export CCHAIN_RPC_URL="${CCHAIN_RPC_URL:-http://127.0.0.1:8546}"
+  fi
+  if [[ -z "$(jget "$C_FILE" "['treasury']" 2>/dev/null || true)" ]]; then
+    log "3b topup skipped: no C-Chain treasury in $C_FILE (deploy it: make deploy-cchain)"
+    return 0
+  fi
+  if [[ "$NETWORK" == "fuji" ]]; then
+    local i v a bal
+    for i in 1 2 3; do
+      v="CCHAIN_OWNER_KEY_$i"
+      [[ -n "${!v:-}" ]] || fail "DEMO_RESET_TOPUP=1 on fuji needs $v (Backend/.env.fuji, via infra/l1/fuji-run.sh)"
+      a="$(cast wallet address "${!v}")"
+      bal="$(cast balance --rpc-url "$CCHAIN_RPC_URL" "$a" | awk '{print $1}')"
+      ((bal >= 3000000000000000)) || fail "C-Chain owner $i ($a) holds under 0.003 AVAX: fund the owners or unset DEMO_RESET_TOPUP"
+    done
+    [[ -n "${DEPLOYER_PK:-}" ]] || fail "DEMO_RESET_TOPUP=1 on fuji needs DEPLOYER_PK (infra/l1/fuji-run.sh sets it)"
+    TOPUP_KEY="$DEPLOYER_PK"
+  else
+    TOPUP_KEY="0x56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027" # gitleaks:allow (public ewoq key)
+  fi
+  TOPUP_ON=1
+  log "3b topup enabled: $TOPUP_AMOUNT tUSDC from the C-Chain multisig (SIMULATED, no bridge)"
+}
+topup_new_set() { # step 3b: runs while the deployer is still the minter and the top-up operator of the NEW set
+  [[ "$TOPUP_ON" == 1 ]] || return 0
+  local vault n
+  vault="$(jget "$NEXT" "['contracts']['vault']")"
+  n="$(cast logs --rpc-url "$RPC_URL" --from-block 0 --address "$vault" "TopUpRecorded(bytes32,uint256)" | grep -c "^- address" || true)"
+  if [[ "$n" != "0" ]]; then
+    log "3b topup skipped: the new vault $vault already has a TopUpRecorded"
+    return 0
+  fi
+  step "3b topup" env NETWORK="$NETWORK" AMOUNT="$TOPUP_AMOUNT" L1_RPC_URL="$RPC_URL" L1_TOPUP_KEY="$TOPUP_KEY" \
+    L1_DEPLOYMENTS="$NEXT" CCHAIN_DEPLOYMENTS="$C_FILE" bash "$CCHAIN" topup
+  log "3b C-Chain multisig execute tx: $(grep -o '"cChainTxHash": *"0x[0-9a-fA-F]*"' "$LOGDIR/3b-topup.log" | tail -1 | grep -o '0x[0-9a-fA-F]*')"
 }
 
 finalize() {
@@ -124,15 +191,17 @@ fi
 OLD_COUNCIL="$(jget "$DEP" "['contracts']['council']")"
 [[ "$(role "$TX_ALLOWLIST" "$OLD_COUNCIL")" == "2" ]] ||
   fail "the Council $OLD_COUNCIL is not admin of the Tx AllowList: nothing can deploy a new set (bootstrap a fresh L1)"
+topup_preflight
 log "reset on $NETWORK: replacing Council $OLD_COUNCIL (logs in $LOGDIR)"
 
-export OLD_DEPLOYMENTS="../Backend/deployments/$NETWORK-l1.json"
+export OLD_DEPLOYMENTS="../Backend/deployments/$DEP_NAME"
 export DEPLOYMENTS_OUT="$REL_NEXT"
 KEEP_NEXT=0
 trap '[[ "$KEEP_NEXT" == 1 ]] || rm -f "$NEXT"' EXIT # before the switch the new set is useless: drop it
 step "1 open" bash "$CONTRACTS" reset-open
 step "2 deploy" bash "$CONTRACTS" deploy
 step "3 seed" bash "$CONTRACTS" seed
+topup_new_set
 KEEP_NEXT=1 # the switch may already have moved the precompile admin: a re-run resumes from the file
 step "4 switch" bash "$CONTRACTS" reset-switch
 step "4b finish" bash "$CONTRACTS" reset-finish
