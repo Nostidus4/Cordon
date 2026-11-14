@@ -15,7 +15,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
-from eth_utils import to_checksum_address
+from eth_utils import event_abi_to_log_topic, to_checksum_address
 from web3 import Web3
 from web3.exceptions import BadFunctionCallOutput, ContractLogicError
 
@@ -234,6 +234,8 @@ class L1Chain(L1Writes):
             for addr in self._member_addresses()
             if council.functions.approvedBy(int(proposal_id), addr).call()
         ]
+        eta = int(council.functions.etaOf(int(proposal_id)).call())
+        cancelled = bool(p[8])
         return ProposalState(
             id=int(p[0]),
             proposer=to_checksum_address(p[1]),
@@ -241,8 +243,26 @@ class L1Chain(L1Writes):
             approvals=int(p[6]),
             approved_by=sorted(approved),
             executed=bool(p[7]),
-            cancelled=bool(p[8]),
+            cancelled=cancelled,
+            eta=eta or None,
+            vetoed_by=self._vetoed_by(int(proposal_id)) if cancelled and eta else None,
         )
+
+    def _vetoed_by(self, proposal_id: int) -> str | None:
+        """Member of the `Vetoed(id, member)` log of this proposal (None when it was cancelled by its proposer)."""
+        council = self._need_council()
+        topic0 = "0x" + event_abi_to_log_topic(council.events.Vetoed().abi).hex()
+        logs = self.w3.eth.get_logs(
+            {
+                "fromBlock": 0,
+                "toBlock": "latest",
+                "address": council.address,
+                "topics": [topic0, "0x" + proposal_id.to_bytes(32, "big").hex()],
+            }
+        )
+        if not logs:
+            return None
+        return to_checksum_address("0x" + bytes(logs[-1]["topics"][2])[-20:].hex())
 
     def _member_addresses(self, at: dict[str, int] | None = None) -> list[str]:
         out: list[str] = []

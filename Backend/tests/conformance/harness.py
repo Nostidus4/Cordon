@@ -27,6 +27,9 @@ class Net:
     chain: Any  # a ChainPort (+ balance / proposal_state / apply_policy_v2 / _addr, shared by both)
     seed: dict[str, Any]
     env: Any = None  # anvil Env when kind == "l1"
+    clock: list[int] | None = (
+        None  # sim only: the mutable clock cell (`[now]`), for `advance_seconds`
+    )
 
     def __post_init__(self) -> None:
         self.chain = IdPort(self.chain)  # tests speak seed ids, the chain takes hex only (CHN-004)
@@ -38,6 +41,16 @@ class Net:
             return
         p = self.env.w3.provider
         p.make_request("evm_increaseTime", [days * DAY])
+        p.make_request("evm_mine", [])
+
+    def advance_seconds(self, seconds: int) -> None:
+        """Time travel by seconds (timelock tests): sim moves its clock cell, anvil `evm_increaseTime` + mine."""
+        if self.kind == "sim":
+            assert self.clock is not None
+            self.clock[0] += seconds
+            return
+        p = self.env.w3.provider
+        p.make_request("evm_increaseTime", [seconds])
         p.make_request("evm_mine", [])
 
     def addr(self, ref: str) -> str:

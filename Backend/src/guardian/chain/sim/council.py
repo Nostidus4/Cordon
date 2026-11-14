@@ -89,6 +89,9 @@ class Proposal:
     executed: bool = False
     cancelled: bool = False
     created_at: int = 0
+    # timelock (#77): 0 = not queued; set when the threshold is reached with a delay > 0
+    eta: int = 0
+    vetoed_by: str | None = None
 
     @property
     def status(self) -> str:
