@@ -23,6 +23,7 @@ from guardian.api.routes import (
     scenario,
     simulate,
     stream,
+    topups,
     txguard,
     violations,
 )
@@ -36,6 +37,7 @@ api_router.include_router(findings.router)
 api_router.include_router(districts.router)
 api_router.include_router(events.router)
 api_router.include_router(stream.router)
+api_router.include_router(topups.router)
 api_router.include_router(attempts.router)
 api_router.include_router(proposals.router)
 api_router.include_router(actions.router)

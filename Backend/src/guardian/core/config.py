@@ -19,11 +19,18 @@ class Settings(BaseSettings):
     l1_rpc_url: str = "http://127.0.0.1:9650/ext/bc/guardian/rpc"
     deployments_file: str = "deployments/fuji-l1.json"
     l1_poll_interval_seconds: float = 2.0
+    # Optional websocket for `eth_subscribe("logs")` (IDX-002): wakes the indexer early, HTTP polling stays the fallback.
+    l1_ws_url: str = ""
+    # C-Chain top-up indexing (IDX-002). Unset = off. The file is {network, chainId, rpcUrl, wsUrl, token, treasury,
+    # escrow, owners, threshold, deployBlock}; the two URLs below override rpcUrl / wsUrl from it.
+    cchain_deployments_file: str = ""
+    cchain_rpc_url: str = ""
+    cchain_ws_url: str = ""
     indexer_reorg_window: int = 5  # blocks re-read each cycle (shallow reorg repair)
     indexer_confirmations: int = 0  # blocks behind head to wait before indexing
     # CHAIN_MODE=l1 + DEMO_MODE (signing with test keys) is accepted only on these chain ids:
-    # 31337 = anvil, 424242 = the local Guardian L1 genesis. Add the test L1's id to enable it there.
-    demo_chain_ids: list[int] = Field(default_factory=lambda: [31337, 424242])
+    # 31337 = anvil, 424242 = the local Guardian L1 genesis, 845357 = the Guardian L1 on Fuji (testnet, #30).
+    demo_chain_ids: list[int] = Field(default_factory=lambda: [31337, 424242, 845357])
     # None = "decide from chain_mode": on in sim, off otherwise (spec §8.6: never on a real network).
     demo_mode: bool | None = None
     cors_origins: list[str] = Field(

@@ -24,6 +24,7 @@ class HealthOut(CamelModel):
     simulated: bool
     l1_block: int
     c_chain_block: int | None = None
+    last_block_c: int | None = None  # C-Chain top-up indexer cursor (meta.last_block_c); None = off
     indexer_lag_blocks: int
     policy_version: int
     policy_label: int

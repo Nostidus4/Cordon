@@ -174,11 +174,13 @@ class PgMeta:
 
 
 class PgEventSink:
-    """`EventSink` on the `events` table; `meta.last_block_l1` is the indexer cursor. `chain='sim'`: the sim
+    """`EventSink` on the `events` table; `meta.last_block_l1` is the indexer cursor (`chain='c'`: `meta.last_block_c`). `chain='sim'`: the sim
     chain's events (replayed at restart, DB-003); the cursor methods are only meaningful for 'l1'."""
 
     def __init__(self, bridge: DbBridge, chain: str = "l1") -> None:
         self._bridge, self._repo = bridge, EventRepo(bridge.sessions, chain)
+        # 'c' (C-Chain top-up transfers, IDX-002) keeps its own cursor `meta.last_block_c`
+        self._cursor = "last_block_c" if chain == "c" else "last_block_l1"
 
     def clear(self) -> None:
         self._bridge.run(self._repo.clear())
@@ -187,7 +189,7 @@ class PgEventSink:
         return self._bridge.run(self._repo.add(event))
 
     def last_block(self) -> int | None:
-        v = self._bridge.run(self._repo.meta_get("last_block_l1"))
+        v = self._bridge.run(self._repo.meta_get(self._cursor))
         return None if v is None else int(v)
 
     def last_block_c(self) -> int | None:
@@ -195,7 +197,7 @@ class PgEventSink:
         return None if v is None else int(v)
 
     def set_last_block(self, block: int) -> None:
-        self._bridge.run(self._repo.meta_set("last_block_l1", str(block)))
+        self._bridge.run(self._repo.meta_set(self._cursor, str(block)))
 
     def events_in_range(self, first: int, last: int) -> list[ChainEvent]:
         return self._bridge.run(self._repo.in_range(first, last))

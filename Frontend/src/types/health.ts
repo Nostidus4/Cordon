@@ -8,6 +8,8 @@ export interface Health {
   simulated: boolean;
   l1Block: number;
   cChainBlock: number | null;
+  /** C-Chain top-up indexer cursor (`meta.last_block_c`); null while C-Chain indexing is off or has not run. */
+  lastBlockC: number | null;
   indexerLagBlocks: number;
   policyVersion: number;
   /** See `GraphSnapshot.policyLabel`. */
