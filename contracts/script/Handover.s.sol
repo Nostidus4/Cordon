@@ -65,6 +65,7 @@ contract Handover is L1Common {
 
         // 3. the vault's top-up operator leaves the deployer, by a 2-of-3 Council proposal (setTopUpOperator is a
         //    loosening call: there is no single-member path)
+        requireNoTimelock(d.council);
         Call[] memory calls = new Call[](1);
         calls[0] = Call(d.vault, abi.encodeCall(IPolicyVault.setTopUpOperator, (ops)));
         vm.startBroadcast(pkOf("council_trang"));

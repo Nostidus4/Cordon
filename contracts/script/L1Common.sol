@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {Script, console} from "forge-std/Script.sol";
 
+import {IGuardianCouncil} from "../src/interfaces/IGuardianCouncil.sol";
 import {KeyKind} from "../src/interfaces/IPrincipalRegistry.sol";
 
 /// @notice Shared plumbing of the L1 scripts (L1-002): the deployments file, the seed file and the two precompiles.
@@ -100,6 +101,12 @@ abstract contract L1Common is Script {
     /// @dev Council member address by position (trang, lan, huy) as the seed lists them.
     function memberAt(string memory seed, uint256 i) internal pure returns (address) {
         return vm.parseJsonAddress(seed, string.concat(".council[", vm.toString(i), "].address"));
+    }
+
+    /// @dev The bootstrap scripts approve and expect execution in the same run, which a Council with a timelock
+    ///      (`COUNCIL_TIMELOCK_S` > 0, #77) does not allow: its proposals only queue.
+    function requireNoTimelock(address council) internal view {
+        require(IGuardianCouncil(council).timelockDelay() == 0, "bootstrap needs a Council with timelock 0");
     }
 
     /// @notice `readAllowList(addr)` on a precompile through a real `eth_call` (needs `--rpc-url`).

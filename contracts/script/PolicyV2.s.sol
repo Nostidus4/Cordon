@@ -34,6 +34,7 @@ contract PolicyV2 is L1Common {
         calls[4] = Call(d.vault, abi.encodeCall(IPolicyVault.setPrincipalDailyCap, (minh, cap)));
 
         uint256 before_ = IPolicyVault(d.vault).policyVersion();
+        requireNoTimelock(d.council);
         GuardianCouncil council = GuardianCouncil(d.council);
         string memory title = "Gom 5 khoa ve khu minh, han muc chung 30.000";
         vm.startBroadcast(pkOf("council_lan"));

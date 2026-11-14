@@ -25,6 +25,7 @@ contract Seed is L1Common {
     function run() external {
         Dep memory d = loadDeployment();
         string memory seed = vm.readFile(seedPath());
+        requireNoTimelock(d.council);
         GuardianCouncil council = GuardianCouncil(d.council);
 
         Call[] memory first = _firstProposalCalls(seed, d);

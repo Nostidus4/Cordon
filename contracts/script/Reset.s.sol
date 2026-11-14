@@ -19,6 +19,7 @@ abstract contract ResetBase is L1Common {
         bytes32 subject,
         Call[] memory calls
     ) internal returns (uint256 id) {
+        requireNoTimelock(council);
         GuardianCouncil gc = GuardianCouncil(council);
         uint256[2] memory pick;
         uint256 n;
