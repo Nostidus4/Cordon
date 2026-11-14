@@ -75,7 +75,7 @@ def _record(
     ctx_in: dict[str, Any],
 ) -> dict[str, Any]:
     log.info("assistant answer question_id=%s numbers_verified=%s", qid, verified)
-    rt.stores.assistant_logs.append(
+    rt.stores.assistant_logs.add(
         AssistantLogRec(
             id=rt.stores.next_id(),
             ts=rt.now(),

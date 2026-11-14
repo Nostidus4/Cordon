@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:parity": "PARITY=1 vitest run src/lib/api/parity.live.test.ts",
     "lint": "eslint .",
     "gen:openapi": "openapi-typescript ../Backend/openapi.json -o src/types/generated/openapi.d.ts"
   },

@@ -40,10 +40,21 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: Frontend/package-lock.json
+      # the parity test starts the sim backend itself (uv run in Backend/)
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - run: uv python install 3.12
+      - run: uv sync
+        working-directory: Backend
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Parity mock vs live sim backend (QA-001)
+        timeout-minutes: 2
+        run: npm run test:parity
       - run: npm run build
       - name: Generated OpenAPI types are up to date
         run: |
@@ -126,5 +137,5 @@ jobs:
         run: uv run alembic upgrade head && uv run alembic downgrade base
       - name: Schema, unique (tx_hash, log_index), clean downgrade
         run: uv run pytest -q -rs tests/test_db_migrations.py
-      - name: API suite on Postgres (events, attempts, scenario runs persisted)
+      - name: API suite on Postgres (events, attempts, runs, proposals, agent runs, assistant logs persisted)
         run: uv run alembic upgrade head && uv run pytest -q -rs --ignore=tests/chain_l1 -k "not l1"

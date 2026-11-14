@@ -162,7 +162,7 @@ def _read_or_unknown(
 
 
 def _record(rt: Runtime, msg: str, out: dict[str, Any]) -> None:
-    rt.stores.assistant_logs.append(
+    rt.stores.assistant_logs.add(
         AssistantLogRec(
             id=rt.stores.next_id(),
             ts=rt.now(),

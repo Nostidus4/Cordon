@@ -147,7 +147,7 @@ def recent_items(rt: Runtime, bid: str) -> list[dict[str, Any]]:
         items.append((it["ts"], it))
 
     if bid == "B01":
-        for p in st.proposals.values():
+        for p in st.proposals.all():
             add(_item(p.created_at, "proposal", f"Đề xuất #{p.id}: {p.title}", f"proposal:{p.id}"))
             if p.executed_at is not None:
                 add(
@@ -170,7 +170,7 @@ def recent_items(rt: Runtime, bid: str) -> list[dict[str, Any]]:
                 )
             )
     elif bid == "B02":
-        for lg in st.assistant_logs:
+        for lg in st.assistant_logs.all():
             verdict = "đã kiểm chứng số liệu" if lg.numbers_verified else "chưa kiểm chứng số liệu"
             add(
                 _item(
@@ -206,7 +206,7 @@ def recent_items(rt: Runtime, bid: str) -> list[dict[str, Any]]:
     elif bid == "B06":
         from guardian.services.agent_service import AGENT_SEED
 
-        for r in st.agent_runs:
+        for r in st.agent_runs.all():
             what = {
                 "swapped": "đã cân đối danh mục",
                 "no_action": "không cần hành động",

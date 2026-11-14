@@ -458,7 +458,7 @@ def _react(rt: Runtime, res: ReactResult) -> None:
     fresh: list[Detection] = []
     fresh += detect_agent_pay(facts, c_att, now, labels=labels)
     fresh += detect_untrusted_agent_runs(
-        ((r.id, r.untrusted_input) for r in rt.stores.agent_runs), c_runs
+        ((r.id, r.untrusted_input) for r in rt.stores.agent_runs.all()), c_runs
     )
     # attempts consumed by the agent rule must not count again in the district rule
     taken = c_att | {i for d in fresh for i in d.attempt_ids}
@@ -470,7 +470,7 @@ def _react(rt: Runtime, res: ReactResult) -> None:
         )
     ]
     fresh += detect_unverified_answers(
-        ((lg.id, lg.numbers_verified) for lg in rt.stores.assistant_logs), c_logs
+        ((lg.id, lg.numbers_verified) for lg in rt.stores.assistant_logs.all()), c_logs
     )
     has_open_pause = any(i.kind == "paused" and i.status != "resolved" for i in rt.stores.incidents)
     fresh += detect_paused(snap.paused, has_open_pause)
@@ -559,9 +559,10 @@ def _close_immediately(rt: Runtime, inc: IncidentRec) -> None:
     now = rt.now()
     if inc.kind == "assistant":
         lid = inc.trigger.get("assistantLogId")
-        for lg in rt.stores.assistant_logs:
+        for lg in rt.stores.assistant_logs.all():
             if lg.id == lid:
                 lg.flagged_untrusted = True
+                rt.stores.assistant_logs.save(lg)
         _set_step(inc, "contain", "done", "Đã đánh dấu câu trả lời là không tin cậy.", ts=now)
     else:
         _set_step(inc, "contain", "skipped", "Hợp đồng đã tự chặn lần duyệt này.")

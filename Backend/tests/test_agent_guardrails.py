@@ -111,7 +111,7 @@ async def test_reason_hash_verified_true_then_false_when_text_is_tampered() -> N
         assert run["reasonHashOnChain"] == run["reasonHash"] == reason_hash(run["reasonText"])
         listed = (await get(c, "/api/agent/runs"))[-1]
         assert listed["reasonHashVerified"] is True
-        rec = rt.stores.agent_runs[-1]
+        rec = rt.stores.agent_runs.all()[-1]
         rec.reason_text = "Đổi 5.000 tUSDC sang tTKB vì tỉ trọng thấp (đã sửa)"
         tampered = (await get(c, "/api/agent/runs"))[-1]
     assert tampered["reasonHashVerified"] is False

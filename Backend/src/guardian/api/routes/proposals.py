@@ -38,7 +38,7 @@ async def list_proposals(rt: RuntimeDep):  # type: ignore[no-untyped-def]
 
 @router.get("/proposals/{proposal_id}", response_model=ProposalOut)
 async def get_proposal(proposal_id: int, rt: RuntimeDep):  # type: ignore[no-untyped-def]
-    if proposal_id not in rt.stores.proposals:
+    if rt.stores.proposals.get(proposal_id) is None:
         raise ApiError(404, "PROPOSAL_NOT_FOUND", f"Không có đề xuất #{proposal_id}.")
     return ps.proposal_out(rt, proposal_id)
 

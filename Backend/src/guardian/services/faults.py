@@ -143,8 +143,8 @@ def _f01(rt: Runtime) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
     snap = rt.snapshot()
     target: tuple[int, str] | None = None
-    for pid in sorted(rt.stores.proposals):
-        rec = rt.stores.proposals[pid]
+    for rec in rt.stores.proposals.all():
+        pid = rec.id
         if rt.chain.proposal_state(pid).status != "open":
             continue
         m = next(

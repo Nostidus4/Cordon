@@ -186,9 +186,9 @@ async def test_f01_creates_a_proposal_when_none_conflicts(client: httpx.AsyncCli
     await post(client, "/api/faults/F01_CONFLICT_APPROVAL/inject")
     rt: Runtime = client._transport.app.state.runtime  # type: ignore[attr-defined]
     rt.chain.cancel(rt.addr("trang"), 13)
-    n_before = len(rt.stores.proposals)
+    n_before = len(rt.stores.proposals.all())
     res = await post(client, "/api/faults/F01_CONFLICT_APPROVAL/inject")
-    assert len(rt.stores.proposals) == n_before + 1
+    assert len(rt.stores.proposals.all()) == n_before + 1
     assert res["actions"][-1]["reasonCode"] == "CONFLICT_OF_INTEREST"
     assert len(res["actions"]) == 2
 

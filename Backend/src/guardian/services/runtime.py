@@ -2,7 +2,10 @@
 SSE event bus + graph version.
 
 Persistence: with `DATABASE_URL` set, attempts/scenario_runs/events live in Postgres (DB-002; write-through
-cache, see `repositories/pg.py`); proposals/agent_runs/assistant_logs are still in memory only (DB-003).
+cache, see `repositories/pg.py`); DB-003 adds proposals, agent_runs, assistant_logs, findings, sim_runs and
+`meta` (graph_version/policy_version). In sim mode the chain itself is in memory, so each sim ChainEvent is also
+stored (`events.chain='sim'`) and replayed into a fresh SimChain at startup (`Runtime._restore_sim`). Only
+`conflicts` and `incidents` stay in memory.
 
 Concurrency: route handlers are `async def` and call the sync SimChain without awaiting in the
 middle of a chain operation, so chain access is serialised by the event loop. SimChain
@@ -180,6 +183,39 @@ class ScenarioRunStore(Protocol):
     def clear(self) -> None: ...
 
 
+class RecStore[T](Protocol):
+    """Proposals, agent runs and assistant logs (DB-003): keyed by int id, `all()` in id order (oldest first)."""
+
+    def add(self, rec: T) -> None: ...
+    def save(self, rec: T) -> None:
+        """Persist an in-place mutation of a rec that was added before."""
+        ...
+
+    def get(self, rec_id: int) -> T | None: ...
+    def all(self) -> list[T]: ...
+    def clear(self) -> None: ...
+
+
+@dataclass
+class FindingRec:
+    id: str
+    rule_id: str
+    principal_id: str
+    severity: str
+    data: dict[str, Any]  # the whole compute_findings dict
+    created_at: int
+    resolved_by_proposal: int | None = None
+
+
+@dataclass
+class SimRunRec:
+    id: str
+    input: dict[str, Any]
+    output: dict[str, Any]
+    graph_version: int
+    ts: int
+
+
 class InMemoryAttemptStore:
     def __init__(self) -> None:
         self._items: list[AttemptRec] = []
@@ -217,27 +253,111 @@ class InMemoryScenarioRunStore:
         self._items.clear()
 
 
+class InMemoryRecStore[T]:
+    def __init__(self) -> None:
+        self._items: dict[int, T] = {}
+
+    def add(self, rec: T) -> None:
+        self._items[rec.id] = rec  # type: ignore[attr-defined]
+
+    def save(self, rec: T) -> None:
+        pass  # the rec is the stored object
+
+    def get(self, rec_id: int) -> T | None:
+        return self._items.get(rec_id)
+
+    def all(self) -> list[T]:
+        return [self._items[i] for i in sorted(self._items)]
+
+    def clear(self) -> None:
+        self._items.clear()
+
+
+class InMemoryFindingStore:
+    """Findings are derived live from the snapshot; this keeps the record of what was seen (DB-003)."""
+
+    def __init__(self) -> None:
+        self._items: dict[str, FindingRec] = {}
+
+    def sync(self, current: list[dict[str, Any]], now: int, resolver: int | None) -> None:
+        """Upsert the current findings by id; one that disappeared is resolved by `resolver` (the latest executed
+        proposal, if any)."""
+        ids = {f["id"] for f in current}
+        for f in current:
+            old = self._items.get(f["id"])
+            rec = FindingRec(
+                f["id"], f["rule"], f["principal_id"], f["severity"], f,
+                old.created_at if old else now, None,
+            )  # fmt: skip
+            if old != rec:
+                self._put(rec)
+        for fid, old in list(self._items.items()):
+            if fid not in ids and old.resolved_by_proposal is None and resolver is not None:
+                self._put(FindingRec(**{**old.__dict__, "resolved_by_proposal": resolver}))
+
+    def _put(self, rec: FindingRec) -> None:
+        self._items[rec.id] = rec
+
+    def all(self) -> list[FindingRec]:
+        return list(self._items.values())
+
+    def clear(self) -> None:
+        self._items.clear()
+
+
+class InMemorySimRunStore:
+    def __init__(self) -> None:
+        self._items: list[SimRunRec] = []
+
+    def add(self, rec: SimRunRec) -> None:
+        self._items.append(rec)
+
+    def all(self) -> list[SimRunRec]:
+        return list(self._items)
+
+    def clear(self) -> None:
+        self._items.clear()
+
+
+class InMemoryMeta:
+    def __init__(self) -> None:
+        self._items: dict[str, str] = {}
+
+    def get(self, key: str) -> str | None:
+        return self._items.get(key)
+
+    def set(self, key: str, value: str) -> None:
+        self._items[key] = value
+
+
 class Stores:
-    """Attempts and scenario runs are in memory or Postgres (`database_url`, DB-002); the rest is in memory (DB-003)."""
+    """Everything the services remember. Attempts, runs, proposals, agent runs, assistant logs, findings,
+    sim runs and meta are in memory or Postgres (`database_url`, DB-002/003); `conflicts` and `incidents`
+    stay in memory. `clear()` empties every DB-backed store except `events`."""
 
     def __init__(self, database_url: str = "") -> None:
         self.bridge: DbBridge | None = None
         self.attempts: AttemptStore = InMemoryAttemptStore()
         self.runs: ScenarioRunStore = InMemoryScenarioRunStore()
+        self.proposals: RecStore[ProposalRec] = InMemoryRecStore()
+        self.agent_runs: RecStore[AgentRunRec] = InMemoryRecStore()
+        self.assistant_logs: RecStore[AssistantLogRec] = InMemoryRecStore()
+        self.findings = InMemoryFindingStore()
+        self.sim_runs = InMemorySimRunStore()
+        self.meta: Any = InMemoryMeta()
+        # proposal id -> (status, approvers) as the chain says; written to the proposals row (informational)
+        self.chain_view: Callable[[int], tuple[str, list[str]]] = lambda _pid: ("open", [])
         if database_url:
             from guardian.db.bridge import DbBridge
-            from guardian.repositories.pg import PgAttemptStore, PgScenarioRunStore
+            from guardian.repositories import pg
 
-            self.bridge = DbBridge(database_url)
-            self.attempts, self.runs = PgAttemptStore(self.bridge), PgScenarioRunStore(self.bridge)
-        self._reset_rest()
-        # never collide with persisted ids
-        self._ids = max((a.id for a in self.attempts.all()), default=0)
-
-    def _reset_rest(self) -> None:
-        self.proposals: dict[int, ProposalRec] = {}
-        self.agent_runs: list[AgentRunRec] = []
-        self.assistant_logs: list[AssistantLogRec] = []
+            self.bridge = b = DbBridge(database_url)
+            self.attempts, self.runs = pg.PgAttemptStore(b), pg.PgScenarioRunStore(b)
+            self.proposals = pg.PgProposalStore(b, lambda pid: self.chain_view(pid))
+            self.agent_runs, self.assistant_logs = pg.PgAgentRunStore(b), pg.PgAssistantLogStore(b)
+            self.findings, self.sim_runs, self.meta = (
+                pg.PgFindingStore(b), pg.PgSimRunStore(b), pg.PgMeta(b),
+            )  # fmt: skip
         self.conflicts: list[ConflictRec] = []
         self.incidents: list[IncidentRec] = []
         self.fault_attempts: dict[
@@ -247,14 +367,33 @@ class Stores:
             int, Any
         ] = {}  # CopilotDraftRec (assistant/copilot/models.py), CITY-004
         self.tx_checks: dict[int, Any] = {}  # B05 Tx Guardian checks (TxCheckOut), CITY-003
-        self._ids = 0
         self._incident_ids = 0
         self._txcheck_ids = 0
+        # never collide with persisted ids
+        self._ids = max(
+            [
+                x.id
+                for x in (*self.attempts.all(), *self.agent_runs.all(), *self.assistant_logs.all())
+            ],
+            default=0,
+        )
 
     def clear(self) -> None:
         self.attempts.clear()  # before runs: attempts reference them
         self.runs.clear()
-        self._reset_rest()
+        for st in (
+            self.proposals,
+            self.agent_runs,
+            self.assistant_logs,
+            self.findings,
+            self.sim_runs,
+        ):
+            st.clear()
+        self.conflicts, self.incidents = [], []
+        self.fault_attempts, self.copilot_drafts, self.tx_checks = {}, {}, {}
+        self._ids = 0
+        self._incident_ids = 0
+        self._txcheck_ids = 0
 
     def next_id(self) -> int:
         self._ids += 1
@@ -292,8 +431,11 @@ class Runtime:
         self.bus = EventBus()
         self.guard = DemoGuard(settings)
         self.stores = Stores(settings.database_url)
+        self.stores.chain_view = self._chain_view
         self.llm_client: Any = None  # built lazily by core.llm.open_session; tests inject a fake
-        self.graph_version = 1
+        self._graph_version = int(self.stores.meta.get("graph_version") or 1)
+        self.restored = False  # sim + database: the chain was rebuilt from the stored events
+        self._sim_sink: Any = None
         self._book: dict[str, str] | None = None
         self.scenario_tasks: dict[str, asyncio.Task[None]] = {}
         self.event_log: deque[ChainEvent] = deque(maxlen=EVENT_LOG_SIZE)
@@ -310,6 +452,11 @@ class Runtime:
         if self.is_l1:
             self._start_indexer()
         else:
+            if self.stores.bridge is not None:
+                from guardian.repositories.pg import PgEventSink
+
+                self._sim_sink = PgEventSink(self.stores.bridge, chain="sim")
+                self._restore_sim()
             self._unsubscribe = self.chain.subscribe(self._on_chain_event)
 
     def _init_payroll(self) -> None:
@@ -322,6 +469,44 @@ class Runtime:
         self.payroll: Any = SimPayroll.demo(clock=lambda: int(self.clock()), members=members)
         self.payroll_state = payroll_service.PayrollState()
         self.payroll.subscribe(lambda ev: payroll_service.on_chain_event(self, ev))
+
+    @property
+    def graph_version(self) -> int:
+        return self._graph_version
+
+    @graph_version.setter
+    def graph_version(self, v: int) -> None:
+        self._graph_version = v
+        self.stores.meta.set("graph_version", str(v))
+
+    def _chain_view(self, pid: int) -> tuple[str, list[str]]:
+        try:
+            cp = self.chain.proposal_state(pid)
+        except KeyError:
+            return "open", []
+        return cp.status, sorted(cp.approved_by)
+
+    def _restore_sim(self) -> None:
+        """The sim chain is in memory: rebuild it from the stored sim events (DB-003), if there are any."""
+        from guardian.chain.sim.replay import replay
+
+        events = self._sim_sink.all()
+        if not events:
+            return
+        self.chain.reset()
+        calls = {r.id: views.chain_calls(r.calls, self.addr) for r in self.stores.proposals.all()}
+        replay(self.chain, events, calls)
+        # reverted txs emit no event: never reuse the block (tx hash) of an attempt already stored
+        self.chain.block = max(
+            self.chain.block,
+            max(
+                (a.block for a in self.stores.attempts.all() if a.simulated and a.block), default=0
+            ),
+        )
+        self.chain._nonce = self.chain.block - 1
+        self.event_log.extend(events[-EVENT_LOG_SIZE:])
+        self._book = None
+        self.restored = True
 
     def _start_indexer(self) -> None:
         """L1 event bridge: the idempotent indexer reads the chain and feeds the SSE bus.
@@ -456,6 +641,8 @@ class Runtime:
     # ------------------------------------------------------------------ SSE bridge
     def _on_chain_event(self, ev: ChainEvent) -> None:
         self.event_log.append(ev)
+        if self._sim_sink is not None:
+            self._sim_sink.write(ev)
         if self._live:
             t0 = time.perf_counter()
             item = views.api_event(ev, self.token_decimals())
@@ -495,6 +682,14 @@ class Runtime:
     def publish(self, event_type: str, data: dict[str, Any]) -> None:
         self.bus.publish(event_type, data)
 
+    def _record_graph(self, snap: PolicySnapshot) -> None:
+        """policy_version to meta, current findings to the findings record (a gone one: resolved by the latest
+        executed proposal)."""
+        self.stores.meta.set("policy_version", str(snap.policy_version))
+        done = [p for p in self.stores.proposals.all() if p.executed_at is not None]
+        last = max(done, key=lambda p: (p.executed_at or 0, p.id)).id if done else None
+        self.stores.findings.sync(compute_findings(snap), self.now(), last)
+
     def city_states(self) -> dict[str, Any]:
         from guardian.services.city_state import compute_city_states
 
@@ -512,6 +707,7 @@ class Runtime:
         if graph:
             self.graph_version += 1
             snap = self.snapshot()
+            self._record_graph(snap)
             self.publish(
                 "graph_updated",
                 {
