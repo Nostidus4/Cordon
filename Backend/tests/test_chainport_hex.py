@@ -68,6 +68,7 @@ def spied() -> tuple[TestClient, Spy]:
 
 def test_scene4_run_passes_hex(spied: tuple[TestClient, Spy]) -> None:
     c, spy = spied
+    assert c.post("/api/demo/policy-v2").status_code == 200
     assert c.post("/api/scenario/scene4/run?delay=0&wait=true").status_code == 200
     assert c.post("/api/scenario/scene4/run", json={"step": 7}).status_code == 200  # raw_call
     seen = spy.assert_hex()

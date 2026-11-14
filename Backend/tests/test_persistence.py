@@ -105,6 +105,7 @@ def http(app: FastAPI) -> httpx.AsyncClient:
 
 
 async def scene4(c: httpx.AsyncClient) -> str:
+    assert (await c.post("/api/demo/policy-v2")).status_code == 200  # scene 4 needs v2
     run = (await c.post("/api/scenario/scene4/run?delay=0&wait=true")).json()
     assert (
         await c.post("/api/actions/lock", json={"member": "lan", "principalId": "minh"})
@@ -120,7 +121,7 @@ async def test_scene4_survives_restart(pg_schema: None) -> None:
         run_id = await scene4(c)
         before = (await c.get(f"/api/attempts?run={run_id}")).json()
         runs_before = (await c.get("/api/scenario/runs")).json()
-    assert len(before) == 7
+    assert len(before) == 8  # agent step 0 (auto) + 1-5 + lock + step 7
     async with running(database_url=TEST_DB) as b, http(b) as c:
         assert (await c.get(f"/api/attempts?run={run_id}")).json() == before
         assert (await c.get("/api/scenario/runs")).json() == runs_before
@@ -128,13 +129,13 @@ async def test_scene4_survives_restart(pg_schema: None) -> None:
         # new ids continue after the persisted ones
         assert (await c.post("/api/agent/run-once")).status_code == 200
         ids = [x["id"] for x in (await c.get("/api/attempts")).json()]
-        assert len(ids) == len(set(ids)) > 7
+        assert len(ids) == len(set(ids)) > 8
 
 
 async def test_memory_restart_starts_empty() -> None:
     async with running() as a, http(a) as c:
         await scene4(c)
-        assert len((await c.get("/api/attempts")).json()) == 7
+        assert len((await c.get("/api/attempts")).json()) == 8
     async with running() as b, http(b) as c:
         assert (await c.get("/api/attempts")).json() == []
         assert (await c.get("/api/scenario/runs")).json() == []
@@ -179,6 +180,7 @@ async def test_run_left_running_by_a_killed_process_is_failed_on_load(pg_schema:
         assert [(r["id"], r["status"], r["error"]) for r in runs] == [
             ("run-1", "failed", "interrupted")
         ]
+        assert (await c.post("/api/demo/policy-v2")).status_code == 200
         new = await c.post("/api/scenario/scene4/run?delay=0&wait=true")
         assert new.status_code == 200 and new.json()["id"] == "run-2"
     async with running(database_url=TEST_DB) as b, http(b) as c:  # the fix was written back
@@ -259,13 +261,17 @@ async def test_proposal_12_executed_survives_restart(pg_schema: None) -> None:
         before_hashes = {x["txHash"] for x in attempts if x["txHash"]}
         before_hashes |= {e.tx_hash for e in a.state.runtime.event_log}
         graph_v = a.state.runtime.graph_version
-        assert p12["status"] == "executed" and org["policyVersion"] == 2
+        assert (
+            p12["status"] == "executed" and org["policyVersion"] == 3
+        )  # v2 (scene 4 needs it) + #12
     async with running(database_url=TEST_DB) as b, http(b) as c:
         rt = b.state.runtime
         assert rt.restored
         assert (await c.get("/api/proposals/12")).json() == p12
-        assert pids((await c.get("/api/proposals")).json()) == listed == [13, 12]
-        assert (await c.get("/api/org")).json()["policyVersion"] == 2
+        assert (
+            pids((await c.get("/api/proposals")).json()) == listed == [14, 13, 12]
+        )  # 14 = policy v2
+        assert (await c.get("/api/org")).json()["policyVersion"] == 3
         assert (await c.get("/api/attempts")).json() == attempts
         assert rt.graph_version > graph_v  # persisted, then bumped by the startup reset
         # the chain went on from where it was: new txs get new hashes
@@ -305,7 +311,7 @@ async def test_state_is_rebuilt_from_events_only(pg_schema: None) -> None:
         want = a.state.runtime.snapshot()
         assert any(p.locked for p in want.principals.values())
         assert any(k.spent_today for k in want.keys.values())
-        assert want.policy_version == 2
+        assert want.policy_version == 3  # v2 (scene 4 needs it) + #12
     engine = create_async_engine(TEST_DB)
     async with engine.begin() as conn:
         await conn.execute(

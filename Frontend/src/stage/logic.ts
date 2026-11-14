@@ -87,6 +87,19 @@ export function incidentNumbers(attempts: Attempt[], opts: { districtLocked?: bo
 }
 export const LEFT_FULL = 5 * KEY_CAP;
 
+/** Vietnamese text for a refused "Kẻ gian bắt đầu" (the stage has no toast host, so the scene shows it inline). */
+const ATTACK_ERROR_VI: Record<string, string> = {
+  POLICY_V2_REQUIRED: "Cần áp luật v2 (Hội đồng gom khoá) trước khi chạy cảnh này.",
+  AGENT_STEP0_FAILED: "Trợ lý Cân đối buổi sáng chưa đổi được, nên chưa chạy được cảnh này.",
+  SCENARIO_RUNNING: "Một lần chạy kịch bản đang diễn ra, đợi một chút nhé.",
+  RUN_IN_PROGRESS: "Một lần chạy kịch bản đang diễn ra, đợi một chút nhé.",
+};
+export function attackErrorVi(e: unknown): string {
+  const code = typeof e === "object" && e !== null && "code" in e ? String((e as { code: unknown }).code) : "";
+  const msg = e instanceof Error ? e.message : "";
+  return ATTACK_ERROR_VI[code] ?? (msg && /[à-ỹ]/i.test(msg) ? msg : "Chưa bắt đầu được lần tấn công này, thử lại sau nhé.");
+}
+
 export type IncidentAction = "agent" | "attack" | "lock" | "step7" | "done";
 /** Which toy button pulses next (spec §10.5 control order). */
 export function nextIncidentAction(n: Pick<IncidentNumbers, "agentDone" | "attackDone" | "locked" | "step7Done">, attacking: boolean): IncidentAction {

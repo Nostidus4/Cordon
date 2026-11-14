@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from guardian.agent_rebalance import runner as agent_runner
 from guardian.core.errors import ApiError
 from guardian.services import attempt_service as att
 from guardian.services.runtime import AttemptRec, Runtime, ScenarioRunRec
+from guardian.shared.reason_codes import reason_text
 from guardian.shared.scenario4 import SCENARIO4_STEPS, Scenario4Step
 
 ATTACK_STEPS = tuple(s for s in SCENARIO4_STEPS if 1 <= s.step <= 5)
@@ -65,13 +67,40 @@ async def _run_attack(rt: Runtime, run: ScenarioRunRec, delay: float) -> None:
         rt.notify_state_changed(graph=False, force_city=True)
 
 
-def _adopt_agent_step0(rt: Runtime, run: ScenarioRunRec) -> None:
-    """The morning agent swap (step 0) belongs to the run that follows it."""
+def _adoptable_agent_attempt(rt: Runtime) -> AttemptRec | None:
+    """Today's morning swap that no run has claimed yet (newest first)."""
     for a in reversed(rt.stores.attempts.all()):
         if a.source == "agent" and a.outcome == "ok" and a.scenario_run_id is None:
-            a.scenario_run_id, a.step, a.display_time = run.id, 0, SCENARIO4_STEPS[0].display_time
-            rt.stores.attempts.save(a)
-            break
+            return a
+    return None
+
+
+def _adopt_agent_step0(rt: Runtime, run: ScenarioRunRec) -> None:
+    """The morning agent swap (step 0) belongs to the run that follows it."""
+    a = _adoptable_agent_attempt(rt)
+    if a is not None:
+        a.scenario_run_id, a.step, a.display_time = run.id, 0, SCENARIO4_STEPS[0].display_time
+        rt.stores.attempts.save(a)
+
+
+def _ensure_preconditions(rt: Runtime) -> None:
+    """The spec numbers (bar 25.000 incl. step 0, attacker 20.000, steps 1/2/5 refused) only hold on policy v2 with the
+    morning swap done. v2 is required; the swap is run here (template reason, never a paid LLM) when missing."""
+    if rt.snapshot().policy_label != 2:
+        raise ApiError(
+            409, "POLICY_V2_REQUIRED", "Cần áp luật v2 (Hội đồng gom khoá) trước khi chạy cảnh này."
+        )
+    if _adoptable_agent_attempt(rt) is not None:
+        return
+    out = agent_runner.run_once(rt, llm_reason=False)
+    if out["outcome"] != "swapped":
+        code = out.get("reasonCode")
+        why = reason_text(code) if code else "không có giao dịch nào được gửi"
+        raise ApiError(
+            409,
+            "AGENT_STEP0_FAILED",
+            f"Trợ lý Cân đối buổi sáng không đổi được ({why}), chưa thể chạy cảnh này.",
+        )
 
 
 async def start_scene4(rt: Runtime, delay: float | None, wait: bool = False) -> ScenarioRunRec:
@@ -80,6 +109,7 @@ async def start_scene4(rt: Runtime, delay: float | None, wait: bool = False) -> 
     d = rt.settings.scenario_delay_seconds if delay is None else delay
     if d < 0:
         raise ApiError(422, "VALIDATION_ERROR", "delay must be >= 0")
+    _ensure_preconditions(rt)
     run = ScenarioRunRec(
         id=f"run-{len(rt.stores.runs.all()) + 1}",
         status="running",
