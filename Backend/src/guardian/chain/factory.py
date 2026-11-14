@@ -8,5 +8,5 @@ from guardian.chain.sim.reference import reference_v2_snapshot
 __all__ = ["load_seed", "new_sim_chain", "reference_v2_snapshot"]
 
 
-def new_sim_chain() -> SimChain:
-    return SimChain()
+def new_sim_chain(timelock_s: int = 0) -> SimChain:
+    return SimChain(timelock_s=timelock_s)

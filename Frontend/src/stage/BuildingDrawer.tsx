@@ -18,6 +18,8 @@ import type { AgentRun, BuildingDetail, BuildingEvidence, FaultAction, FaultDef,
 import { PayrollPanel } from "./PayrollPanel";
 import { CopilotPanel } from "./CopilotPanel";
 import { useStageStore, type DrawerTab } from "./stageStore";
+import { QueuedBox } from "./QueuedBox";
+import { queuedProposals } from "./timelock";
 import { TxGuardPanel } from "./TxGuardPanel";
 import { CheckIcon, CrossIcon, FaceAvatar, ToyButton, ToyCard } from "./ui";
 import { AgentGuardPanel } from "./AgentGuardPanel";
@@ -153,8 +155,15 @@ function IncidentTab({ inc, demo }: { inc: Incident; demo: boolean }) {
           ) : <p className="toy-body m-0 mt-1" style={{ fontSize: 12.5 }}>Chờ các thành viên Hội đồng ký bằng ví của họ.</p>}
         </div>
       ) : null}
+      {proposal?.queued ? <QueuedBox proposal={proposal} demo={demo} /> : null}
     </div>
   );
+}
+
+/** B01: proposals that have 2/3 and wait out the timelock (#77). */
+function QueuedList({ demo }: { demo: boolean }) {
+  const { data: proposals } = useProposals();
+  return <>{queuedProposals(proposals).map((p) => <QueuedBox key={p.id} proposal={p} demo={demo} />)}</>;
 }
 
 function ActionRow({ a }: { a: FaultAction }) {
@@ -261,7 +270,7 @@ export function BuildingDrawer({ code }: { code: BuildingId }) {
         </div>
         <div className="toy-scroll mt-3 min-h-0 flex-1 overflow-y-auto pr-1" role="tabpanel">
           {!d ? <p className="toy-body m-0" role="status">{detail.isError ? "Chưa đọc được trạng thái tòa này." : "Đang đọc…"}</p>
-            : tab === "overview" ? <><Overview d={d} summary={info.summaryVi} module={info.module} topic={info.topic} run={run.data ?? null} />{code === "B05" ? <TxGuardPanel /> : null}{code === "B04" ? <PayrollPanel /> : null}</>
+            : tab === "overview" ? <><Overview d={d} summary={info.summaryVi} module={info.module} topic={info.topic} run={run.data ?? null} />{code === "B01" ? <QueuedList demo={demo} /> : null}{code === "B05" ? <TxGuardPanel /> : null}{code === "B04" ? <PayrollPanel /> : null}</>
             : tab === "rules" ? <Rules d={d} />
             : tab === "incident" && inc ? <IncidentTab inc={inc} demo={demo} />
             : <><div className="toy-eyebrow mb-1.5" style={{ fontSize: 14 }}>Thử gây sự cố</div><Faults building={code} faults={faults} /></>}

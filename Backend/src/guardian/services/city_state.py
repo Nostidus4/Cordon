@@ -14,7 +14,8 @@ order, so the detail endpoint can say which rule decides the colour and which ot
   B01 Hội đồng duyệt incident  B01.conflict   a conflicted approval was attempted in the last CONFLICT_WINDOW_S
                     recovery  B01.executed   a proposal executed in the last RECOVERY_WINDOW_S (beats "open"
                               so the seeded request #12 does not hide the recovery)
-                    warning   B01.pending    any open proposal
+                    warning   B01.pending    any open proposal that is not queued
+                    warning   B01.queued     a fully approved proposal waits for its timelock (#77)
   B02 Trợ lý AI     warning   B02.unverified the last assistant answer had numbers_verified = false
   B03 Kho tiền có luật
                     incident  B03.paused     vault paused
@@ -162,9 +163,9 @@ def evaluate_buildings(rt: Runtime) -> dict[str, BuildingEval]:
         for p in st.proposals.all()
         if p.executed_at is not None and now - p.executed_at <= RECOVERY_WINDOW_S
     ]
-    open_ids = [
-        i for i in (p.id for p in st.proposals.all()) if rt.chain.proposal_state(i).status == "open"
-    ]
+    states = {p.id: rt.chain.proposal_state(p.id) for p in st.proposals.all()}
+    open_ids = [i for i, cp in states.items() if cp.status == "open" and not cp.queued]
+    queued = [(i, cp) for i, cp in states.items() if cp.queued]
     if recent_conf:
         c = recent_conf[-1]
         b1.matches.append(
@@ -195,6 +196,24 @@ def evaluate_buildings(rt: Runtime) -> dict[str, BuildingEval]:
                 "warning",
                 f"{len(open_ids)} đề xuất đang chờ Hội đồng duyệt.",
                 *[_ev("proposalId", i) for i in open_ids],
+            )
+        )
+
+    if queued:
+        pid, cp = min(queued, key=lambda x: x[1].eta or 0)
+        left = max(0, (cp.eta or 0) - now)
+        tail = (
+            "Tự thực thi khi hết giờ."
+            if rt.settings.demo_enabled
+            else "Chờ một thành viên Hội đồng thực thi."
+        )
+        b1.matches.append(
+            _m(
+                "B01.queued",
+                "warning",
+                f"Đề xuất #{pid} đủ phiếu, còn {left // 60}:{left % 60:02d} nữa mới thực thi. {tail}",
+                _ev("proposalId", pid),
+                _ev("eta", cp.eta),
             )
         )
 

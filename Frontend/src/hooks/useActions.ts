@@ -13,6 +13,8 @@ export function useActions() {
     lock: useMutation({ mutationFn: (r: LockRequest) => api.lockDistrict(r), onError, onSuccess: () => toast.warning("Đã khoá khu", "Các thẻ bị gạch khỏi chain.") }),
     pause: useMutation({ mutationFn: (r: PauseRequest) => api.pauseAll(r), onError, onSuccess: () => toast.warning("Đã dừng cả kho") }),
     approve: useMutation({ mutationFn: (v: { id: number; member: MemberId }) => api.approveProposal(v.id, v.member), onError, onSuccess: refresh }),
+    execute: useMutation({ mutationFn: (v: { id: number; member: MemberId }) => api.executeProposal(v.id, v.member), onError, onSuccess: refresh }),
+    veto: useMutation({ mutationFn: (v: { id: number; member: MemberId }) => api.vetoProposal(v.id, v.member), onError, onSuccess: () => { refresh(); toast.warning("Đã phủ quyết đề xuất") } }),
     draft: useMutation({ mutationFn: (r: DraftProposalRequest) => api.draftProposal(r), onError }),
     createProposal: useMutation({ mutationFn: (r: CreateProposalRequest) => api.createProposal(r), onError, onSuccess: refresh }),
     runAgent: useMutation({ mutationFn: () => api.runAgentOnce(), onError }),

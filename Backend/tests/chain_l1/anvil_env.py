@@ -209,8 +209,9 @@ class NonceCursor:
         return self.w3.eth.contract(address=rc["contractAddress"], abi=art["abi"])
 
 
-def deploy_may_labs(anvil: Anvil) -> Env:
-    """Deploy registry, vault, Council, tokens, DEXes; etch the AllowList; seed policy v1."""
+def deploy_may_labs(anvil: Anvil, timelock_s: int = 0) -> Env:
+    """Deploy registry, vault, Council, tokens, DEXes; etch the AllowList; seed policy v1.
+    `timelock_s`: the Council's immutable `timelockDelay` (#77), 0 = execute at once."""
     w3 = anvil.w3
     seed = copy.deepcopy(load_seed())
     admin = to_checksum_address(w3.eth.accounts[0])
@@ -259,6 +260,7 @@ def deploy_may_labs(anvil: Anvil) -> Env:
         principals,
         registry.address,
         vault.address,
+        timelock_s,
     )
     assert council.address == council_addr, "council address prediction is off"
     # The Council administers the Tx AllowList (emergencyLock -> setNone), as after the L1 hand-over.

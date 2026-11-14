@@ -29,8 +29,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SEED = ROOT / "Backend" / "seed" / "may_labs.json"
 ROSTER = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "contracts" / "genesis" / "roster.local.json"
-OUT_ENV = ROOT / "Backend" / ".env.l1-local"
-OUT_SEED = ROOT / "infra" / "l1" / "seed.l1-local.json"
+OUT_ENV = Path(os.environ.get("L1_LOCAL_ENV_FILE") or ROOT / "Backend" / ".env.l1-local")
+OUT_SEED = Path(os.environ.get("L1_LOCAL_SEED_FILE") or ROOT / "infra" / "l1" / "seed.l1-local.json")
 STATE = ROOT / "infra" / "l1" / ".env.l1-local"  # RPC_URL=..., written by `l1-local.sh up`
 MNEMONIC = os.environ.get("LOCAL_MNEMONIC", "test test test test test test test test test test test junk")
 
@@ -93,8 +93,8 @@ def main() -> int:
     OUT_ENV.write_text("\n".join(env) + "\n", encoding="utf-8")
     OUT_ENV.chmod(0o600)
 
-    print(f"wrote {OUT_ENV.relative_to(ROOT)} ({len(mapping)} L1_KEY_* variables, values not shown)")
-    print(f"wrote {OUT_SEED.relative_to(ROOT)}")
+    print(f"wrote {OUT_ENV} ({len(mapping)} L1_KEY_* variables, values not shown)")
+    print(f"wrote {OUT_SEED}")
     for old, new in mapping.items():
         print(f"  seed {old} -> {new}")
     return 0

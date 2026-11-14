@@ -44,7 +44,7 @@ contract PolicyV2 is L1Common {
         council.approve(id);
         vm.stopBroadcast();
 
-        console.log("policy v2 proposal executed", id);
+        logPassed(d.council, id);
         console.log("policyVersion before", before_);
         console.log("policyVersion after ", IPolicyVault(d.vault).policyVersion());
     }

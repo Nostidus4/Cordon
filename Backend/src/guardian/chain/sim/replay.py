@@ -15,7 +15,7 @@ from guardian.chain.base import ChainEvent
 from guardian.chain.sim.council import Proposal, affected_principals
 from guardian.chain.sim.engine import SimChain
 
-_NOOP = {"EmergencyAction", "Executed"}  # Executed: flag set below, no other state
+_NOOP = {"EmergencyAction", "Executed", "Vetoed"}  # Executed: flag set below, no other state
 
 
 def _a(x: str) -> str:
@@ -98,12 +98,16 @@ def replay(
             prop = cs.proposals[p["id"]]
             prop.approved_by.add(_a(p["member"]))
             prop.approvals += 1
+        elif n == "Queued":
+            cs.proposals[p["id"]].eta = p["eta"]
         elif n == "Cancelled":
             cs.proposals[p["id"]].cancelled = True
         elif n not in _NOOP:
             raise ValueError(f"unknown chain event {n!r}")
         if n == "Executed":
             cs.proposals[p["id"]].executed = True
+        elif n == "Vetoed":
+            cs.proposals[p["id"]].vetoed_by = _a(p["member"])
         chain.events.append(e)
         chain.block = max(chain.block, e.block)
     chain._nonce = chain.block - 1

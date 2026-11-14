@@ -63,6 +63,12 @@ export interface Proposal extends ProposalBody {
   createdAt: number;
   executedAt: number | null;
   executedTxHash: string | null;
+  /** Timelock (#77): earliest execution time in unix seconds once the proposal has 2/3 and waits; null = never queued. */
+  eta: number | null;
+  /** True while the proposal waits for its `eta` (can be vetoed by one member). */
+  queued: boolean;
+  /** Member id that vetoed it. */
+  vetoedBy: MemberId | null;
 }
 
 export interface DraftProposalRequest {
