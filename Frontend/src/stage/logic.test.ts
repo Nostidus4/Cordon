@@ -4,7 +4,7 @@ import { mockApi, mockConfig } from "../lib/mock/server";
 import { ensureV2 } from "./ensure";
 import { forgetRequestNumbers } from "./requestMemory";
 import {
-  buildSpreadPlan, counterAfter, describeNode, incidentNumbers, isStageScene, neighborScene, nextIncidentAction, requestNumbers, sceneFromPath, scenePath, spreadProp, STAGE_SCENES,
+  attackErrorVi, buildSpreadPlan, counterAfter, describeNode, incidentNumbers, isStageScene, neighborScene, nextIncidentAction, requestNumbers, sceneFromPath, scenePath, spreadProp, STAGE_SCENES,
 } from "./logic";
 
 const U = (n: number) => BigInt(n) * 1_000_000n;
@@ -182,5 +182,16 @@ describe("scene 5 numbers on deep link and after playing 1-4 (never 0 / post-loc
     await ensureV2();
     const [a, b] = await pick();
     expectStory(requestNumbers(a, b, false, null));
+  });
+});
+
+describe("attackErrorVi", () => {
+  it("maps the scene 4 refusals to Vietnamese and never shows an English/raw message", () => {
+    const e = (code: string, m: string) => Object.assign(new Error(m), { code });
+    expect(attackErrorVi(e("POLICY_V2_REQUIRED", "x"))).toBe("Cần áp luật v2 (Hội đồng gom khoá) trước khi chạy cảnh này.");
+    expect(attackErrorVi(e("AGENT_STEP0_FAILED", "x"))).toMatch(/Trợ lý Cân đối/);
+    expect(attackErrorVi(e("SCENARIO_RUNNING", "x"))).toMatch(/đang diễn ra/);
+    expect(attackErrorVi(e("HTTP_500", "Internal Server Error"))).toMatch(/thử lại/);
+    expect(attackErrorVi("boom")).toMatch(/thử lại/);
   });
 });

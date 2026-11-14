@@ -18,7 +18,7 @@ import { reasonVi } from "../../shared/reasonCodes";
 import { useUiStore } from "../../store/uiStore";
 import type { Attempt } from "../../types";
 import type { BuildingCode, CityStageProps } from "../contract";
-import { LEFT_FULL, incidentNumbers, nextIncidentAction, recipientVi, signerShort, type IncidentAction } from "../logic";
+import { LEFT_FULL, attackErrorVi, incidentNumbers, nextIncidentAction, recipientVi, signerShort, type IncidentAction } from "../logic";
 import { Tile } from "../parts";
 import { useCityProps, usePrimaryAction, useStageStore } from "../stageStore";
 import { CheckIcon, Counter, CrossIcon, GateIcon, KindIcon, Ribbon, ToyButton, ToyCard, WarnIcon } from "../ui";
@@ -86,6 +86,7 @@ export function IncidentScene() {
   const { data: runs } = useScenarioRuns();
   const live = useLiveAttempts();
   const [attacking, setAttacking] = useState(false);
+  const [attackError, setAttackError] = useState<string | null>(null);
   const preparing = useStageStore((s) => s.preparing);
 
   useEffect(() => { if (replay && !replayRunId) { const id = pickReplayRun(runs); if (id) setReplayRunId(id); } }, [replay, replayRunId, runs, setReplayRunId]);
@@ -99,7 +100,7 @@ export function IncidentScene() {
   const policyV2 = (policyLabel(graph) ?? 1) >= 2 || replay;
   const nums = useMemo(() => incidentNumbers(attempts, { districtLocked: replay ? false : !!minh?.locked, capRaw: minh?.dailyCap?.raw ?? (replay ? "30000000000" : null) }), [attempts, minh, replay]);
   useEffect(() => { if (nums.attackDone || attempts.length === 0) setAttacking(false); }, [nums.attackDone, attempts.length]);
-  useStream((m) => { if (m.type === "reset") setAttacking(false); }, ["reset"]);
+  useStream((m) => { if (m.type === "reset") { setAttacking(false); setAttackError(null); } }, ["reset"]);
 
   const next: IncidentAction = nextIncidentAction(nums, attacking);
   const night = (nums.attackDone || attacking) && !nums.locked;
@@ -119,7 +120,7 @@ export function IncidentScene() {
 
   const act = {
     agent: () => actions.runAgent.mutate(),
-    attack: () => { sfx.alarm(); setAttacking(true); actions.runScene4.mutate(undefined, { onError: () => setAttacking(false) }); },
+    attack: () => { sfx.alarm(); setAttacking(true); setAttackError(null); actions.runScene4.mutate(undefined, { onError: (e) => { setAttacking(false); setAttackError(attackErrorVi(e)); } }); },
     lock: () => actions.lock.mutate({ principalId: "minh", member: "lan" }),
     step7: () => actions.step7.mutate(),
   };
@@ -206,12 +207,15 @@ export function IncidentScene() {
             <ToyButton size="sm" color="cream" onClick={player.restart}>↻ Từ đầu</ToyButton>
           </ToyCard>
         ) : (
-          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3" role="group" aria-label="Các bước của cảnh sự cố">
+          <div className="pointer-events-auto flex flex-col items-center gap-3">
+          {attackError ? <ToyCard tone="red" className="px-4 py-2" label="Lỗi"><p role="alert" className="toy-body m-0 flex items-center gap-1.5 font-bold" style={{ color: "var(--red-ink)" }}><WarnIcon size={14} />{attackError}</p></ToyCard> : null}
+          <div className="flex flex-wrap items-center justify-center gap-3" role="group" aria-label="Các bước của cảnh sự cố">
             <ToyButton color="orange" size="sm" pulse={next === "agent" && policyV2} done={nums.agentDone} disabled={!policyV2 || next !== "agent" || actions.runAgent.isPending} onClick={act.agent}>{doneMark(nums.agentDone)}1 · Chạy trợ lý Cân đối buổi sáng</ToyButton>
             <ToyButton color="violet" size="sm" pulse={next === "attack" && !attacking} done={nums.attackDone} disabled={!policyV2 || nums.attackDone || attacking} onClick={act.attack}>{doneMark(nums.attackDone)}2 · Kẻ gian bắt đầu</ToyButton>
             <ToyButton color="red" size={next === "lock" ? "lg" : "sm"} pulse={next === "lock"} done={nums.locked} disabled={!policyV2 || nums.locked || !nums.attackDone || actions.lock.isPending} onClick={act.lock}>{doneMark(nums.locked)}3 · Khoá khu anh Minh</ToyButton>
             <ToyButton color="cream" size="sm" pulse={next === "step7"} done={nums.step7Done} disabled={!nums.locked || nums.step7Done || actions.step7.isPending} onClick={act.step7}>{doneMark(nums.step7Done)}4 · Thử lại bằng thẻ đã khoá</ToyButton>
             {next === "done" ? <ToyButton color="teal" pulse onClick={() => nav("/s/request")}>Tiếp: xin thêm quyền →</ToyButton> : null}
+          </div>
           </div>
         )}
       </div>

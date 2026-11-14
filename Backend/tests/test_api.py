@@ -207,6 +207,7 @@ async def test_agent_card_cap_blocked_without_tx(client: httpx.AsyncClient) -> N
 
 async def test_scenario_background_with_delay_and_running_guard(client: httpx.AsyncClient) -> None:
     await client.post("/api/demo/reset")
+    await client.post("/api/demo/policy-v2")
     run = await post(client, "/api/scenario/scene4/run?delay=0.05")
     assert run["status"] == "running"
     r = await client.post("/api/scenario/scene4/run?delay=0")
@@ -218,7 +219,9 @@ async def test_scenario_background_with_delay_and_running_guard(client: httpx.As
         if cur["status"] != "running":
             break
         await asyncio.sleep(0.05)
-    assert cur["status"] == "waiting_lock" and len(cur["attempts"]) == 5
+    assert (
+        cur["status"] == "waiting_lock" and len(cur["attempts"]) == 6
+    )  # step 0 (auto agent) + 1-5
 
 
 async def test_l1_mode_without_deployments_fails_with_a_clear_message() -> None:
