@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # Blocks per eth_getLogs call on the C-Chain. The public Fuji RPC rejects more than 100 (-32602); the reader also
     # halves this on a "block range too large" answer. (The L1 source keeps its own 2000.)
     cchain_log_chunk: int = Field(default=100, ge=1)
+    # Blocks the C-Chain indexer reads per cycle; the cursor is saved after each chunk, so a long backfill
+    # (or a 429 halfway) resumes where it stopped instead of restarting. Env CCHAIN_MAX_BLOCKS_PER_CYCLE.
+    cchain_max_blocks_per_cycle: int = Field(default=2000, ge=1)
     indexer_reorg_window: int = 5  # blocks re-read each cycle (shallow reorg repair)
     indexer_confirmations: int = 0  # blocks behind head to wait before indexing
     # CHAIN_MODE=l1 + DEMO_MODE (signing with test keys) is accepted only on these chain ids:

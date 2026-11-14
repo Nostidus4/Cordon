@@ -95,7 +95,7 @@ Run the Backend against the Fuji L1 (`CHAIN_MODE=l1`): `python3 infra/l1/fuji_en
 cd Backend && set -a && . ./.env.l1-fuji && set +a && uv run guardian-api
 ```
 
-Without `GUARDIAN_SEED_FILE` the API stops with `bad signer configuration: L1_KEY_KEY_MINH derives ..., seed expects ...`. The C-Chain indexer reads logs in chunks of `CCHAIN_LOG_CHUNK` blocks (default 100, the public Fuji RPC limit) and halves the chunk by itself if the RPC says the range is too large.
+Without `GUARDIAN_SEED_FILE` the API stops with `bad signer configuration: L1_KEY_KEY_MINH derives ..., seed expects ...`. The C-Chain indexer reads logs in chunks of `CCHAIN_LOG_CHUNK` blocks (default 100, the official Fuji RPC limit) and halves the chunk by itself if the RPC says the range is too large. It reads at most `CCHAIN_MAX_BLOCKS_PER_CYCLE` blocks per cycle (default 2000) and saves the cursor after every chunk, so a backfill resumes where it stopped; on HTTP 429 it keeps its progress and waits 2s, 4s ... 60s (health warning `RPC_RATE_LIMITED`, not `INDEXER_ERROR`). The official endpoint (`api.avax-test.network`) caps `eth_getLogs` at 100 blocks and rate-limits a backfill, so `fuji_env.py` writes `CCHAIN_RPC_URL=https://avalanche-fuji-c-chain-rpc.publicnode.com` and `CCHAIN_LOG_CHUNK=2000` into `Backend/.env.l1-fuji` (publicnode answers a 2.600-block `eth_getLogs` in one call).
 
 Verified on the Fuji L1 (real output):
 - `eth_chainId` = 845357; deployer holds the 1000 GAI genesis alloc.

@@ -566,6 +566,7 @@ class Runtime:
             source,
             sink,
             label="c",
+            max_blocks_per_cycle=s.cchain_max_blocks_per_cycle,
             watcher=LogWatcher(ws_url, log_params(source.dep)) if ws_url else None,
             poll_interval=s.l1_poll_interval_seconds,
             reorg_window=s.indexer_reorg_window,

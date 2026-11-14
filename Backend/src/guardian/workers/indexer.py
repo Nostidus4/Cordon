@@ -11,6 +11,12 @@ next cycle retries after a back-off. An optional `LogWatcher` (websocket `eth_su
 only wakes the loop early; polling stays the safety net and takes over at the normal interval whenever
 the socket is down. A second `Indexer` with `label="c"` follows the C-Chain top-up transfer (its cursor
 is `meta.last_block_c`, reported as `IndexerStatus.last_block_c`).
+
+Bounded cycles (`max_blocks_per_cycle`, opt-in; the C-Chain indexer uses it): one cycle reads at most that many
+blocks and saves the cursor after every chunk the source yields (`event_chunks`), so a long backfill is spread over
+cycles that run back to back and an error halfway keeps the chunks already written. An HTTP 429 / JSON-RPC rate
+limit is not a failure: the cycle stops, keeps its progress and the loop waits 2s, 4s ... up to 60s (reset by the
+next clean cycle); `IndexerStatus.rate_limited` is True meanwhile and `last_error` stays None.
 """
 
 from __future__ import annotations
@@ -19,7 +25,7 @@ import logging
 import signal
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -28,6 +34,25 @@ from guardian.chain.base import ChainEvent
 log = logging.getLogger(__name__)
 
 EventKey = tuple[str, int]  # (tx_hash, log_index)
+
+RATE_LIMIT_BASE_S = 2.0
+RATE_LIMIT_MAX_S = 60.0
+
+
+def is_rate_limited(exc: BaseException) -> bool:
+    """HTTP 429 (requests `HTTPError`) or a JSON-RPC rate-limit answer (-32005, "rate limit", "too many requests")."""
+    seen: set[int] = set()
+    cur: BaseException | None = exc
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        resp = getattr(cur, "response", None)
+        if getattr(resp, "status_code", None) == 429:
+            return True
+        text = (" ".join(str(a) for a in cur.args) + " " + str(cur)).lower()
+        if "too many requests" in text or "rate limit" in text or "-32005" in text:
+            return True
+        cur = cur.__cause__ or cur.__context__
+    return False
 
 
 class EventSink(Protocol):
@@ -131,6 +156,7 @@ class IndexerStatus:
     updated_at: float | None  # time.time() of the last successful cycle
     head_c: int | None = None
     ws_connected: bool | None = None  # None: no websocket source configured
+    rate_limited: bool = False  # the RPC answered 429 / rate limit; backing off, not an error
 
     @property
     def lag_blocks(self) -> int | None:
@@ -153,6 +179,7 @@ class Indexer:
         label: str = "l1",
         watcher: Any = None,
         ws_idle_interval: float = 15.0,
+        max_blocks_per_cycle: int | None = None,
     ) -> None:
         if reorg_window < 1:
             raise ValueError("reorg_window must be >= 1")
@@ -165,6 +192,11 @@ class Indexer:
         self.label = label
         self._watcher = watcher
         self._ws_idle = max(ws_idle_interval, poll_interval)
+        self._max_blocks = (
+            None if max_blocks_per_cycle is None else max(max_blocks_per_cycle, reorg_window + 1)
+        )
+        self._rl_step = 0  # consecutive rate-limited cycles
+        self._more = False  # the last cycle stopped short of the target: run the next one at once
         self._wake = threading.Event()
         if watcher is not None:
             watcher.wake = self._wake
@@ -176,7 +208,33 @@ class Indexer:
 
     # ------------------------------------------------------------------ one cycle
     def sync_once(self) -> list[ChainEvent]:
-        """One poll cycle. Returns the events that were new to the sink, oldest first."""
+        """One poll cycle. Returns the events that were new to the sink, oldest first.
+
+        With `max_blocks_per_cycle` it reads at most that many blocks and saves the cursor after each chunk.
+        A rate limit ends the cycle cleanly (progress kept, `rate_limited` set); other errors propagate."""
+        new: list[ChainEvent] = []
+        try:
+            self._cycle(new)
+            self._rl_step = 0
+            self._error, self._updated = None, time.time()
+        except Exception as exc:
+            if not is_rate_limited(exc):
+                raise
+            self._rl_step += 1
+            self._more = False
+        finally:
+            for ev in new:  # after the cursor is saved; a failing subscriber must not undo indexing
+                self._emit(ev)
+        return new
+
+    @property
+    def rate_limited(self) -> bool:
+        return self._rl_step > 0
+
+    def _rate_limit_delay(self) -> float:
+        return min(RATE_LIMIT_BASE_S * 2 ** (self._rl_step - 1), RATE_LIMIT_MAX_S)
+
+    def _cycle(self, new: list[ChainEvent]) -> None:
         head = self.source.head()
         self._head = head
         target = head - self._confirmations
@@ -186,18 +244,23 @@ class Indexer:
             first = start  # empty store: rebuild from the deployment block
         else:
             first = max(start, min(saved, target) - self._window + 1)
-        new: list[ChainEvent] = []
-        if first <= target:
-            fresh = self.source.events_between(first, target)
-            self._repair_window(first, target, fresh)
+        end = target if self._max_blocks is None else min(target, first + self._max_blocks - 1)
+        self._more = end < target
+        if first > target:
+            return
+        for lo, hi, fresh in self._chunks(first, end):
+            self._repair_window(lo, hi, fresh)
             for ev in fresh:
                 if self.sink.write(ev):
                     new.append(ev)
-            self.sink.set_last_block(target)
-        self._error, self._updated = None, time.time()
-        for ev in new:  # after the cursor is saved; a failing subscriber must not undo indexing
-            self._emit(ev)
-        return new
+            self.sink.set_last_block(hi)
+
+    def _chunks(self, first: int, last: int) -> Iterator[tuple[int, int, list[ChainEvent]]]:
+        chunks = getattr(self.source, "event_chunks", None)
+        if chunks is not None:
+            yield from chunks(first, last)
+        else:
+            yield first, last, self.source.events_between(first, last)
 
     def _repair_window(self, first: int, last: int, fresh: list[ChainEvent]) -> None:
         """Drop stored events in [first, last] that the chain no longer reports as they were."""
@@ -220,8 +283,12 @@ class Indexer:
         ws = None if self._watcher is None else bool(self._watcher.connected)
         cursor = self.sink.last_block()
         if self.label == "c":
-            return IndexerStatus(None, None, cursor, self._error, self._updated, self._head, ws)
-        return IndexerStatus(cursor, self._head, None, self._error, self._updated, None, ws)
+            return IndexerStatus(
+                None, None, cursor, self._error, self._updated, self._head, ws, self.rate_limited
+            )
+        return IndexerStatus(
+            cursor, self._head, None, self._error, self._updated, None, ws, self.rate_limited
+        )
 
     # ------------------------------------------------------------------ loop
     def run(self, stop: threading.Event | None = None) -> None:
@@ -237,15 +304,27 @@ class Indexer:
                     self.sync_once()
                     failures = 0
                     live = self._watcher is not None and self._watcher.connected
-                    delay = self._ws_idle if live else self._poll_interval
+                    if self._rl_step:  # rate limited: progress kept, wait 2s, 4s ... 60s
+                        delay = self._rate_limit_delay()
+                        log.warning(
+                            "indexer %s rate limited by the RPC (step %d), next cycle in %.0fs",
+                            self.label,
+                            self._rl_step,
+                            delay,
+                        )
+                    elif self._more:  # bounded cycle: more blocks behind the target, go on at once
+                        delay = 0.0
+                    else:
+                        delay = self._ws_idle if live else self._poll_interval
                 except Exception as exc:  # noqa: BLE001 (any RPC or decode error: retry)
                     failures += 1
+                    self._more = False
                     self._error = f"{type(exc).__name__}: {exc}"
                     delay = min(self._poll_interval * 2**failures, self._max_backoff)
                     log.warning(
                         "indexer %s cycle failed (%d): %s", self.label, failures, self._error
                     )
-                self._sleep(delay, stop, wakeable=failures == 0)
+                self._sleep(delay, stop, wakeable=failures == 0 and not self._rl_step)
         finally:
             if self._watcher is not None:
                 self._watcher.stop()

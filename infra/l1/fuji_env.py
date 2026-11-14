@@ -89,6 +89,10 @@ def write_backend_env(
     lines += [
         "DEPLOYMENTS_FILE=deployments/fuji-l1.json",
         "CCHAIN_DEPLOYMENTS_FILE=deployments/fuji-c.json",
+        # The official Fuji endpoint caps eth_getLogs at 100 blocks and rate-limits (429); publicnode answers a
+        # 2.600-block range in one call.
+        "CCHAIN_RPC_URL=https://avalanche-fuji-c-chain-rpc.publicnode.com",
+        "CCHAIN_LOG_CHUNK=2000",
         f"GUARDIAN_SEED_FILE={seed_file.resolve()}",
         "DEMO_MODE=true",
         f"DEMO_CHAIN_IDS='{json.dumps(demo_ids)}'",
