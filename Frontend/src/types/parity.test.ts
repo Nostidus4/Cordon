@@ -40,6 +40,8 @@ type Known<O = never, F = never, D = never> = { onlyBE: O; onlyFE: F; differ: D 
 expectTypeOf<DiffR<S["Money"], T.Money>>().toEqualTypeOf<Known<never, never, never>>();
 // HealthOut <-> Health
 expectTypeOf<DiffR<S["HealthOut"], T.Health>>().toEqualTypeOf<Known<never, never, never>>();
+// TopUpOut <-> TopUp
+expectTypeOf<DiffR<S["TopUpOut"], T.TopUp>>().toEqualTypeOf<Known<never, never, never>>();
 // OrgOut <-> Org
 expectTypeOf<DiffR<S["OrgOut"], T.Org>>().toEqualTypeOf<Known<never, never, never>>();
 // GraphSnapshot <-> GraphSnapshot

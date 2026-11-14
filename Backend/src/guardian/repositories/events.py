@@ -17,7 +17,7 @@ Sessions = async_sessionmaker[AsyncSession]
 def _to_event(r: Event) -> ChainEvent:
     return ChainEvent(
         r.name, r.block, r.tx_hash, r.log_index, r.payload, int(r.ts.timestamp()),
-        simulated=r.chain == "sim",
+        simulated=r.chain in ("sim", "c"),  # c = simulated top-up transfers (IDX-002)
     )  # fmt: skip
 
 

@@ -2372,6 +2372,17 @@
             ],
             "title": "Lastblockat"
           },
+          "lastBlockC": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastblockc"
+          },
           "policyLabel": {
             "title": "Policylabel",
             "type": "integer"
@@ -4718,6 +4729,67 @@
           "change"
         ],
         "title": "Suggestion",
+        "type": "object"
+      },
+      "TopUpOut": {
+        "description": "One simulated top-up: the C-Chain transfer (treasury -> escrow) and the L1 `TopUpRecorded`, joined by the\nC-Chain tx hash. UI label: \"nạp tiền giả lập\".",
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "cChainBlock": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cchainblock"
+          },
+          "cChainTxHash": {
+            "title": "Cchaintxhash",
+            "type": "string"
+          },
+          "l1Block": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "L1Block"
+          },
+          "l1TxHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "L1Txhash"
+          },
+          "linked": {
+            "title": "Linked",
+            "type": "boolean"
+          },
+          "simulated": {
+            "default": true,
+            "title": "Simulated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cChainTxHash",
+          "amount",
+          "linked"
+        ],
+        "title": "TopUpOut",
         "type": "object"
       },
       "Totals": {
@@ -7362,6 +7434,31 @@
         "summary": "Stream",
         "tags": [
           "stream"
+        ]
+      }
+    },
+    "/api/topups": {
+      "get": {
+        "operationId": "get_topups_api_topups_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TopUpOut"
+                  },
+                  "title": "Response Get Topups Api Topups Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Topups",
+        "tags": [
+          "topups"
         ]
       }
     },

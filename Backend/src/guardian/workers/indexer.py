@@ -6,11 +6,11 @@ the cursor (`meta.last_block_l1`) only advances after the events up to it were w
 sink is rebuilt by replaying from the deployment block. Only events that were new to the sink are
 published to the SSE bus, so re-reading a block never produces duplicates on the stream.
 
-The L1 adapter polls over HTTP (there is no websocket subscription), so "reconnect" is: any RPC
-error leaves the cursor untouched and the next cycle retries after a back-off.
-
-C-Chain `TopUpRecorded` indexing (`last_block_c`) is not implemented: no chain adapter reads the
-C-Chain yet. `IndexerStatus.last_block_c` stays None until a `LogSource` for it is added.
+The source is read over HTTP, so "reconnect" is: any RPC error leaves the cursor untouched and the
+next cycle retries after a back-off. An optional `LogWatcher` (websocket `eth_subscribe("logs")`, IDX-002)
+only wakes the loop early; polling stays the safety net and takes over at the normal interval whenever
+the socket is down. A second `Indexer` with `label="c"` follows the C-Chain top-up transfer (its cursor
+is `meta.last_block_c`, reported as `IndexerStatus.last_block_c`).
 """
 
 from __future__ import annotations
@@ -108,6 +108,10 @@ class L1ChainSource:
         self._chain = chain
         self.start_block = int(chain.dep.deploy_block)
 
+    def log_params(self) -> dict[str, Any]:
+        """`eth_subscribe("logs")` filter for the websocket watcher (same contracts `events_since` reads)."""
+        return {"address": list(self._chain._log_addresses)}
+
     def head(self) -> int:
         return int(self._chain.w3.eth.block_number)
 
@@ -117,13 +121,16 @@ class L1ChainSource:
 
 @dataclass(frozen=True)
 class IndexerStatus:
-    """What `/api/health` reads: `lag_blocks = head - last_block_l1`."""
+    """What `/api/health` reads: `lag_blocks = head - last_block_l1`. For a `label="c"` indexer the cursor
+    and head are reported in `last_block_c` / `head_c` and the L1 fields are None."""
 
     last_block_l1: int | None
     head_l1: int | None
     last_block_c: int | None
     last_error: str | None
     updated_at: float | None  # time.time() of the last successful cycle
+    head_c: int | None = None
+    ws_connected: bool | None = None  # None: no websocket source configured
 
     @property
     def lag_blocks(self) -> int | None:
@@ -143,6 +150,9 @@ class Indexer:
         reorg_window: int = 5,
         confirmations: int = 0,
         max_backoff: float = 30.0,
+        label: str = "l1",
+        watcher: Any = None,
+        ws_idle_interval: float = 15.0,
     ) -> None:
         if reorg_window < 1:
             raise ValueError("reorg_window must be >= 1")
@@ -152,6 +162,12 @@ class Indexer:
         self._window = reorg_window
         self._confirmations = max(confirmations, 0)
         self._max_backoff = max_backoff
+        self.label = label
+        self._watcher = watcher
+        self._ws_idle = max(ws_idle_interval, poll_interval)
+        self._wake = threading.Event()
+        if watcher is not None:
+            watcher.wake = self._wake
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._head: int | None = None
@@ -201,24 +217,50 @@ class Indexer:
             log.exception("indexer publish failed")
 
     def status(self) -> IndexerStatus:
-        return IndexerStatus(self.sink.last_block(), self._head, None, self._error, self._updated)
+        ws = None if self._watcher is None else bool(self._watcher.connected)
+        cursor = self.sink.last_block()
+        if self.label == "c":
+            return IndexerStatus(None, None, cursor, self._error, self._updated, self._head, ws)
+        return IndexerStatus(cursor, self._head, None, self._error, self._updated, None, ws)
 
     # ------------------------------------------------------------------ loop
     def run(self, stop: threading.Event | None = None) -> None:
         """Poll until stopped. RPC errors back off exponentially and never advance the cursor."""
         stop = stop or self._stop
         failures = 0
+        if self._watcher is not None:
+            self._watcher.start()
+        try:
+            while not stop.is_set():
+                self._wake.clear()  # a wake that arrives during the cycle makes the next wait return at once
+                try:
+                    self.sync_once()
+                    failures = 0
+                    live = self._watcher is not None and self._watcher.connected
+                    delay = self._ws_idle if live else self._poll_interval
+                except Exception as exc:  # noqa: BLE001 (any RPC or decode error: retry)
+                    failures += 1
+                    self._error = f"{type(exc).__name__}: {exc}"
+                    delay = min(self._poll_interval * 2**failures, self._max_backoff)
+                    log.warning(
+                        "indexer %s cycle failed (%d): %s", self.label, failures, self._error
+                    )
+                self._sleep(delay, stop, wakeable=failures == 0)
+        finally:
+            if self._watcher is not None:
+                self._watcher.stop()
+
+    def _sleep(self, delay: float, stop: threading.Event, wakeable: bool = True) -> None:
+        """Wait up to `delay`, or until the websocket wakes us (not while failing), or `stop` is set."""
+        deadline = time.monotonic() + delay
         while not stop.is_set():
-            try:
-                self.sync_once()
-                failures = 0
-                delay = self._poll_interval
-            except Exception as exc:  # noqa: BLE001 (any RPC or decode error: retry)
-                failures += 1
-                self._error = f"{type(exc).__name__}: {exc}"
-                delay = min(self._poll_interval * 2**failures, self._max_backoff)
-                log.warning("indexer cycle failed (%d): %s", failures, self._error)
-            stop.wait(delay)
+            left = deadline - time.monotonic()
+            if left <= 0:
+                return
+            if wakeable and self._wake.wait(min(left, 0.5)):
+                return
+            if not wakeable:
+                stop.wait(min(left, 0.5))
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -229,8 +271,18 @@ class Indexer:
 
     def stop(self, timeout: float = 10.0) -> None:
         self._stop.set()
+        self._wake.set()
         if self._thread:
             self._thread.join(timeout)
+
+
+def l1_watcher(settings: Any, source: L1ChainSource) -> Any:
+    """Websocket wake-up for the L1 source when `L1_WS_URL` is set (polling stays the fallback)."""
+    if not getattr(settings, "l1_ws_url", ""):
+        return None
+    from guardian.workers.ws_source import LogWatcher
+
+    return LogWatcher(settings.l1_ws_url, source.log_params())
 
 
 def build_indexer(
@@ -243,9 +295,11 @@ def build_indexer(
 
     if settings.chain_mode != "l1":
         raise RuntimeError("the indexer follows a real chain: set CHAIN_MODE=l1")
+    source = L1ChainSource(L1Chain.from_settings(settings))
     return Indexer(
-        L1ChainSource(L1Chain.from_settings(settings)),
+        source,
         sink if sink is not None else InMemoryEventSink(),
+        watcher=l1_watcher(settings, source),
         publish=publish,
         poll_interval=settings.l1_poll_interval_seconds,
         reorg_window=settings.indexer_reorg_window,
