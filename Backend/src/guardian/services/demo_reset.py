@@ -23,7 +23,7 @@ async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
 
     sim: the in-memory chain is rewound and request #12 seeded. With a database the stored sim events go too;
     at startup with restored state (`rt.restored`) nothing is rewound or seeded.
-    l1 at startup: only the in-memory stores are cleared (no request #12, no chain work).
+    l1 at startup: nothing is cleared or seeded; the proposal store was rebuilt from the Council (no request #12).
     l1 on `POST /api/demo/reset`: the ledger cannot be rewound, so `make demo-reset` has already deployed a
     FRESH contract set and written it to the deployments file (`infra/l1/demo-reset.sh`). This call reloads that
     deployment without a restart, clears the stores, keeps the event log and seeds request #12 on the new Council
@@ -49,8 +49,8 @@ async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
     # without chain events is orphaned, so those go
     if not startup:
         rt.stores.clear()
-    elif not restored:
-        rt.stores.proposals.clear()
+    elif not restored and not rt.is_l1:
+        rt.stores.proposals.clear()  # l1 keeps them: `Runtime` rebuilt them from the Council
     payroll_service.reset(rt)
     seeded: int | None = None
     if not rt.is_l1 and not restored:
@@ -129,9 +129,9 @@ def seed_request_13(rt: Runtime) -> int | None:
     try:
         key = rt.key_by_seed("key_agent_rebalance").address
         if any(
-            p.change.get("kind") == "move_key"
-            and p.change.get("to") == "huy"
-            and p.change.get("key") == key
+            (p.change or {}).get("kind") == "move_key"
+            and (p.change or {}).get("to") == "huy"
+            and (p.change or {}).get("key") == key
             for p in rt.stores.proposals.all()
         ):
             return None
