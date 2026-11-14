@@ -46,7 +46,10 @@ contract VerifySeed is L1Common {
             require(vault.recipientAllowed(rAddr[i]) == rAllowed[i], "FAIL: recipient allow-list");
         }
         uint256 funding = vm.parseJsonUint(seed, ".vault_balances.tUSDC");
-        require(IERC20(d.tUSDC).balanceOf(d.vault) == funding, "FAIL: vault tUSDC balance");
+        require(
+            IERC20(d.tUSDC).balanceOf(d.vault) >= funding,
+            "FAIL: vault tUSDC balance below the seed funding (a top-up only adds)"
+        );
 
         console.log("VerifySeed: PASS. policyVersion", vault.policyVersion());
         console.log("vault tUSDC (base units)", IERC20(d.tUSDC).balanceOf(d.vault));

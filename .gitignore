@@ -51,4 +51,8 @@ contracts/cache/
 contracts/broadcast/
 contracts/lib/
 Backend/deployments/local-l1.json
+# C-Chain deployment files of anvil runs (Backend/deployments/fuji-c.json stays tracked)
+Backend/deployments/local-c.json
+Backend/deployments/pytest-c.json
 Backend/deployments/*-bootstrap-l1.json
+infra/l1/seed.l1-fuji.json

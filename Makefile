@@ -1,4 +1,4 @@
-.PHONY: copilot-eval openapi parity shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web dev-live test lint build docker-up docker-down db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
+.PHONY: deploy-cchain topup copilot-eval openapi parity shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web dev-live test lint build docker-up docker-down db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
 
 API_URL ?= http://localhost:8000
 
@@ -163,3 +163,16 @@ l1-local-checks:
 	bash infra/l1/real-checks.sh t15
 	bash infra/l1/real-checks.sh v2
 	bash infra/l1/real-checks.sh t8
+
+# C-Chain treasury (OPS-002, docs: contracts/cchain/README.md). NETWORK=local (default; an anvil on :8546 and anvil's
+# public dev keys) or NETWORK=fuji, which REFUSES to run unless I_UNDERSTAND=fuji and needs the keys from the environment.
+# Deploy the 3-of-5 multisig + test tUSDC, mint 2.000.000 tUSDC to the multisig, write Backend/deployments/<fuji|local>-c.json.
+deploy-cchain:
+	@test "$(NETWORK)" != "fuji" -o "$(I_UNDERSTAND)" = "fuji" || { echo "NETWORK=fuji needs I_UNDERSTAND=fuji"; exit 1; }
+	NETWORK=$(NETWORK) bash infra/cchain/cchain.sh deploy
+
+# SIMULATED top-up (no bridge): 3 owners move AMOUNT (whole tUSDC) to the escrow on C-Chain, then the L1 mints the same
+# amount to the vault and records it (`TopUpRecorded`). Works before the L1 handover only (see the README).
+topup:
+	@test "$(NETWORK)" != "fuji" -o "$(I_UNDERSTAND)" = "fuji" || { echo "NETWORK=fuji needs I_UNDERSTAND=fuji"; exit 1; }
+	NETWORK=$(NETWORK) AMOUNT=$(AMOUNT) bash infra/cchain/cchain.sh topup
