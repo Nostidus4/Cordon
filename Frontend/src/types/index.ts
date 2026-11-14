@@ -16,5 +16,6 @@ export * from "./ops";
 export * from "./stream";
 export * from "./violation";
 export * from "./api";
+export * from "./payroll";
 export * from "./copilot";
 export * from "./txguard";

@@ -137,6 +137,43 @@ expectTypeOf<DiffR<S["TxFinding"], T.TxFinding>>().toEqualTypeOf<Known<never, ne
 expectTypeOf<DiffR<S["TxNumber"], T.TxNumber>>().toEqualTypeOf<Known<never, never, never>>();
 // SentTx <-> SentTx
 expectTypeOf<DiffR<S["SentTx"], T.SentTx>>().toEqualTypeOf<Known<never, never, never>>();
+// --- CITY-006 payroll (PAYROLL.md section 8): strict, no accepted drift
+// PayrollVenueOut <-> PayrollVenue
+expectTypeOf<DiffR<S["PayrollVenueOut"], T.PayrollVenue>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollRungOut <-> PayrollRung
+expectTypeOf<DiffR<S["PayrollRungOut"], T.PayrollRung>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollPayeeOut <-> PayrollPayee
+expectTypeOf<DiffR<S["PayrollPayeeOut"], T.PayrollPayee>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollGuaranteeOut <-> PayrollGuarantee
+expectTypeOf<DiffR<S["PayrollGuaranteeOut"], T.PayrollGuarantee>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollStateOut <-> PayrollState
+expectTypeOf<DiffR<S["PayrollStateOut"], T.PayrollState>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollLadderPoint <-> PayrollLadderPoint
+expectTypeOf<DiffR<S["PayrollLadderPoint"], T.PayrollLadderPoint>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollLadderOut <-> PayrollLadder
+expectTypeOf<DiffR<S["PayrollLadderOut"], T.PayrollLadder>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollEventOut <-> PayrollEvent
+expectTypeOf<DiffR<S["PayrollEventOut"], T.PayrollEvent>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollAgentRunOut <-> PayrollAgentRun
+expectTypeOf<DiffR<S["PayrollAgentRunOut"], T.PayrollAgentRun>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollReportOut <-> PayrollReport
+expectTypeOf<DiffR<S["PayrollReportOut"], T.PayrollReport>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollTxOut <-> PayrollTx
+expectTypeOf<DiffR<S["PayrollTxOut"], T.PayrollTx>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollCallOut <-> PayrollCall
+expectTypeOf<DiffR<S["PayrollCallOut"], T.PayrollCall>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollProposalOut <-> PayrollProposal
+expectTypeOf<DiffR<S["PayrollProposalOut"], T.PayrollProposal>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollAdvanceRequest <-> PayrollAdvanceRequest
+expectTypeOf<DiffQ<S["PayrollAdvanceRequest"], T.PayrollAdvanceRequest>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollScaleRequest <-> PayrollScaleRequest
+expectTypeOf<DiffQ<S["PayrollScaleRequest"], T.PayrollScaleRequest>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollMemberRequest <-> PayrollMemberRequest
+expectTypeOf<DiffQ<S["PayrollMemberRequest"], T.PayrollMemberRequest>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollProposeRequest <-> PayrollProposeRequest
+expectTypeOf<DiffQ<S["PayrollProposeRequest"], T.PayrollProposeRequest>>().toEqualTypeOf<Known<never, never, never>>();
+// PayrollAgentRunRequest <-> PayrollAgentRunRequest
+expectTypeOf<DiffQ<S["PayrollAgentRunRequest"], T.PayrollAgentRunRequest>>().toEqualTypeOf<Known<never, never, never>>();
 
 // Copilot (CITY-004): PreparedTxOut / DraftDetails / DraftResult / CopilotDraftOut / CopilotReply / CopilotEvalOut and requests
 expectTypeOf<DiffR<S["PreparedTxOut"], T.CopilotPreparedTx>>().toEqualTypeOf<Known<never, never, never>>();
@@ -156,7 +193,7 @@ expectTypeOf<DiffQ<S["ConfirmRequest"], T.CopilotConfirmRequest>>().toEqualTypeO
 expectTypeOf<DiffR<S["ViolationOut"], T.Violation>>().toEqualTypeOf<Known<never, never, never>>();
 // SSE type list must match Backend schemas/stream.py SSE_EVENT_TYPES (API_CONTRACT §5).
 expectTypeOf<T.StreamMessageType>().toEqualTypeOf<
-  "event" | "attempt" | "graph_updated" | "proposal_updated" | "agent_run" | "city_updated" | "incident_updated" | "reset"
+  "event" | "attempt" | "graph_updated" | "proposal_updated" | "agent_run" | "city_updated" | "incident_updated" | "reset" | "payroll_updated" | "payroll_event"
 >();
 
 it("parity is enforced by tsc (npm run typecheck)", () => {

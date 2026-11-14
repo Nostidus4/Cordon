@@ -132,3 +132,20 @@ async def test_city_updated_published_on_change(client: httpx.AsyncClient, rt: R
     assert "city_updated" in types and "graph_updated" in types and "event" in types
     city_evt = next(d for t, d in seen if t == "city_updated")
     assert {x["id"]: x["state"] for x in city_evt["buildings"]}["B03"] == "incident"
+
+
+async def test_b04_payroll_rules_added_after_old_ones(client: httpx.AsyncClient) -> None:
+    """CITY-006: payroll kill = incident; the old B04 rules stay first and unchanged."""
+    from guardian.shared.buildings import BUILDING_BY_ID
+
+    ids = [r.id for r in BUILDING_BY_ID["B04"].rules]
+    assert ids[-4:] == [
+        "B04.blocked_open",
+        "B04.blocked_locked",
+        "B04.payroll_kill",
+        "B04.payroll_at_risk",
+    ]
+    await client.post("/api/demo/reset")
+    assert (await city(client))["B04"]["state"] == "normal"
+    await client.post("/api/payroll/kill", json={"member": "lan"})
+    assert (await city(client))["B04"]["state"] == "incident"

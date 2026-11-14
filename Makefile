@@ -84,7 +84,7 @@ e2e-l1:
 
 # ChainPort conformance (sim + L1 on anvil) and the CHAIN_MODE=l1 API e2e; the l1 half needs Foundry
 conformance: contracts-build
-	cd Backend && uv run pytest tests/conformance tests/chain_l1/test_api_l1_anvil.py -q -rs
+	cd Backend && uv run pytest tests/conformance tests/conformance_payroll tests/chain_l1/test_api_l1_anvil.py -q -rs
 
 # Pinned OpenZeppelin + forge-std into contracts/lib (gitignored); CI runs the same script
 contracts-deps:

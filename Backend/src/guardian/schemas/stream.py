@@ -8,6 +8,8 @@ agent_run      -> AgentRunOut
 city_updated   -> CityStates
 incident_updated -> IncidentOut  (CITY_OPS §4.4)
 reset          -> {at, policyVersion, policyLabel, graphVersion, block}
+payroll_updated -> PayrollStateOut
+payroll_event   -> ChainEvent-like {name, block, txHash, logIndex, ts, payload, simulated}
 """
 
 from __future__ import annotations
@@ -23,4 +25,6 @@ SSE_EVENT_TYPES: Final = (
     "city_updated",
     "reset",
     "incident_updated",
+    "payroll_updated",
+    "payroll_event",
 )

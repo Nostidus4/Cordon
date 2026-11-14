@@ -15,6 +15,7 @@ import { INCIDENT_STATUS_VI, actionOutcomeVi, awaitsCouncil, faultsOfBuilding, r
 import { MEMBER_SHORT, approvalSlots } from "../pages/requests/logic";
 import { BUILDING_BY_ID, type BuildingId, type RuleState } from "../shared/buildings";
 import type { AgentRun, BuildingDetail, BuildingEvidence, FaultAction, FaultDef, FaultResult, Incident, MemberId } from "../types";
+import { PayrollPanel } from "./PayrollPanel";
 import { CopilotPanel } from "./CopilotPanel";
 import { useStageStore, type DrawerTab } from "./stageStore";
 import { TxGuardPanel } from "./TxGuardPanel";
@@ -260,7 +261,7 @@ export function BuildingDrawer({ code }: { code: BuildingId }) {
         </div>
         <div className="toy-scroll mt-3 min-h-0 flex-1 overflow-y-auto pr-1" role="tabpanel">
           {!d ? <p className="toy-body m-0" role="status">{detail.isError ? "Chưa đọc được trạng thái tòa này." : "Đang đọc…"}</p>
-            : tab === "overview" ? <><Overview d={d} summary={info.summaryVi} module={info.module} topic={info.topic} run={run.data ?? null} />{code === "B05" ? <TxGuardPanel /> : null}</>
+            : tab === "overview" ? <><Overview d={d} summary={info.summaryVi} module={info.module} topic={info.topic} run={run.data ?? null} />{code === "B05" ? <TxGuardPanel /> : null}{code === "B04" ? <PayrollPanel /> : null}</>
             : tab === "rules" ? <Rules d={d} />
             : tab === "incident" && inc ? <IncidentTab inc={inc} demo={demo} />
             : <><div className="toy-eyebrow mb-1.5" style={{ fontSize: 14 }}>Thử gây sự cố</div><Faults building={code} faults={faults} /></>}

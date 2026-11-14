@@ -448,6 +448,7 @@ class Runtime:
         self._in_responder = False  # set by responder.react
         self._responder_task: asyncio.Task[None] | None = None
         self._unsubscribe: Callable[[], None] = lambda: None
+        self._init_payroll()
         if self.is_l1:
             self._start_indexer()
         else:
@@ -457,6 +458,17 @@ class Runtime:
                 self._sim_sink = PgEventSink(self.stores.bridge, chain="sim")
                 self._restore_sim()
             self._unsubscribe = self.chain.subscribe(self._on_chain_event)
+
+    def _init_payroll(self) -> None:
+        """CITY-006: payroll float chain (separate from `chain`). Always the in-memory SimPayroll for now: there is
+        no l1 PayrollPort adapter yet. Its events reach the SSE bus as `payroll_event`."""
+        from guardian.chain.sim.payroll import SimPayroll
+        from guardian.services import payroll_service
+
+        members = tuple(m.address for m in self.chain.snapshot().council)
+        self.payroll: Any = SimPayroll.demo(clock=lambda: int(self.clock()), members=members)
+        self.payroll_state = payroll_service.PayrollState()
+        self.payroll.subscribe(lambda ev: payroll_service.on_chain_event(self, ev))
 
     @property
     def graph_version(self) -> int:

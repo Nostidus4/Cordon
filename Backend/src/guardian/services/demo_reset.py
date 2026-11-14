@@ -9,6 +9,7 @@ from guardian.chain.factory import load_seed, reference_v2_snapshot
 from guardian.chain.l1.startup import L1StartupError
 from guardian.core.errors import ApiError
 from guardian.graph.findings import R1
+from guardian.services import payroll_service
 from guardian.services import proposal_service as ps
 from guardian.services.runtime import Runtime
 
@@ -50,6 +51,7 @@ async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
         rt.stores.clear()
     elif not restored:
         rt.stores.proposals.clear()
+    payroll_service.reset(rt)
     seeded: int | None = None
     if not rt.is_l1 and not restored:
         _seed_request_12(rt)

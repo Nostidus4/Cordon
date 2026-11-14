@@ -33,6 +33,8 @@ Luật đổi màu giữ nguyên luật hiện có trong docstring của `servic
 | `B03.near_cap` | warning | Một khu đã dùng ≥ 80% hạn mức chung hôm nay |
 | `B04.blocked_open` | incident | Giao dịch vừa bị chặn, khu chưa được khoá |
 | `B04.blocked_locked` | recovery | Giao dịch vừa bị chặn, khu đã được khoá |
+| `B04.payroll_kill` | incident | Công tắc khẩn cấp quỹ lương đang bật |
+| `B04.payroll_at_risk` | warning | Có nơi gửi quỹ lương đang gặp sự cố |
 | `B05.shield` | incident | Chain vừa từ chối giao dịch của khu bị khoá / thẻ bị gạch |
 | `B05.locked` | recovery | Có khu đang bị khoá |
 | `B06.blocked` | warning | Lần chạy gần nhất của agent bị chặn / revert |
@@ -249,3 +251,6 @@ Mỗi nháp được đưa qua một `Checkpoint` (`assistant/copilot/checkpoint
 **UI.** `ViolationsPanel` trong ngăn kéo B03 và B07; `AgentGuardPanel` trong B06 (văn bản lạ, "đã bỏ qua", quyết định không đổi, lệnh chuyển thẳng bị chặn, nhãn hash).
 
 **Hoãn.** Timelock đổi luật (hiện ở B01) cần quyết định interface contract mới, tách thành issue riêng; chưa làm ở đây.
+## 10. Quỹ lương (B04, CITY-006)
+
+Xem [PAYROLL.md](PAYROLL.md): bộ contract riêng, agent chỉ allocate/unwind trong whitelist, bậc thang rút về trước T-1, công tắc khẩn cấp, demo một tháng trong 10 phút. Luật màu B04 thêm `B04.payroll_kill` và `B04.payroll_at_risk` (bảng mục 1).
