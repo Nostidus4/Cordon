@@ -537,9 +537,17 @@ class Runtime:
             confirmations=s.indexer_confirmations,
         )
         self.indexer.sync_once()
+        self._rebuild_proposals()
         self._live = True
         self.indexer.start()
         self._start_cchain_indexer()
+
+    def _rebuild_proposals(self) -> None:
+        """L1: the proposal store may be empty (API restarted, no Postgres) while the Council still holds open
+        proposals: rebuild the missing records from the chain. Existing records win."""
+        from guardian.services.proposal_rebuild import rebuild_from_chain
+
+        rebuild_from_chain(self)
 
     def _start_cchain_indexer(self) -> None:
         """IDX-002: follow the C-Chain treasury -> escrow transfer. Off unless CCHAIN_DEPLOYMENTS_FILE is set.

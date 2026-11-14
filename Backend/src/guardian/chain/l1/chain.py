@@ -24,6 +24,7 @@ from guardian.chain import precompiles
 from guardian.chain.base import ChainEvent, ProposalState
 from guardian.chain.client import ChainReadError, make_web3
 from guardian.chain.errors import require_hex
+from guardian.chain.l1.calls import CallDecoder
 from guardian.chain.l1.deployments import Deployments, load_deployments
 from guardian.chain.l1.events import EventDecoder, bytes32_to_id
 from guardian.chain.l1.signers import SignerRegistry, signer_env
@@ -247,6 +248,31 @@ class L1Chain(L1Writes):
             eta=eta or None,
             vetoed_by=self._vetoed_by(int(proposal_id)) if cancelled and eta else None,
         )
+
+    def proposal_count(self) -> int:
+        return int(self._need_council().functions.proposalCount().call())
+
+    def proposal_header(self, proposal_id: int) -> dict[str, Any]:
+        """What `Proposed` recorded, from `getProposal`: title, subject, proposer, riskReportHash, createdAt and the
+        calls decoded back to the symbolic vocabulary (see `CallDecoder`). Raises KeyError for an unknown id."""
+        council = self._need_council()
+        try:
+            p = council.functions.getProposal(int(proposal_id)).call()
+        except (ContractLogicError, BadFunctionCallOutput):
+            raise KeyError(proposal_id) from None
+        subject = bytes(p[2])
+        return {
+            "id": int(p[0]),
+            "proposer": to_checksum_address(p[1]),
+            "subject_principal": bytes32_to_id(subject) if any(subject) else None,
+            "calls": self._decoder_calls().decode([(c[0], bytes(c[1])) for c in p[3]]),
+            "risk_report_hash": "0x" + bytes(p[4]).hex(),
+            "title": str(p[5]),
+            "created_at": int(p[9]),
+        }
+
+    def _decoder_calls(self) -> CallDecoder:
+        return CallDecoder(self.registry, self.vault, self.txallow)
 
     def _vetoed_by(self, proposal_id: int) -> str | None:
         """Member of the `Vetoed(id, member)` log of this proposal (None when it was cancelled by its proposer)."""
