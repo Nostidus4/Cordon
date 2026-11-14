@@ -86,7 +86,7 @@ describe.skipIf(!process.env.PARITY)("mock vs live parity (sim backend)", () => 
     vi.stubEnv("VITE_API_BASE", `http://127.0.0.1:${PORT}/api`);
     const { mockConfig, mockApi } = await import("../mock/server");
     mockConfig.latencyMs = 0; mockConfig.stepDelayMs = 0;
-    mock = mockApi as Api;
+    mock = mockApi as unknown as Api; // copilot methods live in mock/copilot.ts
     live = (await import("./endpoints")).liveApi;
     server = spawn("uv", ["run", "uvicorn", "guardian.main:app", "--port", PORT], {
       cwd: new URL("../../../../Backend", import.meta.url).pathname, stdio: "pipe",
