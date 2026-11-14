@@ -268,7 +268,9 @@ async def test_proposal_12_executed_survives_restart(pg_schema: None) -> None:
         rt = b.state.runtime
         assert rt.restored
         assert (await c.get("/api/proposals/12")).json() == p12
-        assert pids((await c.get("/api/proposals")).json()) == listed == [13, 12]
+        assert (
+            pids((await c.get("/api/proposals")).json()) == listed == [14, 13, 12]
+        )  # 14 = policy v2
         assert (await c.get("/api/org")).json()["policyVersion"] == 3
         assert (await c.get("/api/attempts")).json() == attempts
         assert rt.graph_version > graph_v  # persisted, then bumped by the startup reset
