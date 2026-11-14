@@ -76,13 +76,43 @@ Addresses: Contract Deployer AllowList `0x02000000000000000000000000000000000000
 
 After `make l1-local-up`, `make l1-local-bootstrap` (or `make deploy-contracts` on an already running local network) deploys the contracts, seeds policy v1 through Council proposals, makes the Council admin of both precompiles, removes the deployer and runs `VerifySeed` and `VerifyHandover`. The roster addresses in this folder are the ones the scripts and the backend use for keys and Council members (`infra/l1/local_env.py` writes the matching seed and `Backend/.env.l1-local`). Details and the real outputs: `docs/modules/guardian-l1/README.md`. On Fuji the same scripts run with `NETWORK=fuji I_UNDERSTAND=fuji make deploy-contracts` after step 5 below and write `Backend/deployments/fuji-l1.json`; that run has not been done. Choose the Council timelock before that run: it is immutable, so `COUNCIL_TIMELOCK_S=60` (recommended for the demo) has to be set when `deploy` runs; the seed/handover steps then queue and `contracts.sh` executes the queue after the delay (see `docs/modules/guardian-l1/README.md`, section Timelock).
 
-## Fuji (remaining, needs a funded testnet key and a host)
+## Fuji (deployed 2026-11-14, #30)
 
-Not done here: nothing was sent to Fuji and no key was generated.
+The Guardian L1 runs on Fuji. IDs and addresses: `Backend/deployments/fuji-l1-chain.json` (no keys).
 
-1. Create a throwaway Fuji deployer key and fund it with Fuji AVAX from the faucet: `avalanche key create fuji_deployer`. Never commit it.
-2. Copy `roster.fuji.example.json` to `roster.fuji.json`, fill in real addresses (deployer, council, agent/service, key_minh, key_huy_1/2, key_lan, backend demo signer). Addresses only. Pick a chain id that is not in use.
-3. `FUJI_KEY=fuji_deployer ROSTER=contracts/genesis/roster.fuji.json I_UNDERSTAND=fuji make deploy-l1`. The script targets CLI 1.9.7 (validator-managed L1 with a Proof-of-Authority manager owned by the deployer, local-machine validator). The exact flags for a validator on a VPS (`--bootstrap-endpoints`, staking keys, P-Chain balance) were not exercised; check `avalanche blockchain deploy --help`.
-4. Run the validator on a host with `Restart=always` (see `infra/l1/avalanchego.service`) and expose the RPC. Record chain id, RPC and ws URLs in `Backend/.env` (`L1_RPC_URL`, `L1_WS_URL`, `L1_CHAIN_ID`) and in `Backend/deployments/fuji-l1.json`.
-5. Check with `make l1-status` (`L1_RPC_URL=... L1_CHAIN_ID=...`), then run the kill-and-recover test: `kill` the process, blocks must continue within 1 minute.
-6. Prefund every enabled key if the genesis alloc was not enough; repeat the rejected-sender probe against the public RPC and confirm the message matches the table above.
+| | |
+|---|---|
+| Chain id | `845357` (token `GAI`) |
+| Subnet ID | `2aymWHXCfwsdpKCk73rDqZNtUGdwXHrsLWfgGQEaszwgLwkdFk` |
+| Blockchain ID | `4hnXBqtkcq2uj8e3rcfGKh3NDBn3CgrWPe4tk71WQFfP4rTTb` |
+| Validator | `NodeID-5xybfwXRgXtYrHqK1pSmgkDSzv5DemohR`, on the demo Mac (`--use-local-machine`), P-Chain balance 0.1 AVAX |
+| RPC / ws | `http://127.0.0.1:9650/ext/bc/<blockchain id>/rpc` and `/ws` (local to the validator host) |
+| Versions | avalanchego v1.15.3, Subnet-EVM v1.15.3 (shipped inside the avalanchego release), Avalanche CLI 1.9.7 |
+
+Verified on the Fuji L1 (real output):
+- `eth_chainId` = 845357; deployer holds the 1000 GAI genesis alloc.
+- `readAllowList` on the Tx AllowList: deployer=2, key_minh=1, a fresh address=0.
+- key_minh self-transfer: `status 1`, block 0 -> 1 (Subnet-EVM mines on transactions only).
+- A funded address that is not on the list: `cannot issue transaction from non-allow listed address: 0x7D5b…8Ab5`, no hash, no block. Same string as the local table above.
+
+### How it was deployed (and why it is not the plain CLI path)
+
+1. **CLI vs Fuji API.** The public Fuji API dropped `platform.getBalance`; CLI 1.9.7 (latest) still calls it. `infra/l1/fuji_proxy.py` (127.0.0.1:9655) sends P-Chain calls (`/ext/bc/P`, `/ext/P`) to `avalanche-fuji-p-chain-rpc.publicnode.com` and everything else to `api.avax-test.network`; the CLI uses it via `--endpoint`.
+2. **Helicon.** Fuji activated Helicon (2026-07-28); avalanchego 1.14.x cannot follow it. Since 1.15 Subnet-EVM ships with avalanchego (rpcchainvm 47). `infra/l1/deploy-fuji-v1153.sh` downloads nothing itself: put the official v1.15.3 macOS zips from github.com/ava-labs/avalanchego/releases in `~/.avalanche-cli/bin/v1153/`; the script swaps the CLI's Subnet-EVM v0.8.0 plugin for v1.15.3 (backup kept) and passes `--avalanchego-path`.
+3. **Bootstrap time.** The CLI's wait for the local node (partial sync of the Fuji P-Chain, ~16 min) timed out once; the node kept going. Re-running `deploy` and answering **No** to "overwrite the current local L1 deploy" reuses the bootstrapped node.
+4. **Custom genesis has no Validator Manager predeploy.** With `--genesis`, CLI 1.9.7 does not add the VMC, and reusing the node left the conversion without a validator (`conversion must include at least one validator`). What worked: record the created subnet/chain IDs in `~/.avalanche-cli/subnets/guardianl1/sidecar.json` (Networks.Fuji), then
+   ```bash
+   avalanche blockchain convert guardianl1 --fuji --endpoint http://127.0.0.1:9655 --key fuji_deployer \
+     --bootstrap-endpoints http://127.0.0.1:9650 --balance 0.1 --convert-only \
+     --proof-of-authority --validator-manager-owner <deployer> \
+     --validator-manager-blockchain-id <blockchain id> --validator-manager-address 0x0FEEDC0DE0000000000000000000000000000000 --verify-input=false
+   avalanche node local track guardianl1-local-node-fuji guardianl1
+   ```
+   An earlier attempt created subnet `2t5Svsmu…kvgx` / chain `mnm8GHYF…AYhG`, which was never converted and is unused.
+
+### Known limits
+- **Validator manager not deployed.** The conversion names `0x0FEEDC0DE…0000` on the L1 as manager but no contract is there, so the validator set cannot be changed (adding or removing validators). One fixed validator is enough for the demo; `avalanche contract initValidatorManager guardianl1` after deploying the VMC is the follow-up.
+- **RPC is local** to the validator host (the demo Mac, behind NAT). The backend runs on the same machine. A public RPC needs a host with a public IP (see `infra/l1/avalanchego.service`).
+- **Keep the Mac awake** (`caffeinate -dimsu`): the L1 makes blocks only while this validator runs. Restart: `avalanche node local start guardianl1-local-node-fuji` (the kill-and-recover acceptance test is still to be run).
+- **P-Chain fee balance runs out in about 2 days.** The validator pays a continuous fee from its P-Chain balance (0.1 AVAX at deploy). At the current minimum price (512 nAVAX/s, about 0.044 AVAX/day) that lasts about 2.2 days; after that the validator is deactivated and the L1 stops making blocks. Top it up before the demo with the Builder Console "Validator Balance" tool (console → L1 Validators → Validator Balance) for `NodeID-5xybfwXRgXtYrHqK1pSmgkDSzv5DemohR`.
+- `avalanche blockchain describe guardianl1` prints the private keys of CLI-stored genesis keys; do not paste its output anywhere.

@@ -1,0 +1,23 @@
+{
+  "_note": "Guardian L1 on Fuji (#30, 2026-11-14). IDs and addresses only. Contracts are recorded separately by make deploy-contracts (#31) in fuji-l1.json.",
+  "network": "fuji",
+  "chainId": 845357,
+  "tokenSymbol": "GAI",
+  "subnetId": "2aymWHXCfwsdpKCk73rDqZNtUGdwXHrsLWfgGQEaszwgLwkdFk",
+  "blockchainId": "4hnXBqtkcq2uj8e3rcfGKh3NDBn3CgrWPe4tk71WQFfP4rTTb",
+  "vmId": "nZi83aw7oFxHXktuNDtF1PEEn49aZp6JidCMGv1rixG8zvuQW",
+  "validatorNodeId": "NodeID-5xybfwXRgXtYrHqK1pSmgkDSzv5DemohR",
+  "validatorManager": {
+    "type": "PoA",
+    "owner": "0x6683cF6bA03d55127848361fc084B289DfCC812F",
+    "address": "0x0FEEDC0DE0000000000000000000000000000000",
+    "deployed": false
+  },
+  "rpcUrl": "http://127.0.0.1:9650/ext/bc/4hnXBqtkcq2uj8e3rcfGKh3NDBn3CgrWPe4tk71WQFfP4rTTb/rpc",
+  "wsUrl": "ws://127.0.0.1:9650/ext/bc/4hnXBqtkcq2uj8e3rcfGKh3NDBn3CgrWPe4tk71WQFfP4rTTb/ws",
+  "versions": {
+    "avalanchego": "v1.15.3",
+    "subnetEvm": "v1.15.3",
+    "avalancheCli": "1.9.7"
+  }
+}
