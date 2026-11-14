@@ -229,7 +229,10 @@ async def test_new_rec_types_round_trip_through_their_pg_stores(pg_schema: None)
         pg.PgAssistantLogStore(bridge).add(log)
         pg.PgFindingStore(bridge)._put(find)
         pg.PgSimRunStore(bridge).add(sim)
-        view = lambda _i: ("open", [])
+
+        def view(_i: int) -> tuple[str, list[str]]:
+            return "open", []
+
         assert pg.PgProposalStore(bridge, view).all() == [prop, no_subject]
         assert pg.PgProposalStore(bridge, view).get(12) == prop
         assert pg.PgAgentRunStore(bridge).all() == [run]
