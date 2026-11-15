@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Billboard, Html, Line } from "@react-three/drei";
+import { Billboard, Line } from "@react-three/drei";
+import { ScreenHtml as Html } from "../ScreenHtml";
 import { Color, MathUtils, Object3D, Vector3, type InstancedMesh, type Mesh, type MeshBasicMaterial } from "three";
 import type { Attempt } from "../../types/attempt";
 import { badgeTexture, noRaycast } from "../fx";
