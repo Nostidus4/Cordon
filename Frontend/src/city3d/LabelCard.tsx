@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Html } from "@react-three/drei";
+import { ScreenHtml as Html } from "./ScreenHtml";
 import type { Group } from "three";
 import { useAssembly } from "./assembly";
 import { cards } from "./cardRegistry";
