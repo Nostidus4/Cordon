@@ -33,7 +33,7 @@ export function ScreenHtml({ position, center, zIndexRange, style, children }: {
   useLayoutEffect(() => {
     if (!target) return;
     const node = document.createElement("div");
-    node.style.cssText = "position:absolute;top:0;left:0;transform-origin:0 0;";
+    node.style.cssText = "position:absolute;top:0;left:0;transform-origin:0 0;visibility:hidden;"; // hidden until the first frame places it
     target.appendChild(node);
     const r = createRoot(node);
     el.current = node;
@@ -75,6 +75,7 @@ export function ScreenHtml({ position, center, zIndexRange, style, children }: {
       node.style.zIndex = `${Math.round(a * dist + zIndexRange[1] - a * camera.far)}`;
     }
     node.style.transform = `translate3d(${x}px,${y}px,0)`;
+    node.style.visibility = "";
     last.current = [x, y];
   });
 
