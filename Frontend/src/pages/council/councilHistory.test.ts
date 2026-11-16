@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ChainEvent, CouncilMember } from "../../types";
+import type { ChainEvent, CouncilMember, Proposal } from "../../types";
 import { buildHistory } from "./councilHistory";
 
 // Payload names follow docs/spec/API_CONTRACT.md §2: Proposed {id, proposer(address)}, Approved {id, member(address)}, Executed {id}.
@@ -26,5 +26,12 @@ describe("buildHistory with live payloads", () => {
     expect(h.map((x) => x.title)).toEqual(["Chị Lan đề xuất #14", "Chị Lan duyệt #14", "Chị Trang duyệt #14", "Đề xuất #14 được thực thi", "Chị Lan khoá khu anh Minh", "Chị Lan khoá khu anh Minh"]);
     expect(h[2].rule).toBe("phiếu 2/2");
     expect(h[3]).toMatchObject({ kind: "loosen", detail: "Gộp khu", policyVersion: 2 });
+  });
+
+  it("takes approval time and resulting policy version from the proposal", () => {
+    const prop = { id: 14, resultingPolicyVersion: 7, members: [{ id: "lan", approvedAt: 1_800_000_000 }] } as unknown as Proposal;
+    const h = buildHistory([ev("Approved", { id: 14, member: A.lan }), ev("PolicyVersionBumped", { version: 9 }), ev("Executed", { id: 14 })], members, 0, [prop]).reverse();
+    expect(h[0].ts).toBe(new Date(1_800_000_000 * 1000).toISOString());
+    expect(h[1].policyVersion).toBe(7);
   });
 });

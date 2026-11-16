@@ -46,6 +46,8 @@ export interface ProposalMember {
   conflicted: boolean;
   canApprove: boolean;
   disabledReason: string | null;
+  /** Unix seconds of the approval tx; null while not approved. */
+  approvedAt: number | null;
 }
 
 export interface Proposal extends ProposalBody {
@@ -63,6 +65,8 @@ export interface Proposal extends ProposalBody {
   createdAt: number;
   executedAt: number | null;
   executedTxHash: string | null;
+  /** Policy version produced by the execute tx. */
+  resultingPolicyVersion: number | null;
   /** Timelock (#77): earliest execution time in unix seconds once the proposal has 2/3 and waits; null = never queued. */
   eta: number | null;
   /** True while the proposal waits for its `eta` (can be vetoed by one member). */

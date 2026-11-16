@@ -1293,7 +1293,7 @@ export interface components {
             /** Answer */
             answer: string;
             /** Checks */
-            checks?: components["schemas"]["NumberCheck"][];
+            checks: components["schemas"]["NumberCheck"][];
             /**
              * Flaggeduntrusted
              * @default false
@@ -1310,11 +1310,11 @@ export interface components {
             /** Screen */
             screen?: string | null;
             /** Toolcalls */
-            toolCalls?: components["schemas"]["ToolCall"][];
+            toolCalls: components["schemas"]["ToolCall"][];
             /** Ts */
             ts: number;
             /** Uncovered */
-            uncovered?: string[];
+            uncovered: string[];
         };
         /** AssistantWarning */
         AssistantWarning: {
@@ -2741,7 +2741,7 @@ export interface components {
         /** ToolCall */
         ToolCall: {
             /** Args */
-            args?: {
+            args: {
                 [key: string]: unknown;
             };
             /** Name */

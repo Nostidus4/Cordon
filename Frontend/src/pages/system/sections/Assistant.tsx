@@ -5,11 +5,14 @@ import { ASSISTANT_QUESTIONS } from "../../../shared/assistantQuestions";
 import { isoOfSec } from "../../../lib/dto";
 import { Mascot } from "../../../stage/ui";
 import type { AssistantLog } from "../../../types";
+import { summarizeLog, fmtArgs } from "../assistant.logic";
 import { sysKeys, useAssistantLogs } from "../data";
 import { useFeed } from "../feed";
 import { ACCENT, Empty, Section, fmtClock } from "../ui";
 
 function LogCard({ log }: { log: AssistantLog }) {
+  const sum = summarizeLog(log);
+  const { checks, uncovered, toolCalls } = log;
   const ok = log.numbersVerified;
   const tone = ok ? "var(--ok-ink)" : "var(--red-ink)";
   return (
@@ -25,9 +28,34 @@ function LogCard({ log }: { log: AssistantLog }) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-        <b style={{ color: tone, fontSize: 13 }}>{ok ? "✓ Mọi số đã được kiểm" : "✕ Có số chưa khớp, đã thay bằng câu mẫu"}</b>
+        <b style={{ color: tone, fontSize: 13 }}>{ok ? "✓ Mọi số đã được kiểm" : sum.fallback ? "Câu mẫu dự phòng, không có số để kiểm" : `✕ ${sum.failed + sum.uncovered} số chưa khớp, đã thay bằng câu mẫu`}</b>
         {log.flaggedUntrusted ? <span style={{ fontSize: 12, color: "var(--red-ink)" }}>câu hỏi chứa chữ lạ, đã bị coi là không tin cậy</span> : null}
       </div>
+
+      {checks.length || uncovered.length ? (
+        <div className="mt-2 grid gap-1">
+          {checks.map((c, i) => (
+            <div key={i} className="flex flex-wrap items-baseline gap-x-3" style={{ background: c.match ? "var(--ok-soft)" : "var(--red-soft)", borderRadius: 12, padding: "4px 12px" }}>
+              <b style={{ color: c.match ? "var(--ok-ink)" : "var(--red-ink)", width: 14 }}>{c.match ? "✓" : "✕"}</b>
+              <span style={{ flex: "1 1 120px" }}>{c.label}</span>
+              <b className="font-toy tnum" style={{ fontSize: 16 }}>{c.value}</b>
+              {!c.match ? <span style={{ fontSize: 12, color: "var(--red-ink)" }}>công cụ trả về {c.toolValue ?? "không đọc được"}</span> : null}
+            </div>
+          ))}
+          {uncovered.map((u) => <div key={u} style={{ background: "var(--red-soft)", borderRadius: 12, padding: "4px 12px", color: "var(--red-ink)" }}><b>✕</b> số <b className="tnum">{u}</b> có trong câu trả lời nhưng chưa được kiểm</div>)}
+        </div>
+      ) : null}
+
+      <details className="mt-2" style={{ fontSize: 12 }}>
+        <summary style={{ cursor: "pointer", color: "var(--ink-2)", fontWeight: 600 }}>Công cụ đã gọi ({toolCalls.length}), chỉ đọc</summary>
+        <div className="mt-1.5 grid gap-1">
+          {toolCalls.length === 0 ? <span style={{ color: "var(--ink-2)" }}>Không gọi công cụ nào.</span> : toolCalls.map((t, i) => (
+            <div key={i} style={{ background: "#2d2250", borderRadius: 12, padding: "5px 10px" }}>
+              <code className="mono" style={{ color: "#8fe7c9" }}>{t.name}({fmtArgs(t.args).slice(0, 110)})</code>
+            </div>
+          ))}
+        </div>
+      </details>
     </article>
   );
 }

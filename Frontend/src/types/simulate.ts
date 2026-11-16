@@ -33,6 +33,6 @@ export interface SimResultCore {
 
 /** With `change`: top-level = state after change; before/after = full results. */
 export interface SimResult extends SimResultCore {
-  before?: SimResultCore;
-  after?: SimResultCore;
+  before: SimResultCore | null;
+  after: SimResultCore | null;
 }

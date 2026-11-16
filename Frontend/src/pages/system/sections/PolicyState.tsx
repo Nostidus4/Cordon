@@ -29,14 +29,14 @@ export function PolicyState() {
   const paused = vault?.data.paused === true;
   const keyNode = (id: string): GraphNode | undefined => graph?.nodes.find((n) => n.id === `k:${id}`);
 
-  const snap = policySnapshot(graph, org ? { usdc: org.vault.balance.raw, tkb: org.vault.tkb?.raw ?? "" } : undefined);
+  const snap = policySnapshot(graph, org ? { usdc: org.vault.balance.raw, tkb: org.vault.balanceTkb.raw } : undefined);
   const ch = useChanged(snap);
   const f = (k: string) => (ch.has(k) ? "sx-flash" : "");
 
   const tokens = graph?.nodes.filter((n) => n.type === "Token") ?? [];
   const protocols = graph?.nodes.filter((n) => n.type === "Protocol") ?? [];
   const recipients = graph?.nodes.filter((n) => n.type === "Recipient") ?? [];
-  const tkb = org?.vault.tkb;
+  const tkb = org?.vault.balanceTkb;
   const total = org ? big(org.vault.balance.raw) + big(tkb?.raw ?? "0") : 0n;
   const share = tkb ? percentOf(big(tkb.raw), total) : 0;
 
