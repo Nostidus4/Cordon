@@ -160,7 +160,6 @@ def _loop(
         messages.append({"role": "user", "content": results})
     if draft is not None:
         return service._draft_reply(*draft)
-    built, _ = freetext._finish(
-        turn.text, data
-    )  # raises LlmUnavailable when a number is not verifiable
+    # raises LlmUnavailable when a number is not verifiable or echoes untrusted text
+    built, _ = freetext._finish(turn.text, data, freetext.untrusted_numbers(rt))
     return service._reply("read", built.answer, built.numbers, True, highlight=built.highlight)
