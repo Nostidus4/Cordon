@@ -15,6 +15,10 @@ What it does:
      Backend/.env.fuji (values never printed). RPC_URL / WS_URL in the environment override rpcUrl / wsUrl of
      Backend/deployments/fuji-l1-chain.json.
      Run the API with: cd Backend && set -a && . ./.env.l1-fuji && set +a && uv run guardian-api
+     COUNCIL_TIMELOCK_S is 15 (D9: demo-reset <= 3 min; the delay is immutable per Council deploy).
+  3b. also writes Backend/.env.l1-fuji.docker (same rules, mode 600) for the compose stack (`make stack-l1`):
+     RPC/WS through the host proxy host.docker.internal:9660 (infra/l1/host_rpc_proxy.py; L1_DOCKER_PROXY overrides),
+     GUARDIAN_SEED_FILE=/app/seed.l1-fuji.json (mounted read-only by docker-compose.l1.yml), LLM_ENABLED=false.
   4. with --cchain-keys: when Backend/.env.fuji lacks CCHAIN_OWNER_KEY_1..5 / CCHAIN_DEPLOYER_KEY / L1_TOPUP_KEY, appends
      them (5 fresh owner keys; the deployer key twice) to that file, mode 600. Idempotent. Prints the 5 owner addresses.
 
@@ -29,6 +33,7 @@ import re
 import secrets
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 from eth_account import Account
 
@@ -42,6 +47,14 @@ DEPLOYER_KEY_FILE = Path(
 CHAIN_RECORD = Path(os.environ.get("FUJI_CHAIN_RECORD") or ROOT / "Backend" / "deployments" / "fuji-l1-chain.json")
 OUT_BACKEND_ENV = Path(os.environ.get("FUJI_BACKEND_ENV_OUT") or ROOT / "Backend" / ".env.l1-fuji")
 OUT_SEED = Path(os.environ.get("FUJI_SEED_OUT") or ROOT / "infra" / "l1" / "seed.l1-fuji.json")
+OUT_DOCKER_ENV = Path(os.environ.get("FUJI_DOCKER_ENV_OUT") or ROOT / "Backend" / ".env.l1-fuji.docker")
+# Where docker-compose.l1.yml mounts infra/l1/seed.l1-fuji.json inside the containers (read-only).
+DOCKER_SEED_PATH = "/app/seed.l1-fuji.json"
+# infra/l1/host_rpc_proxy.py on the host; Docker Desktop for Mac routes host.docker.internal to the Mac's loopback.
+DOCKER_PROXY = os.environ.get("L1_DOCKER_PROXY") or "host.docker.internal:9660"
+# Demo-reset deploys a new Council per run and its delay is immutable. Measured on Fuji: a reset takes 190 s at 20 s and
+# 170 s at 15 s; D9 allows 180 s, so 15 s (still a visible countdown).
+COUNCIL_TIMELOCK_DEFAULT = "15"
 
 
 def parse_env(path: Path) -> dict[str, str]:
@@ -62,6 +75,14 @@ def addr_of(key: str) -> str:
     return Account.from_key(norm(key)).address
 
 
+def via_docker_proxy(url: str) -> str:
+    """http://127.0.0.1:9650/ext/bc/<id>/rpc -> http://host.docker.internal:9660/ext/bc/<id>/rpc (same for ws)."""
+    if not url:
+        return url
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme, DOCKER_PROXY, parts.path, parts.query, parts.fragment))
+
+
 def write_backend_env(
     roster: dict,
     env: dict[str, str],
@@ -70,10 +91,18 @@ def write_backend_env(
     chain_record: Path,
     rpc: str = "",
     ws: str = "",
+    *,
+    docker: bool = False,
 ) -> list[str]:
-    """Write the Backend env for CHAIN_MODE=l1 on Fuji; returns the L1_KEY_* names copied (never the values)."""
+    """Write the Backend env for CHAIN_MODE=l1 on Fuji; returns the L1_KEY_* names copied (never the values).
+
+    `docker=True` is the variant for the compose stack: the RPC/WS host:port becomes the host RPC proxy
+    (`host.docker.internal:9660`, infra/l1/host_rpc_proxy.py), `seed_file` is the in-container path, the LLM is off
+    (no paid calls unless asked); compose reads the file through `env_file:` (BACKEND_ENV_FILE)."""
     rec = json.loads(chain_record.read_text(encoding="utf-8")) if chain_record.exists() else {}
     rpc, ws = rpc or rec.get("rpcUrl") or "", ws or rec.get("wsUrl") or ""
+    if docker:
+        rpc, ws = via_docker_proxy(rpc), via_docker_proxy(ws)
     chain_id = int(roster["chainId"])
     keys = sorted(k for k in env if k.startswith("L1_KEY_") and env[k])
     lines = [
@@ -93,10 +122,11 @@ def write_backend_env(
         # 2.600-block range in one call.
         "CCHAIN_RPC_URL=https://avalanche-fuji-c-chain-rpc.publicnode.com",
         "CCHAIN_LOG_CHUNK=2000",
-        f"GUARDIAN_SEED_FILE={seed_file.resolve()}",
+        f"GUARDIAN_SEED_FILE={seed_file if docker else seed_file.resolve()}",
         "DEMO_MODE=true",
         f"DEMO_CHAIN_IDS='{json.dumps(demo_ids)}'",
-        "COUNCIL_TIMELOCK_S=60",
+        f"COUNCIL_TIMELOCK_S={COUNCIL_TIMELOCK_DEFAULT}",
+        *(["LLM_ENABLED=false"] if docker else []),
         *(f"{k}={env[k]}" for k in keys),
     ]
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -144,6 +174,17 @@ def main() -> int:
         os.environ.get("WS_URL", ""),
     )
     print(f"wrote {OUT_BACKEND_ENV} ({len(keys)} L1_KEY_* variables, values not shown)")
+    write_backend_env(
+        roster,
+        env,
+        OUT_DOCKER_ENV,
+        Path(DOCKER_SEED_PATH),
+        CHAIN_RECORD,
+        os.environ.get("RPC_URL", ""),
+        os.environ.get("WS_URL", ""),
+        docker=True,
+    )
+    print(f"wrote {OUT_DOCKER_ENV} (containers: RPC via {DOCKER_PROXY}, seed {DOCKER_SEED_PATH}, LLM off)")
 
     if "--cchain-keys" in sys.argv:
         add: list[str] = []

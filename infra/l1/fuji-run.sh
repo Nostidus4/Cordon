@@ -21,6 +21,7 @@ source "$ENVF"
 set +a
 DEPLOYER_PK="$(tr -d ' \n\r' <"$DKF")"
 [[ "$DEPLOYER_PK" == 0x* ]] || DEPLOYER_PK="0x$DEPLOYER_PK"
+export COUNCIL_TIMELOCK_S="${COUNCIL_TIMELOCK_S:-15}" # immutable per Council; D9: a demo-reset must fit 3 min
 export DEPLOYER_PK NETWORK=fuji I_UNDERSTAND=fuji RPC_URL L1_RPC_URL="$RPC_URL"
 export SEED_FILE="$ROOT/infra/l1/seed.l1-fuji.json"
 TOP_UP_OPERATOR="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['enabled']['backend_demo_signer'])" "$ROSTER")"

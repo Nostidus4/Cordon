@@ -61,7 +61,7 @@ def test_writes_env_with_keys_seed_and_urls(setup: dict[str, Any]) -> None:
     assert out["DEPLOYMENTS_FILE"] == "deployments/fuji-l1.json"
     assert out["CCHAIN_DEPLOYMENTS_FILE"] == "deployments/fuji-c.json"
     assert out["GUARDIAN_SEED_FILE"] == str(seed.resolve())
-    assert out["DEMO_MODE"] == "true" and out["COUNCIL_TIMELOCK_S"] == "60"
+    assert out["DEMO_MODE"] == "true" and out["COUNCIL_TIMELOCK_S"] == "15"
     assert 845357 in json.loads(out["DEMO_CHAIN_IDS"].strip("'"))
     assert out["L1_KEY_KEY_MINH"] == setup["env"]["L1_KEY_KEY_MINH"]
     assert "OTHER_VAR" not in out
@@ -84,5 +84,34 @@ def test_rpc_and_ws_overrides(setup: dict[str, Any]) -> None:
 
 
 def test_output_is_ignored_by_version_control() -> None:
-    r = subprocess.run(["git", "check-ignore", "-q", "Backend/.env.l1-fuji"], check=False, cwd=REPO)
-    assert r.returncode == 0
+    for name in ("Backend/.env.l1-fuji", "Backend/.env.l1-fuji.docker"):
+        r = subprocess.run(["git", "check-ignore", "-q", name], check=False, cwd=REPO)
+        assert r.returncode == 0, name
+
+
+def test_docker_variant_goes_through_the_host_proxy(setup: dict[str, Any]) -> None:
+    mod = load_module()
+    seed = Path("/app/seed.l1-fuji.json")
+    names = mod.write_backend_env(
+        {"chainId": 845357}, setup["env"], setup["out"], seed, setup["record"], docker=True
+    )
+    out = parse(setup["out"])
+    assert names == ["L1_KEY_COUNCIL_TRANG", "L1_KEY_KEY_MINH"]
+    assert out["L1_RPC_URL"] == "http://host.docker.internal:9660/rpc"
+    assert out["L1_WS_URL"] == "ws://host.docker.internal:9660/ws"
+    assert out["GUARDIAN_SEED_FILE"] == "/app/seed.l1-fuji.json"
+    assert out["DEPLOYMENTS_FILE"] == "deployments/fuji-l1.json"
+    assert out["CCHAIN_RPC_URL"] == "https://avalanche-fuji-c-chain-rpc.publicnode.com"
+    assert out["LLM_ENABLED"] == "false" and out["COUNCIL_TIMELOCK_S"] == "15"
+    assert out["CHAIN_MODE"] == "l1" and out["DEMO_MODE"] == "true"
+    assert 845357 in json.loads(out["DEMO_CHAIN_IDS"].strip("'"))
+    assert "127.0.0.1" not in setup["out"].read_text()
+    assert stat.S_IMODE(setup["out"].stat().st_mode) == 0o600
+
+
+def test_native_variant_has_no_llm_override(setup: dict[str, Any]) -> None:
+    mod = load_module()
+    mod.write_backend_env(
+        {"chainId": 845357}, setup["env"], setup["out"], setup["tmp"] / "s.json", setup["record"]
+    )
+    assert "LLM_ENABLED" not in parse(setup["out"])

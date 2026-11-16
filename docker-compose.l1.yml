@@ -1,17 +1,38 @@
-# CHAIN_MODE=l1 override (documented, not verified here; the on-chain track verifies it):
-#   CHAIN_MODE=l1 docker compose -f docker-compose.yml -f docker-compose.l1.yml up --build -d
-# L1_RPC_URL, L1_CHAIN_ID, DEPLOYMENTS_FILE, GUARDIAN_SEED_FILE and the L1_KEY_* signers come from Backend/.env
-# (testnet/local keys only). The deployments and seed files are mounted read-only from Backend/.
+# CHAIN_MODE=l1 override (L1-003, #35): the same db, migrate, api, worker, agent, web, against the Guardian L1.
+#
+#   make stack-l1      # = docker compose -f docker-compose.yml -f docker-compose.l1.yml up --build -d --wait
+#
+# Env for the Backend containers: L1_ENV_FILE (default Backend/.env.l1-fuji.docker, written by
+# `Backend/.venv/bin/python infra/l1/fuji_env.py`; gitignored, mode 600, test keys only). It is added after Backend/.env (optional), so its values win.
+# The chain RPC is reached through infra/l1/host_rpc_proxy.py on the host (host.docker.internal:9660): the validator
+# only answers to Host: localhost and its admin API must stay on 127.0.0.1. Start the proxy before the stack:
+#   python3 infra/l1/host_rpc_proxy.py
+# Deployments are mounted read-only as a directory, so `make demo-reset` (which atomically renames a new
+# Backend/deployments/fuji-l1.json into place) is seen by the containers. The Fuji seed file is mounted read-only
+# at /app/seed.l1-fuji.json (GUARDIAN_SEED_FILE in the env file); generate it first or docker mounts a directory.
+# Local anvil / local L1: point L1_ENV_FILE at your own env file (docs/DEVELOPMENT.md, Docker, l1).
 x-l1: &l1
+  env_file:
+    - path: ${L1_ENV_FILE:-./Backend/.env.l1-fuji.docker}
+      required: true
   volumes:
     - ./Backend/deployments:/app/deployments:ro
+    - ${L1_SEED_FILE:-./infra/l1/seed.l1-fuji.json}:/app/seed.l1-fuji.json:ro
   extra_hosts:
-    - "host.docker.internal:host-gateway"  # an L1 on the host: L1_RPC_URL=http://host.docker.internal:9650/...
+    - "host.docker.internal:host-gateway"  # Docker Desktop (Mac) maps it to the host loopback already
 
 services:
-  api: *l1
-  worker: *l1
+  api:
+    <<: *l1
+    environment:
+      CHAIN_MODE: l1
+  worker:
+    <<: *l1
+    environment:
+      CHAIN_MODE: l1
   agent:
     <<: *l1
     environment:
+      CHAIN_MODE: l1
+      # l1: the agent writes to the same chain as the API, so it shares the API's database.
       DATABASE_URL: ${AGENT_DATABASE_URL:-postgresql+asyncpg://guardian:${POSTGRES_PASSWORD:?set in .env}@db:5432/guardian}

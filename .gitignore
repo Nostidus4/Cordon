@@ -57,3 +57,6 @@ Backend/deployments/pytest-c.json
 Backend/deployments/*-bootstrap-l1.json
 infra/l1/seed.l1-fuji.json
 Backend/deployments/pytest-demo-reset-c.json
+Backend/deployments/anvil-l1.json
+infra/l1/seed.l1-anvil.json
+infra/l1/.anvil-dev.pid
