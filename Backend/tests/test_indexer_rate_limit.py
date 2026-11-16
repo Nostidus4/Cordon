@@ -182,7 +182,8 @@ def test_rate_limited_is_a_warning_not_an_indexer_error() -> None:
         block_watch=SimpleNamespace(observe=lambda b: None, stalled=False, last_block_at=None),
         sse_latency=SimpleNamespace(out=lambda: {"maxMs": 0}),
         settings=SimpleNamespace(chain_mode="l1", demo_enabled=False),
-        stores=SimpleNamespace(agent_runs=SimpleNamespace(all=list)),
+        stores=SimpleNamespace(agent_runs=SimpleNamespace(all=list), bridge=None),
+        clock=lambda: 0.0,
         graph_version=1,
     )
     warnings = health(rt)["warnings"]  # type: ignore[arg-type]

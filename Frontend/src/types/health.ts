@@ -17,6 +17,8 @@ export interface Health {
   graphVersion: number;
   /** `lastRunAt` is unix seconds. */
   agent: { status: "idle" | "running" | "error" | "never_run"; lastRunAt: number | null; lastOutcome?: string | null };
+  /** Worker heartbeat (meta.worker_heartbeat_at, unix s, every 5 s): "stale" after 15 s without one; "unknown" without a database. */
+  worker: { status: "running" | "stale" | "unknown"; lastHeartbeatAt: number | null };
   /** Unix seconds when the L1 head was last seen to advance (null before the first /health read). */
   lastBlockAt: number | null;
   /** True when the L1 head has not advanced for 60 s (checked only in CHAIN_MODE=l1). */

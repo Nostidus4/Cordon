@@ -5,12 +5,14 @@ from __future__ import annotations
 import logging
 import signal
 import threading
+import time
 from typing import Any
 
 from guardian.chain.base import ChainEvent
 from guardian.core.config import get_settings
 from guardian.core.logging import event_extra, setup_logging
 from guardian.workers.graph_worker import GraphWorker
+from guardian.workers.health import HEARTBEAT_SECONDS
 
 log = logging.getLogger("guardian.worker")
 
@@ -60,7 +62,22 @@ def main() -> None:
         )
         indexer.start()
     log.info("worker started (chain_mode=%s)", settings.chain_mode)
-    stop.wait()
+    if settings.database_url:  # heartbeat for /api/health (API-006), every chain mode
+        from guardian.db.bridge import DbBridge
+        from guardian.repositories.pg import PgMeta
+
+        bridge = bridge or DbBridge(settings.database_url)
+        meta = PgMeta(bridge)
+        meta.set("worker_chain_mode", settings.chain_mode)
+        while True:
+            try:
+                meta.set("worker_heartbeat_at", str(int(time.time())))
+            except Exception:  # a DB blip must not kill the worker; health turns "stale"
+                log.exception("worker heartbeat failed")
+            if stop.wait(HEARTBEAT_SECONDS):
+                break
+    else:
+        stop.wait()
     if indexer is not None:
         indexer.stop()
     if bridge is not None:
