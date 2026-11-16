@@ -98,6 +98,19 @@ def run_scenes(
             raise RuntimeError(f"{method} {url} -> {r.status_code} {r.text[:300]}")
         return r.json()
 
+    def settle(p: dict[str, Any]) -> dict[str, Any]:
+        """With a Council timelock (#77) the threshold approval only queues the proposal and the keeper executes it at
+        `eta`; wait for that (eta + 90 s at most) so the next reads see the executed state. No timelock: unchanged."""
+        if p.get("status") != "open" or not p.get("queued"):
+            return p
+        deadline = time.monotonic() + max(0, int(p.get("eta") or 0) - int(time.time())) + 90
+        while time.monotonic() < deadline:
+            time.sleep(2)
+            p = call("GET", f"/api/proposals/{p['id']}")
+            if p.get("status") != "open":
+                break
+        return p
+
     def timed(name: str) -> None:
         nonlocal scene, t0
         if scene:
@@ -160,7 +173,7 @@ def run_scenes(
     check("proposal hash equals draft hash", p["riskReportHash"], d["riskReportHash"])
     p = call("POST", f"/api/proposals/{p['id']}/approve", {"member": "lan"})
     check("1 approval: still open", (p["status"], p["approvals"]), ("open", ["lan"]))
-    p = call("POST", f"/api/proposals/{p['id']}/approve", {"member": "trang"})
+    p = settle(call("POST", f"/api/proposals/{p['id']}/approve", {"member": "trang"}))
     check("Lan + Trang: executed", p["status"], "executed")
     rep.hashes["merge executed"] = p["executedTxHash"]
     check("merge has a tx hash", bool(p["executedTxHash"]), True)
