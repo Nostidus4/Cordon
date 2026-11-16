@@ -58,7 +58,7 @@ class NumberCheck(CamelModel):
 
 class ToolCall(CamelModel):
     name: str
-    args: dict[str, Any] = Field(default_factory=dict)
+    args: dict[str, Any]
 
 
 class AssistantLogOut(CamelModel):
@@ -74,6 +74,7 @@ class AssistantLogOut(CamelModel):
     flagged_untrusted: bool = (
         False  # CITY_OPS B02: the responder marked this answer as not trustworthy
     )
-    checks: list[NumberCheck] = Field(default_factory=list)
-    uncovered: list[str] = Field(default_factory=list)  # numbers in the answer no check covers
-    tool_calls: list[ToolCall] = Field(default_factory=list)
+    # always sent (empty for copilot rows and old rows), so required in the OpenAPI
+    checks: list[NumberCheck]
+    uncovered: list[str]  # numbers in the answer no check covers
+    tool_calls: list[ToolCall]

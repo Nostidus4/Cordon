@@ -514,7 +514,10 @@
           "ts",
           "question",
           "answer",
-          "numbersVerified"
+          "numbersVerified",
+          "checks",
+          "uncovered",
+          "toolCalls"
         ],
         "title": "AssistantLogOut",
         "type": "object"
@@ -4831,7 +4834,8 @@
           }
         },
         "required": [
-          "name"
+          "name",
+          "args"
         ],
         "title": "ToolCall",
         "type": "object"
