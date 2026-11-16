@@ -1,0 +1,28 @@
+name: Docker stack smoke
+
+# Manual + nightly only (QA-002): builds the whole compose stack (db, migrate, api, worker, agent, web) on the sim
+# chain and runs scripts/smoke.sh, including the `docker compose restart api` check. Too slow for every PR.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 19 * * *"  # 02:00 Asia/Ho_Chi_Minh
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Throwaway Postgres password for this run
+        run: echo "POSTGRES_PASSWORD=ci-$(openssl rand -hex 12)" > .env
+      - run: docker compose up --build -d  # smoke.sh waits for health itself
+      - run: scripts/smoke.sh
+      - name: Logs
+        if: failure()
+        run: docker compose ps -a && docker compose logs --tail 200
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

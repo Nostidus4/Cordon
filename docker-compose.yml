@@ -1,29 +1,17 @@
+# Live stack (QA-002): `docker compose up --build -d && scripts/smoke.sh`. Needs POSTGRES_PASSWORD in the root .env.
+# CHAIN_MODE=sim by default; the l1 override is documented in docs/DEVELOPMENT.md (Docker).
+x-backend: &backend
+  build: ./Backend
+  env_file:
+    - path: ./Backend/.env
+      required: false
+  restart: unless-stopped
+
+x-db-url: &db-url postgresql+asyncpg://guardian:${POSTGRES_PASSWORD:?set in .env}@db:5432/guardian
+
 services:
-  api:
-    build: ./Backend
-    ports:
-      - "8000:8000"
-    env_file:
-      - path: ./Backend/.env
-        required: false
-    restart: unless-stopped
-
-  web:
-    build:
-      context: ./Frontend
-      args:
-        VITE_API_MODE: live
-        VITE_BASE: /
-    ports:
-      - "8080:80"
-    depends_on:
-      - api
-    restart: unless-stopped
-
-  # Postgres: `make db-up` (= docker compose --profile db up -d db), then `make db-migrate`.
   db:
     image: postgres:16
-    profiles: [db]
     environment:
       POSTGRES_USER: guardian
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
@@ -37,6 +25,84 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: *db-url
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+    healthcheck: { disable: true }
+
+  api:
+    <<: *backend
+    environment:
+      DATABASE_URL: *db-url
+      CHAIN_MODE: ${CHAIN_MODE:-sim}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"]
+      interval: 3s
+      timeout: 5s
+      start_period: 30s
+      retries: 20
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    <<: *backend
+    command: ["guardian-worker"]
+    environment:
+      DATABASE_URL: *db-url
+      CHAIN_MODE: ${CHAIN_MODE:-sim}
+    healthcheck:  # no HTTP port: alive = PID 1 is the worker
+      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      interval: 10s
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  agent:
+    <<: *backend
+    command: ["guardian-agent"]
+    environment:
+      # sim: the agent has its own in-memory chain, so it must NOT share the API's tables (ids would collide).
+      # l1: set AGENT_DATABASE_URL to the same URL as the API (both write to the same chain).
+      DATABASE_URL: ${AGENT_DATABASE_URL:-}
+      CHAIN_MODE: ${CHAIN_MODE:-sim}
+    healthcheck:  # healthy = the scheduler holds its single-instance lock
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import fcntl, sys
+          try:
+              fcntl.flock(open("/tmp/guardian-agent.lock", "w"), fcntl.LOCK_EX | fcntl.LOCK_NB)
+          except OSError:
+              sys.exit(0)
+          sys.exit(1)
+      interval: 10s
+    depends_on:
+      api: { condition: service_healthy }
+
+  web:
+    build:
+      context: ./Frontend
+      args:
+        VITE_API_MODE: live
+        VITE_BASE: /
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 5s
+      retries: 10
+    depends_on:
+      api: { condition: service_healthy }
     restart: unless-stopped
 
 volumes:
