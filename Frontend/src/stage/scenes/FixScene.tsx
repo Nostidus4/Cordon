@@ -11,6 +11,7 @@ import { useProposals } from "../../hooks/useProposals";
 import type { MemberId } from "../../types";
 import type { CityStageProps } from "../contract";
 import { MemberButton, Tile } from "../parts";
+import { WalletApproveButton } from "../WalletApproveButton";
 import { useCityProps, usePrimaryAction } from "../stageStore";
 import { Confetti, Ribbon, Stamp, ToyButton, ToyCard } from "../ui";
 
@@ -107,6 +108,7 @@ export function FixScene() {
                 </div>
               </div>
               {status === "open" && nextApprover ? <p className="toy-body mb-0 mt-3">{merge?.proposer === "lan" ? "Lan đã gửi đề xuất. " : ""}Bấm vào mặt người duyệt để duyệt.</p> : null}
+              {status === "open" && merge && nextApprover ? <WalletApproveButton proposalId={merge.id} /> : null}
             </>
           ) : null}
           {status === "done" ? <div className="mt-4"><ToyButton size="lg" pulse onClick={() => nav("/s/incident")}>Xem sự cố →</ToyButton></div> : null}
