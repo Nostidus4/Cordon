@@ -47,6 +47,20 @@ class AssistantAnswer(CamelModel):
     numbers_verified: bool
 
 
+class NumberCheck(CamelModel):
+    """One `numbers[]` entry re-read from the tool result (spec §9.4); `toolValue` null when the path did not resolve."""
+
+    label: str
+    value: str
+    tool_value: str | None = None
+    match: bool
+
+
+class ToolCall(CamelModel):
+    name: str
+    args: dict[str, Any]
+
+
 class AssistantLogOut(CamelModel):
     """GET /api/assistant/logs row (issue API-003)."""
 
@@ -60,3 +74,7 @@ class AssistantLogOut(CamelModel):
     flagged_untrusted: bool = (
         False  # CITY_OPS B02: the responder marked this answer as not trustworthy
     )
+    # always sent (empty for copilot rows and old rows), so required in the OpenAPI
+    checks: list[NumberCheck]
+    uncovered: list[str]  # numbers in the answer no check covers
+    tool_calls: list[ToolCall]

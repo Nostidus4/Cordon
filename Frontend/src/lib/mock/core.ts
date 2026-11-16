@@ -155,7 +155,7 @@ export function simulateCore(s: State, compromised: string[]): SimResultCore {
 }
 
 export function simulate(s: State, compromised: string[], change?: ProposedChange): SimResult {
-  if (!change) return simulateCore(s, compromised);
+  if (!change) return { ...simulateCore(s, compromised), before: null, after: null };
   const before = simulateCore(s, compromised);
   const clone = structuredClone(s);
   applyCalls(clone, changeToCalls(s, change));
@@ -328,10 +328,10 @@ export function buildGraph(s: State, block: number): GraphSnapshot {
   nodes.push({ id: "treasury", type: "Treasury", label: "Quỹ chính (Safe 3/5)", data: { balance: money(MAIN_TREASURY) } });
   nodes.push({ id: "vault", type: "Vault", label: "Kho chi tiêu", data: { balance: money(s.vaultUsdc), paused: s.paused } });
   nodes.push({ id: "council", type: "Council", label: "Hội đồng 2/3", data: {} });
-  edges.push({ id: "e:treasury-funds-vault", from: "treasury", to: "vault", type: "FUNDS", source: "onchain" });
+  edges.push({ id: "e:treasury-funds-vault", from: "treasury", to: "vault", type: "FUNDS", source: "onchain", note: null });
   for (const m of s.members) {
     nodes.push({ id: `m:${m.id}`, type: "Member", label: m.label, data: { principalId: m.principalId ?? undefined, address: m.address } });
-    edges.push({ id: `e:${m.id}-approves-council`, from: `m:${m.id}`, to: "council", type: "APPROVES", source: "onchain" });
+    edges.push({ id: `e:${m.id}-approves-council`, from: `m:${m.id}`, to: "council", type: "APPROVES", source: "onchain", note: null });
   }
   for (const p of activePrincipals(s)) {
     nodes.push({ id: `p:${p.id}`, type: "Principal", label: p.label, data: {
@@ -340,19 +340,19 @@ export function buildGraph(s: State, block: number): GraphSnapshot {
       nodes.push({ id: `k:${k.id}`, type: "Key", label: k.label, data: {
         principalId: p.id, kind: k.kind, address: k.address, active: k.active, locked: p.locked,
         keyDailyCap: money(k.dailyCap), keySpentToday: money(k.spent) } });
-      edges.push({ id: `e:${p.id}-holds-${k.id}`, from: `p:${p.id}`, to: `k:${k.id}`, type: "HOLDS_KEY", source: "onchain" });
+      edges.push({ id: `e:${p.id}-holds-${k.id}`, from: `p:${p.id}`, to: `k:${k.id}`, type: "HOLDS_KEY", source: "onchain", note: null });
     }
   }
   for (const e of s.declared)
-    edges.push({ id: e.id, from: `p:${e.from}`, to: `k:${e.to}`, type: e.relation, source: "declared" });
+    edges.push({ id: e.id, from: `p:${e.from}`, to: `k:${e.to}`, type: e.relation, source: "declared", note: e.note });
   for (const r of s.recipients) nodes.push({ id: `r:${r}`, type: "Recipient", label: r, data: { address: fakeAddress(r) } });
   for (const pr of s.protocols) nodes.push({ id: `pr:${pr}`, type: "Protocol", label: `${pr}.swapExactIn`, data: {} });
   for (const t of s.tokens) nodes.push({ id: `t:${t}`, type: "Token", label: t, data: {} });
   for (const k of Object.values(s.keys)) {
     if (k.kind === "HUMAN") continue;
-    for (const r of s.recipients) edges.push({ id: `e:${k.id}-pay-${r}`, from: `k:${k.id}`, to: `r:${r}`, type: "MAY_PAY", source: "onchain" });
+    for (const r of s.recipients) edges.push({ id: `e:${k.id}-pay-${r}`, from: `k:${k.id}`, to: `r:${r}`, type: "MAY_PAY", source: "onchain", note: null });
   }
-  if (s.keys.key_agent_rebalance) edges.push({ id: "e:key_agent_rebalance-call-MockDEX", from: "k:key_agent_rebalance", to: "pr:MockDEX", type: "MAY_CALL", source: "onchain" });
+  if (s.keys.key_agent_rebalance) edges.push({ id: "e:key_agent_rebalance-call-MockDEX", from: "k:key_agent_rebalance", to: "pr:MockDEX", type: "MAY_CALL", source: "onchain", note: null });
   return { version: s.graphVersion, policyVersion: s.policyVersion, policyLabel: s.policyVersion, block, nodes, edges, districts: buildDistricts(s) };
 }
 export function buildDistrictDetail(s: State, pid: string): DistrictDetail | null {

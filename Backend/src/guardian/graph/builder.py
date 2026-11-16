@@ -22,8 +22,10 @@ def build_graph(snapshot: PolicySnapshot, findings: list[dict[str, Any]]) -> dic
     def node(nid: str, typ: str, label: str, **data: Any) -> None:
         nodes.append({"id": nid, "type": typ, "label": label, "data": data})
 
-    def edge(eid: str, frm: str, to: str, typ: str, source: str) -> None:
-        edges.append({"id": eid, "from": frm, "to": to, "type": typ, "source": source})
+    def edge(eid: str, frm: str, to: str, typ: str, source: str, note: str | None = None) -> None:
+        edges.append(
+            {"id": eid, "from": frm, "to": to, "type": typ, "source": source, "note": note}
+        )
 
     node("treasury", "Treasury", "Quỹ chính", balance=str(s.main_treasury))
     node("vault", "Vault", "Kho chi tiêu", balance=str(s.vault_balance), paused=s.paused)
@@ -104,7 +106,7 @@ def build_graph(snapshot: PolicySnapshot, findings: list[dict[str, Any]]) -> dic
 
     for e in s.declared_edges:
         to = f"p:{e.to}" if e.to in s.principals else f"k:{e.to}"
-        edge(e.id, f"p:{e.from_principal}", to, e.relation.upper(), e.source)
+        edge(e.id, f"p:{e.from_principal}", to, e.relation.upper(), e.source, e.note)
 
     districts = [
         {

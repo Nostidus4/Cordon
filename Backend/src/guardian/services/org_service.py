@@ -7,6 +7,7 @@ from typing import Any
 from guardian.chain.factory import load_seed
 from guardian.services import views
 from guardian.services.runtime import Runtime
+from guardian.shared.money import TOKEN_18_DECIMALS
 
 
 def org(rt: Runtime) -> dict[str, Any]:
@@ -25,6 +26,9 @@ def org(rt: Runtime) -> dict[str, Any]:
         "vault": {
             "address": rt.chain.vault_addr,
             "balance": views.mny(snap.vault_balance),
+            "balanceTkb": views.mny(
+                rt.chain.balance(rt.chain.vault_addr, rt.addr("tTKB")), TOKEN_18_DECIMALS
+            ),
             "paused": snap.paused,
             "label": "Kho chi tiêu (Guardian L1)",
         },

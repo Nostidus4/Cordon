@@ -31,6 +31,7 @@ export interface GraphEdge {
   to: string;
   type: EdgeType;
   source: EdgeSource;
+  note: string | null;
 }
 
 export interface District {

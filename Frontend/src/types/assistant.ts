@@ -43,4 +43,9 @@ export interface AssistantLog {
   screen: NonNullable<AskRequest["context"]>["screen"] | null;
   /** The question carried foreign text (prompt-injection) and was answered with the fixed template. */
   flaggedUntrusted: boolean;
+  /** Per-number re-check against the tool result (§9.4). */
+  checks: { label: string; value: string; toolValue: string | null; match: boolean }[];
+  /** Numbers in the answer that no check covers. */
+  uncovered: string[];
+  toolCalls: { name: string; args: Record<string, unknown> }[];
 }

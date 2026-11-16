@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Gavel, Lock, ScrollText, Vote } from "lucide-react";
 import { Skeleton, Tooltip, cn } from "../../components/ui";
 import { useEvents } from "../../hooks/useEvents";
+import { useProposals } from "../../hooks/useProposals";
 import { useOrg } from "../../hooks/useOrg";
 import { fmtTime, shortHash } from "../../lib/format";
 import { useHealth } from "../../hooks/useHealth";
@@ -27,7 +28,7 @@ function Item({ it, last }: { it: HistoryItem; last: boolean }) {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <p className="text-[13.5px] font-semibold text-text">{it.title}</p>
           <span className={cn("rounded-full px-2 py-px text-[10.5px] font-semibold", chip)}>{it.rule}</span>
-          {it.policyVersion ? <span className="rounded-full bg-brand-soft px-2 py-px text-[10.5px] font-semibold text-[#c9c2ff]">→ policy v{it.policyVersion}</span> : null}
+          {it.policyVersion ? <span className="rounded-full bg-brand-soft px-2 py-px text-[10.5px] font-semibold text-[#c9c2ff]">→ chính sách v{it.policyVersion}</span> : null}
           <time className="ml-auto text-[11px] text-faint" dateTime={it.ts}>{fmtTime(it.ts)}</time>
         </div>
         {it.detail ? <p className="mt-0.5 text-[12px] leading-snug text-muted">{it.detail}</p> : null}
@@ -43,8 +44,9 @@ export function ActionHistory() {
   const { data: events, isLoading } = useEvents();
   const { data: org } = useOrg();
   const { data: health } = useHealth();
+  const { data: proposals } = useProposals();
   const offset = health ? health.policyVersion - (policyLabel(health) ?? health.policyVersion) : 0;
-  const items = useMemo(() => buildHistory(events ?? [], org?.council ?? [], offset), [events, org, offset]);
+  const items = useMemo(() => buildHistory(events ?? [], org?.council ?? [], offset, proposals ?? []), [events, org, offset, proposals]);
   return (
     <section aria-labelledby="hist-title" className="glass flex min-h-0 flex-1 flex-col rounded-[var(--radius-lg)] p-4" data-tour="council-history">
       <div className="mb-3 flex items-center justify-between">

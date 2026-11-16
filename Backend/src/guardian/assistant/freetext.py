@@ -169,10 +169,11 @@ def answer_with_llm(
     tools: AssistantTools,
     question: str,
     context: dict[str, Any] | None = None,
+    data: dict[str, Any] | None = None,
 ) -> tuple[fq.Built, bool]:
     """Returns (built, True). Raises `LlmUnavailable` (message says why) on any provider failure or an answer whose
-    numbers are not all in this request's tool results."""
-    data: dict[str, Any] = {}
+    numbers are not all in this request's tool results. `data` (filled in place) receives the tool results."""
+    data = {} if data is None else data
     run = _dispatch(tools, data)
     snapshot = untrusted_block("snapshot", json.dumps(_seed(run, data), ensure_ascii=False))
     ctx_note = ""

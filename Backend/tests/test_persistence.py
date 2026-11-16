@@ -283,6 +283,21 @@ async def test_proposal_12_executed_survives_restart(pg_schema: None) -> None:
 
 
 @needs_pg
+async def test_proposal_12_policy_version_and_approval_times_survive_restart(
+    pg_schema: None,
+) -> None:
+    """API-005 (#82) / DB-003 (#19) criterion 2."""
+    await truncate_pg()
+    async with running(database_url=TEST_DB) as a, http(a) as c:
+        await approve(c, 12, "lan", "trang")
+        p12 = (await c.get("/api/proposals/12")).json()
+    assert p12["resultingPolicyVersion"] == 2
+    assert all(m["approvedAt"] for m in p12["members"] if m["id"] in ("lan", "trang"))
+    async with running(database_url=TEST_DB) as b, http(b) as c:
+        assert (await c.get("/api/proposals/12")).json() == p12
+
+
+@needs_pg
 async def test_assistant_logs_and_agent_runs_survive_restart(pg_schema: None) -> None:
     await truncate_pg()
     async with running(database_url=TEST_DB) as a, http(a) as c:
@@ -293,6 +308,7 @@ async def test_assistant_logs_and_agent_runs_survive_restart(pg_schema: None) ->
         logs = (await c.get("/api/assistant/logs")).json()
         runs = (await c.get("/api/agent/runs")).json()
     assert len(logs) == 2 and len(runs) == 2
+    assert logs[0]["checks"] and logs[0]["toolCalls"]  # API-005: verifier detail is persisted too
     async with running(database_url=TEST_DB) as b, http(b) as c:
         assert (await c.get("/api/assistant/logs")).json() == logs
         assert (await c.get("/api/agent/runs")).json() == runs

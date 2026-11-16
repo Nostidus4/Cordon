@@ -73,8 +73,8 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 | Method | Path | Mô tả | Trạng thái |
 |---|---|---|---|
 | GET | `/health` | block L1/C, `indexerLagBlocks`, agent, `demoMode`, `chainMode`, `simulated`, `policyVersion` (thô) và `policyLabel` (số hiển thị, mục 4.1); quan sát `lastBlockAt`, `blockStalled`, `warnings`, `eventToSse` (mục 4.3) | có |
-| GET | `/org` | công ty, quỹ chính, kho, Council | có |
-| GET | `/graph` | `GraphSnapshot` (`policyVersion` thô + `policyLabel`, mục 4.1) | có |
+| GET | `/org` | công ty, quỹ chính, kho (`vault.balance` tUSDC + `vault.balanceTkb` tTKB, mục 4.4), Council | có |
+| GET | `/graph` | `GraphSnapshot` (`policyVersion` thô + `policyLabel`, mục 4.1); cạnh tự khai có `note` (mục 4.4) | có |
 | GET | `/city/states` | trạng thái 8 công trình cho thành phố 3D | có |
 | GET | `/city/buildings`, `/city/buildings/{building_id}` | 8 tòa = 8 module, luật đổi màu, bằng chứng, `recent` ([CITY_OPS](CITY_OPS.md) §2) | có (CITY_OPS) |
 | GET | `/faults` | các kiểu sự cố gây được (F01-F07) | có (CITY_OPS) |
@@ -87,13 +87,13 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 | GET | `/stream` | SSE (mục 5) | có |
 | GET / POST | `/attempts?run=` / `/attempts` | các lần thử; POST do attacker CLI ngoài báo | có |
 | POST | `/proposals/draft` | từ `findingId` hoặc `change` → `calls` + `riskReport` (chưa gửi chain) | có |
-| GET / POST | `/proposals`, `/proposals/{proposal_id}` | danh sách, tạo (demo signer) | có |
+| GET / POST | `/proposals`, `/proposals/{proposal_id}` | danh sách, tạo (demo signer); `members[].approvedAt`, `resultingPolicyVersion` (mục 4.4) | có |
 | POST | `/proposals/{proposal_id}/approve` | `{member}` (demo signer) | có |
 | POST | `/proposals/{proposal_id}/execute` | `{member}` (demo signer; timelock #77, từ `eta`) | có |
 | POST | `/proposals/{proposal_id}/veto` | `{member}` (demo signer; mọi member, chỉ khi đang chờ) | có |
 | POST | `/actions/lock`, `/actions/pause` | demo signer, `emergencyLock` / `emergencyPause` | có |
 | POST | `/assistant/ask` | `{question, context}` → `AssistantAnswer` (+ `numbersVerified`). Câu cố định: mẫu + tool. Câu tự do (`questionId = "free_text"`): chỉ khi LLM bật (LLM, tool chỉ đọc, mọi số được verifier kiểm; sai/lỗi/timeout 15 s → câu mặc định, `numbersVerified=false`); LLM tắt thì 422 `UNKNOWN_QUESTION` | có |
-| GET | `/assistant/logs` | bảng `assistant_logs`, cũ nhất trước, `?limit=` (mặc định 200) | có (CITY_OPS) |
+| GET | `/assistant/logs` | bảng `assistant_logs`, cũ nhất trước, `?limit=` (mặc định 200); mỗi dòng có `checks`, `uncovered`, `toolCalls` (mục 4.4) | có (CITY_OPS) |
 | POST | `/agent/run-once` | chạy agent một vòng → `AgentRun` (`reasonSource` = `llm` nếu LLM viết câu giải thích đạt kiểm tra, ngược lại `template`; số tiền/token/DEX không bao giờ do LLM chọn) | có |
 | GET | `/agent/runs` | bảng `agent_runs`, cũ nhất trước, `?limit=` (mặc định 200); `AgentRun` thêm `steps`, `untrustedInput`, `injectionIgnored` | có (CITY_OPS) |
 | POST | `/scenario/scene4/run`, `/scenario/scene4/step7` | chạy kịch bản từ server | có |
@@ -120,6 +120,16 @@ Hợp đồng giữa Backend và Frontend được kiểm tự động: OpenAPI 
 - `eventToSse`: `{lastMs, maxMs, samples}`, đo từ lúc API nhận chain event đến lúc đẩy xong vào hàng đợi của mọi subscriber SSE, trên 100 event gần nhất. Spec yêu cầu < 3 giây. `lastMs`/`maxMs` là `null` khi `samples` = 0.
 
 Các trường này bổ sung, không đổi trường cũ.
+
+### 4.4 Trường thêm ở API-005 (#82), chỉ thêm, không đổi tên
+
+| Response | Trường mới | Nguồn |
+|---|---|---|
+| `OrgOut.vault` (nay là `VaultOut`: `address, balance, balanceTkb, paused, label`) | `balanceTkb: Money` (18 số lẻ) | `ChainPort.balance(vault, tTKB)`, sim và l1 cùng đường |
+| `AssistantLogOut` | `checks: [{label, value, toolValue: str\|null, match}]`, `uncovered: str[]`, `toolCalls: [{name, args}]`, mặc định rỗng | `verifier.check` (cùng luật `verify`, §9.4); câu cố định ghi check của câu ứng viên kể cả khi bị loại (thấy vì sao rơi về câu mặc định); câu tự do chỉ có check khi LLM đạt; dòng copilot để rỗng. Lưu trong JSONB `assistant_logs.answer.rec` (+ cột `tool_calls`), không cần migration |
+| `MemberApproval` | `approvedAt: int\|null` (unix s) | `ts` của event `Approved` trong tx duyệt; khởi động lại L1 không DB: dựng lại từ `event_log` |
+| `ProposalOut` | `resultingPolicyVersion: int\|null` | `PolicyVersionBumped.version` trong tx thực thi (duyệt đủ phiếu hoặc `execute`); lưu trong JSONB `proposals.approvals.rec`, còn nguyên sau restart có `DATABASE_URL` |
+| `GraphEdge` | `note: str\|null` | `note` của cạnh tự khai (văn bản không tin cậy), cạnh khác `null` |
 
 ## 5. SSE `/api/stream`
 
@@ -163,7 +173,7 @@ Danh sách type đồng bộ giữa `Backend/src/guardian/schemas/stream.py` (`S
 - [x] Run cảnh 4: sau bước 5 mock ở `waiting_lock` (như backend), chỉ `step7` mới đưa về `completed` (QA-001)
 - [x] `principalSpentAfter` của attempt `blocked_at_protocol` (bước 7) là `null` trên cả hai (bảng 4.3 ghi "–", không có event để lấy số); backend trước đó trả bộ đếm hiện tại 25.000 (QA-001)
 - [ ] Còn lệch (chỉ chuẩn hoá trong test parity, QA-001): mock seed đơn #12/#13 sau lần gom khu đầu tiên, backend seed ngay lúc reset; `graph.districts` backend gồm cả khu của agent/dịch vụ (`agent_*`, `svc_payment`), mock chỉ có khu của người; backend responder tự đề xuất khôi phục sau `pauseAll` (event `Proposed` thêm), mock chỉ làm vậy khi gây lỗi qua `injectFault`; mock lưu bước 0 là `step: null` (FE đọc qua `stepOf`), backend là `0`; `POST /simulate` có `change`: backend chỉ trả `before/after`, mock còn điền `totals` cấp trên cùng
-- [x] Type Frontend khớp schema Backend: mọi `Known<...>` trong `Frontend/src/types/parity.test.ts` rỗng, trừ `SimulateResponse.before/after` (Backend `response_model_exclude_none` bỏ key, không phải lệch). `POST /proposals` gửi `member` (+ `title` tuỳ chọn); payload event đọc theo mục 2 (`id`, địa chỉ thành viên) (WEB-001)
+- [x] Type Frontend khớp schema Backend: mọi `Known<...>` trong `Frontend/src/types/parity.test.ts` rỗng, kể cả `SimulateResponse` (FE `SimResult.before/after: SimResultCore | null`; backend `response_model_exclude_none` bỏ key khi không có `change`, FE đọc theo truthy nên thiếu key hay `null` như nhau) (API-005). `POST /proposals` gửi `member` (+ `title` tuỳ chọn); payload event đọc theo mục 2 (`id`, địa chỉ thành viên) (WEB-001)
 - [ ] `chain/sim` lệch [CONTRACTS.md](CONTRACTS.md) mục 6: `KeyAdded.kind` phát chữ hoa (`HUMAN`) thay vì `human`; `Proposed.subjectPrincipal` là `null` thay vì bytes32 rỗng. Sửa sim khi viết adapter L1 / bộ test conformance
 - [x] `Runtime.sim` đã bỏ: app code đi qua `ChainPort` (`proposal_state`...) và truyền địa chỉ hex vào `ChainPort`; id chỉ nằm trong store/API (không đổi API) (CHN-004)
 

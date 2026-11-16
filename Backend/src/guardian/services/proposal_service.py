@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from guardian.chain.base import TxResult
 from guardian.chain.errors import ChainRevert
 from guardian.core.errors import ApiError
 from guardian.domain.snapshot import PolicySnapshot
@@ -251,16 +252,21 @@ def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
         if res.error_raw == "ConflictOfInterest":
             record_conflict(rt, member, proposal_id)
         raise ChainRevert(res.error_raw or "reverted", res.reason_code)
+    rec.approved_at[member] = next((e.ts for e in res.events if e.name == "Approved"), rt.now())
     cp = rt.chain.proposal_state(proposal_id)
-    _mark_executed(rt, rec, cp.executed, res.tx_hash)
+    _mark_executed(rt, rec, cp.executed, res)
+    rt.stores.proposals.save(rec)
     rt.notify_state_changed((proposal_id,), graph=cp.executed)
     return proposal_out(rt, proposal_id)
 
 
-def _mark_executed(rt: Runtime, rec: ProposalRec, executed: bool, tx_hash: str | None) -> None:
+def _mark_executed(rt: Runtime, rec: ProposalRec, executed: bool, res: TxResult) -> None:
     if executed and rec.executed_at is None:
         rec.executed_at = rt.now()
-        rec.executed_tx_hash = tx_hash
+        rec.executed_tx_hash = res.tx_hash
+        rec.resulting_policy_version = next(
+            (int(e.payload["version"]) for e in res.events if e.name == "PolicyVersionBumped"), None
+        )
         rt.stores.proposals.save(rec)
 
 
@@ -272,7 +278,7 @@ def _tx_on_proposal(rt: Runtime, proposal_id: int, member: str, fn: str) -> Prop
     res = getattr(rt.chain, fn)(rt.addr(member), proposal_id)
     if res.status != "ok":
         raise ChainRevert(res.error_raw or "reverted", res.reason_code)
-    _mark_executed(rt, rec, rt.chain.proposal_state(proposal_id).executed, res.tx_hash)
+    _mark_executed(rt, rec, rt.chain.proposal_state(proposal_id).executed, res)
     return rec
 
 
@@ -326,6 +332,7 @@ def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
                 "conflicted": is_conf,
                 "canApprove": reason is None,
                 "disabledReason": reason,
+                "approvedAt": rec.approved_at.get(m.id) if m.id in approved else None,
             }
         )
     return {
@@ -352,6 +359,7 @@ def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
         "createdAt": rec.created_at,
         "executedAt": rec.executed_at,
         "executedTxHash": rec.executed_tx_hash,
+        "resultingPolicyVersion": rec.resulting_policy_version,
         "eta": cp.eta,
         "queued": cp.queued,
         "vetoedBy": by_addr.get(cp.vetoed_by) if cp.vetoed_by else None,

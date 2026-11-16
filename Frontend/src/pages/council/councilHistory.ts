@@ -1,6 +1,6 @@
 // Council history built from indexed chain events (spec §10.6): emergency lock / pause (siết, 1 người), proposals executed (nới, 2/3).
 import { eventKey, isoOfSec, memberOf } from "../../lib/dto";
-import type { ChainEvent, CouncilMember } from "../../types";
+import type { ChainEvent, CouncilMember, Proposal } from "../../types";
 
 export type HistoryKind = "tighten" | "loosen" | "propose" | "vote";
 export interface HistoryItem {
@@ -12,8 +12,9 @@ export interface HistoryItem {
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 const SUBJECT: Record<string, string> = { minh: "anh Minh", huy: "anh Huy", lan: "chị Lan", agent_data: "Trợ lý Dữ liệu", agent_intl_pay: "Trợ lý Thanh toán quốc tế", agent_rebalance: "Trợ lý Cân đối", svc_payment: "Phần mềm thanh toán" };
 
-/** `baselineOffset` = raw policy counter minus the label shown (health.policyVersion - policyLabel(health)); 0 in mock mode. */
-export function buildHistory(events: ChainEvent[], members: CouncilMember[], baselineOffset = 0): HistoryItem[] {
+/** `proposals` (optional) supply approval times and the exact resulting policy version. `baselineOffset` = raw policy counter minus the label shown (health.policyVersion - policyLabel(health)); 0 in mock mode. */
+export function buildHistory(events: ChainEvent[], members: CouncilMember[], baselineOffset = 0, proposals: Proposal[] = []): HistoryItem[] {
+  const prop = (id: number) => proposals.find((x) => x.id === id);
   const who = (v: unknown) => memberOf(members, v)?.label ?? str(v);
   const emergencyTx = new Set(events.filter((e) => e.name === "EmergencyAction").map((e) => e.txHash));
   const titles = new Map<number, string>();
@@ -44,13 +45,14 @@ export function buildHistory(events: ChainEvent[], members: CouncilMember[], bas
       }
       case "Approved": {
         const id = Number(p.id); votes.set(id, (votes.get(id) ?? 0) + 1);
-        out.push({ ...base, kind: "vote", rule: `phiếu ${votes.get(id)}/2`, title: `${who(p.member)} duyệt #${id}`, detail: titles.get(id) });
+        const at = prop(id)?.members.find((m) => m.id === memberOf(members, p.member)?.id)?.approvedAt; // backend approval time beats the event ts
+        out.push({ ...base, ts: at ? isoOfSec(at) : base.ts, kind: "vote", rule: `phiếu ${votes.get(id)}/2`, title: `${who(p.member)} duyệt #${id}`, detail: titles.get(id) });
         break;
       }
       case "PolicyVersionBumped": policy = Number(p.version) - baselineOffset; break;
       case "Executed": {
         const id = Number(p.id);
-        out.push({ ...base, kind: "loosen", rule: "nới · 2/3", title: `Đề xuất #${id} được thực thi`, detail: titles.get(id), policyVersion: policy });
+        out.push({ ...base, kind: "loosen", rule: "nới · 2/3", title: `Đề xuất #${id} được thực thi`, detail: titles.get(id), policyVersion: prop(id)?.resultingPolicyVersion ?? policy });
         break;
       }
     }

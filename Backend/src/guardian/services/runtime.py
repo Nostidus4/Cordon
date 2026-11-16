@@ -104,6 +104,10 @@ class ProposalRec:
     report_basis: str = "live"  # live | policy_v2_reference (seeded request #12)
     executed_at: int | None = None
     executed_tx_hash: str | None = None
+    approved_at: dict[str, int] = field(
+        default_factory=dict
+    )  # member id -> unix s of its approval tx
+    resulting_policy_version: int | None = None  # PolicyVersionBumped of the execute tx
 
 
 @dataclass
@@ -136,6 +140,9 @@ class AssistantLogRec:
     numbers_verified: bool
     screen: str | None = None
     flagged_untrusted: bool = False  # set by the responder (B02): answer marked as not trustworthy
+    checks: list[dict[str, Any]] = field(default_factory=list)  # verifier.check rows
+    uncovered: list[str] = field(default_factory=list)
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)  # {name, args}
 
 
 @dataclass

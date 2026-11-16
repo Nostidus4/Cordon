@@ -6,6 +6,7 @@ import type { SimResult } from "../../types";
 const res = (y: number, e: number, s: number): SimResult => ({
   reachedKeys: [], perDistrict: [], highlights: { nodeIds: [], edgeIds: [] }, findings: [],
   totals: { youThink: money(toBase(y)), enforced: money(toBase(e)), estimated: money(toBase(s)), vaultBalance: money(toBase(1)), percentOfMainTreasury: 0 },
+  before: null, after: null,
 });
 
 describe("reference table (spec §8.4)", () => {

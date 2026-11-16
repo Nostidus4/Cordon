@@ -55,7 +55,7 @@ expectTypeOf<DiffR<S["GraphDistrict"], T.District>>().toEqualTypeOf<Known<never,
 // FindingOut <-> Finding
 expectTypeOf<DiffR<S["FindingOut"], T.Finding>>().toEqualTypeOf<Known<never, never, never>>();
 // SimulateResponse <-> SimResult
-expectTypeOf<DiffR<S["SimulateResponse"], T.SimResult>>().toEqualTypeOf<Known<never, never, "after" | "before">>();
+expectTypeOf<DiffR<S["SimulateResponse"], T.SimResult>>().toEqualTypeOf<Known<never, never, never>>();
 // Totals <-> SimTotals
 expectTypeOf<DiffR<S["Totals"], T.SimTotals>>().toEqualTypeOf<Known<never, never, never>>();
 // DistrictOut <-> DistrictDetail

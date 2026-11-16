@@ -241,7 +241,7 @@ function nextProposalId(): number { let n = 14; while (S.proposals.some((p) => p
 /** Draft -> stored proposal (backend ProposalOut shape; `members`/`approvalCount` are filled live by `liveProposal`). */
 function toProposal(d: ProposalDraft, id: number, proposer: MemberId): Proposal {
   const { classification: _c, requiresCouncil: _r, sent: _s, ...body } = d;
-  return { ...body, id, proposer, approvals: [], approvalCount: 0, members: [], threshold: 2, status: "open", reportBasis: "live", createdAt: nowSec(), executedAt: null, executedTxHash: null, eta: null, queued: false, vetoedBy: null };
+  return { ...body, id, proposer, approvals: [], approvalCount: 0, members: [], threshold: 2, status: "open", reportBasis: "live", createdAt: nowSec(), executedAt: null, executedTxHash: null, resultingPolicyVersion: null, eta: null, queued: false, vetoedBy: null };
 }
 function addProposal(change: ProposedChange, proposer: MemberId, id?: number, findingId: string | null = null, title?: string): Proposal {
   const existing = S.proposals.find((p) => p.status === "open" && JSON.stringify(p.change) === JSON.stringify(change));
@@ -268,6 +268,7 @@ function executeProposal(p: Proposal) {
   const firstConsolidate = p.change?.kind === "merge_district";
   applyCalls(S, calls);
   p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = fakeTxHash(`exec${p.id}`);
+  p.resultingPolicyVersion = S.policyVersion;
   for (const c of calls) {
     const a = c.args as Record<string, any>;
     if (c.fn === "moveKey") pushEvent("KeyMoved", { key: a.key, toId: a.toId });
@@ -280,6 +281,7 @@ function executeProposal(p: Proposal) {
   graphUpdated();
   if (firstConsolidate && !S.requestsSeeded) seedRequests();
 }
+const approvedAt = new Map<string, number>(); // `${proposalId}:${member}` -> unix s
 function approve(id: number, member: MemberId): Proposal {
   const p = S.proposals.find((x) => x.id === id);
   if (!p) throw new ApiError("PROPOSAL_NOT_FOUND", `Không có đề xuất #${id}`, 404);
@@ -290,6 +292,7 @@ function approve(id: number, member: MemberId): Proposal {
     throw new ApiError("CONFLICT_OF_INTEREST", `Xung đột lợi ích: ${S.members.find((m) => m.id === member)!.label} là chủ khu bị ảnh hưởng, không được duyệt.`, 403);
   if (p.approvals.includes(member)) throw new ApiError("ALREADY_APPROVED", "Đã duyệt rồi");
   p.approvals.push(member);
+  approvedAt.set(`${p.id}:${member}`, nowSec());
   pushEvent("Approved", { id, member: addrOf(member) });
   if (p.approvals.length >= p.threshold) executeProposal(p);
   else emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
@@ -303,7 +306,7 @@ function liveProposal(p: Proposal): Proposal {
   c.members = S.members.map((m) => {
     const approved = c.approvals.includes(m.id), conflicted = c.conflictedMembers.includes(m.id);
     const disabledReason = c.status !== "open" ? "Đề xuất không còn mở." : approved ? "Đã duyệt." : conflicted ? "Xung đột lợi ích." : null;
-    return { id: m.id, label: m.label, principalId: m.principalId ?? null, approved, conflicted, canApprove: disabledReason === null, disabledReason };
+    return { id: m.id, label: m.label, principalId: m.principalId ?? null, approved, conflicted, canApprove: disabledReason === null, disabledReason, approvedAt: approved ? approvedAt.get(`${p.id}:${m.id}`) ?? null : null };
   });
   return c;
 }
@@ -447,11 +450,12 @@ function assistantTools(q: string, answer: RawAnswer): { toolCalls: AssistantToo
   return { toolCalls: [], roots: {} };
 }
 function logAssistant(question: string, raw: RawAnswer, screen: NonNullable<AskRequest["context"]>["screen"] | null = null): AssistantAnswer {
-  const { roots } = assistantTools(question.trim(), raw);
-  const numbersVerified = verifyAnswer(raw, roots).verified;
+  const { roots, toolCalls } = assistantTools(question.trim(), raw);
+  const { checks, uncovered, verified: numbersVerified } = verifyAnswer(raw, roots);
   const fixed = ASSISTANT_QUESTIONS.find((x) => x.text === question.trim());
   const answer: AssistantAnswer = { ...structuredClone(raw), questionId: fixed ? `${fixed.screen}.${fixed.id}` : "free_text", numbersVerified };
-  assistantLogs.push({ id: nextSeq(), ts: nowSec(), questionId: answer.questionId, question, answer: answer.answer, numbersVerified, screen, flaggedUntrusted: false });
+  assistantLogs.push({ id: nextSeq(), ts: nowSec(), questionId: answer.questionId, question, answer: answer.answer, numbersVerified, screen, flaggedUntrusted: false,
+    checks: checks.map(({ label, value, toolValue, match }) => ({ label, value, toolValue, match })), uncovered, toolCalls: toolCalls.map((t) => ({ name: t.tool, args: t.args })) });
   return answer;
 }
 
@@ -552,7 +556,7 @@ function executeIncidentProposal(p: Proposal) {
   const iid = proposalIncident.get(p.id)!;
   const i = incidents.find((x) => x.id === iid)!;
   incidentRecovery.get(iid)?.recover();
-  p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = fakeTxHash(`exec${p.id}`);
+  p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = fakeTxHash(`exec${p.id}`); p.resultingPolicyVersion = S.policyVersion;
   pushEvent("Executed", { id: p.id });
   emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
   graphUpdated();
@@ -772,7 +776,7 @@ export const mockApi = {
   async getOrg(): Promise<Org> {
     await lat();
     return { id: "may_labs", name: "Mây Labs (giả định)", fictional: true, mainTreasury: { label: "Safe 3/5 · Fuji C-Chain", balance: money(MAIN_TREASURY) },
-      vault: { label: "PolicyVault · Guardian L1", balance: money(S.vaultUsdc), tkb: money(S.vaultTkb) }, council: structuredClone(S.members), threshold: 2,
+      vault: { label: "PolicyVault · Guardian L1", balance: money(S.vaultUsdc), balanceTkb: money(S.vaultTkb), address: fakeAddress("vault"), paused: S.paused }, council: structuredClone(S.members), threshold: 2,
       policyVersion: S.policyVersion, policyLabel: S.policyVersion };
   },
   async getGraph(): Promise<GraphSnapshot> { await lat(); return buildGraph(S, currentBlock()); },
@@ -836,7 +840,7 @@ export const mockApi = {
   async getScenarioRuns(): Promise<ScenarioRun[]> { await lat(); return [recordedRun(), ...runs.map((r) => structuredClone(r))]; },
   async resetDemo(): Promise<ActionResult> {
     await lat();
-    epoch++; runActive = false; S = seedState(); events = []; attempts = []; runs = []; agentRuns = []; assistantLogs = []; currentRunId = null; lastAgentBlocked = false; lastCityJson = ""; incidents = []; incidentRecovery.clear(); proposalIncident.clear(); resetTxGuardMock();
+    epoch++; runActive = false; S = seedState(); events = []; attempts = []; runs = []; agentRuns = []; assistantLogs = []; currentRunId = null; lastAgentBlocked = false; lastCityJson = ""; incidents = []; incidentRecovery.clear(); proposalIncident.clear(); approvedAt.clear(); resetTxGuardMock();
     emit({ type: "reset", data: { at: nowIso() } }); graphUpdated(); emitCity(true);
     return ok(null);
   },

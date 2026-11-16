@@ -10,7 +10,7 @@ const report = (b: [number, number], a: [number, number]): RiskReport => ({
   before: totals(...b), after: totals(...a), findingsBefore: [], findingsAfter: [], conflictOfInterest: false, generatedAt: "2026-01-01T00:00:00Z", graphVersion: 1,
 });
 const prop = (over: Partial<Proposal> = {}): Proposal => ({
-  id: 13, title: "t", subjectPrincipal: "huy", change: { kind: "move_key", key: "key_agent_rebalance", to: "huy" }, calls: [], descriptionVi: [], findingId: null, approvalCount: 0, members: [], reportBasis: "live", executedTxHash: null,
+  id: 13, title: "t", subjectPrincipal: "huy", change: { kind: "move_key", key: "key_agent_rebalance", to: "huy" }, calls: [], descriptionVi: [], findingId: null, approvalCount: 0, members: [], reportBasis: "live", executedTxHash: null, resultingPolicyVersion: null,
   riskReport: report([40000, 40000], [60000, 60000]), riskReportHash: "0x00", conflictedMembers: [], warnings: [], proposer: "trang", approvals: [], threshold: 2, status: "open",
   createdAt: 0, executedAt: null, eta: null, queued: false, vetoedBy: null, ...over,
 });

@@ -13,7 +13,7 @@ Chủ trì: therealtunguyen · Issue: `AI-001`, `AI-002`, `AI-003` · Spec: [../
 
 ## Quy tắc chính
 
-- Mọi số trong `answer` phải có trong `numbers[]`, và mỗi `value` phải khớp giá trị đọc lại từ `path` của tool; sai → câu mẫu dự phòng + `numbersVerified=false` (`assistant/verifier.py`).
+- Mọi số trong `answer` phải có trong `numbers[]`, và mỗi `value` phải khớp giá trị đọc lại từ `path` của tool; sai → câu mẫu dự phòng + `numbersVerified=false` (`assistant/verifier.py`). `verifier.check` trả từng dòng kiểm `{label, value, toolValue, match}` + số chưa phủ (`uncovered`); service ghi chúng cùng các lần gọi tool (`toolCalls`) vào `assistant_logs`, `GET /api/assistant/logs` trả ra (API-005).
 - Nhãn khoá, log, ghi chú tự khai là **dữ liệu không tin cậy**: đặt trong khối dữ liệu riêng của prompt (`assistant/prompt.py: untrusted_block`), không phải chỉ dẫn.
 - Timeout 8 giây → câu mẫu. Không có tool ký, ghi DB, hay truy cập internet.
 - 4 câu hỏi cố định (đều đi qua tool thật): "Nếu anh Huy cũng bị chiếm thì sao?" (có `140.000`), "Vì sao khu anh Minh có cờ vàng?", "Sửa thế nào?", "Có nên giao trợ lý Cân đối cho anh Huy?" (cảnh báo R4/xung đột lợi ích, gợi ý khu do Council sở hữu, cap 100.000).
