@@ -55,9 +55,26 @@ Troubleshooting:
 
 Pre-push runs backend pytest; pre-commit runs ruff, eslint, tsc, gitleaks and file hygiene hooks.
 
-## Docker
-    make docker-up      # api :8000, web :8080 (live mode, /api proxied)
-    make docker-down
+## Docker (live stack, QA-002)
+    cp .env.example .env    # set POSTGRES_PASSWORD (any local value); ports are optional
+    make stack-up           # = docker compose up --build -d --wait
+    make smoke              # = scripts/smoke.sh (needs curl + jq)
+    docker compose down -v  # stop and drop the Postgres volume
+
+| Service | What | Port (host) | Health |
+|---|---|---|---|
+| `db` | Postgres 16, volume `pgdata` | `127.0.0.1:${POSTGRES_PORT:-5432}` | `pg_isready` |
+| `migrate` | one-shot `alembic upgrade head` | - | must exit 0 before api/worker start |
+| `api` | `uvicorn guardian.main:app`, `CHAIN_MODE=sim`, Postgres stores | `${API_PORT:-8000}` | `GET /api/health` |
+| `worker` | `guardian-worker` (idles on sim; indexer on l1) | - | process alive |
+| `agent` | `guardian-agent` scheduler | - | holds its single-instance lock |
+| `web` | built Frontend (`VITE_API_MODE=live`) on nginx; `/api` (incl. SSE `/api/stream`, buffering off) proxied to `api` | `${WEB_PORT:-8080}` | `GET /` |
+
+`scripts/smoke.sh` resets the sim demo, then asserts: `/api/health` `chainMode=sim` and the agent status, 7 districts in `/api/graph`, simulate(minh) enforced 20.000 / estimated 100.000, the scene-3 merge to policy v2 (scene 4 needs it), `POST /api/agent/run-once` -> `swapped` 5.000, scene 4 steps 1-5 reasons in the §4.3 order, web `/` and `/api/health` through the web port = 200; finally `docker compose restart api` and `GET /api/attempts` + `GET /api/proposals` must be identical (the sim chain is rebuilt from the events stored in Postgres). `SKIP_RESTART=1` skips that last part. CI: the manual + nightly workflow `Docker stack smoke` (`.github/workflows/stack-smoke.yml`).
+
+On sim the `agent` container runs its own in-memory chain (it does not move the API's numbers; the API's agent step is `POST /api/agent/run-once`) and gets no `DATABASE_URL`, because two sim processes writing the same tables would collide. `/api/health` `agent` reflects the API's runs. `Backend/.env` (optional) is passed to the backend containers, e.g. for `LLM_API_KEY`; the compose `environment` (`DATABASE_URL`, `CHAIN_MODE`) wins over it.
+
+`CHAIN_MODE=l1` (not verified here; the on-chain track does): put `CHAIN_MODE=l1` in the root `.env`, the L1 variables (`L1_RPC_URL`, `L1_CHAIN_ID`, `DEPLOYMENTS_FILE`, `GUARDIAN_SEED_FILE`, `L1_KEY_*`, testnet/local keys only) in `Backend/.env`, then `docker compose -f docker-compose.yml -f docker-compose.l1.yml up --build -d`. The override mounts `Backend/deployments` read-only, maps `host.docker.internal` for an L1 on the host and gives the agent the shared Postgres.
 
 ## GitHub Pages
 `.github/workflows/pages.yml` builds with `VITE_API_MODE=mock VITE_BASE=/Cordon/`, copies `index.html` to `404.html` (SPA deep links) and deploys.

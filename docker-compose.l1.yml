@@ -1,0 +1,17 @@
+# CHAIN_MODE=l1 override (documented, not verified here; the on-chain track verifies it):
+#   CHAIN_MODE=l1 docker compose -f docker-compose.yml -f docker-compose.l1.yml up --build -d
+# L1_RPC_URL, L1_CHAIN_ID, DEPLOYMENTS_FILE, GUARDIAN_SEED_FILE and the L1_KEY_* signers come from Backend/.env
+# (testnet/local keys only). The deployments and seed files are mounted read-only from Backend/.
+x-l1: &l1
+  volumes:
+    - ./Backend/deployments:/app/deployments:ro
+  extra_hosts:
+    - "host.docker.internal:host-gateway"  # an L1 on the host: L1_RPC_URL=http://host.docker.internal:9650/...
+
+services:
+  api: *l1
+  worker: *l1
+  agent:
+    <<: *l1
+    environment:
+      DATABASE_URL: ${AGENT_DATABASE_URL:-postgresql+asyncpg://guardian:${POSTGRES_PASSWORD:?set in .env}@db:5432/guardian}
