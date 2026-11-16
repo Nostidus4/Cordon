@@ -98,7 +98,7 @@ flowchart LR
 | Nạp quỹ từ C-Chain sang L1 | Giả lập: mint token + ghi sự kiện, **không có cầu nối**; contract không kiểm tra giao dịch C-Chain |
 | Demo GitHub Pages | Chạy **chain giả lập trong trình duyệt**, không nối Fuji |
 | Contract quỹ lương (payroll) | Đã viết và test bằng forge, mô phỏng trong backend, **chưa deploy** ([PAYROLL.md](docs/spec/PAYROLL.md)) |
-| Khoá Hội đồng trong demo | Backend giữ **cả 3 khoá test** của Hội đồng (bản thật: mỗi người ký bằng ví riêng) |
+| Khoá Hội đồng trong demo | Backend giữ **cả 3 khoá test** của Hội đồng để chạy kịch bản tự động; thành viên có thể tự ký bằng ví (nút "Ký bằng ví") |
 
 ## Avalanche
 
@@ -131,7 +131,7 @@ Fuji C-Chain (43113), xem trên Snowtrace:
 
 `escrow` **không có mã contract, có chủ đích**: đó là địa chỉ không khoá (suy ra từ hash, không ai giữ khoá), là đích mà ví quỹ chuyển token tới khi nạp quỹ (backend đọc sự kiện `Transfer` từ ví quỹ tới địa chỉ này). Snowtrace hiện nó như tài khoản thường.
 
-**Tự kiểm chứng** (chỉ đọc, không tốn gas). RPC của L1 là của validator cục bộ (cần chạy validator, hoặc dùng proxy chỉ-đọc ở mục "Đang hoàn thiện"). Biên nhận deploy và kết quả đã chạy: [docs/qa/D1-D10.md](docs/qa/D1-D10.md).
+**Tự kiểm chứng** (chỉ đọc, không tốn gas). RPC của L1 là của validator cục bộ (cần chạy validator, hoặc dùng proxy chỉ-đọc `make l1-readonly-rpc`). Biên nhận deploy và kết quả đã chạy: [docs/qa/D1-D10.md](docs/qa/D1-D10.md).
 
     export RPC=http://127.0.0.1:9650/ext/bc/4hnXBqtkcq2uj8e3rcfGKh3NDBn3CgrWPe4tk71WQFfP4rTTb/rpc
     # chain id = 845357 (0xce62d)
@@ -172,8 +172,8 @@ Fuji C-Chain (43113), xem trên Snowtrace:
 | Bộ | Kết quả |
 |---|---|
 | Contract (`cd contracts && FOUNDRY_PROFILE=ci forge test`) | **312 passed**, 0 failed (chạy lại 2026-11-16); line coverage 98.49%, branch 89.68% (đo trước đó) |
-| Backend (`pytest`) | 951 passed |
-| Frontend (`vitest`) | 210 passed |
+| Backend (`pytest`) | 960 passed, 0 failed (128 skipped: thiếu DB test hoặc khoá LLM) |
+| Frontend (`vitest`) | 233 passed |
 | CI (GitHub Actions) | xanh trên `main` |
 | e2e cảnh 1-5 trên L1 thật | 65/65 kiểm tra, xem [docs/qa/D1-D10.md](docs/qa/D1-D10.md) |
 
@@ -194,13 +194,13 @@ Cần `uv`, Node 22 và (tuỳ chọn) Docker.
 
 Chạy stack trên Guardian L1 thật (`make l1-proxy`, `make stack-l1`, demo-reset): xem mục "The same stack on the Guardian L1" trong [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Cần validator và khoá test của chủ dự án, không có trong repo.
 
-## Đang hoàn thiện
+## Bằng chứng và ký bằng ví
 
-Do đồng đội làm song song, có thể chưa có trên `main`; nếu chưa thấy trong repo thì coi như chưa xong:
-
-- Trang `/bang-chung`: bằng chứng chain (địa chỉ, biên nhận) ngay trên giao diện.
-- `make l1-readonly-rpc`: proxy RPC công khai chỉ-đọc (`infra/l1/readonly_rpc_proxy.py`) để người chấm gọi `cast`/`curl` mà không cần validator.
-- Phiếu bầu của Hội đồng ký bằng ví trình duyệt (hiện backend giữ khoá test của 3 thành viên).
+- **Trang `/bang-chung`** (Bằng chứng trên chain): đọc trực tiếp từ nút Guardian L1 chain id, block mới nhất, mã của từng contract và quyền gửi giao dịch của từng khoá (0 bị chặn, 1 được gửi, 2 quản trị). Cần `VITE_L1_RPC_URL`; bản GitHub Pages chỉ hiện địa chỉ đã đóng băng, không bịa số đọc trực tiếp.
+- **`make l1-readonly-rpc`**: proxy RPC chỉ-đọc (`infra/l1/readonly_rpc_proxy.py`, mặc định `127.0.0.1:9670`). Chỉ cho các lệnh đọc (`eth_call`, `eth_getCode`, `eth_getTransactionReceipt`, ...); mọi lệnh gửi giao dịch bị trả lỗi `-32601`. Muốn cho người chấm gọi từ ngoài thì chạy với `--host 0.0.0.0` trên máy có validator.
+- **Hội đồng ký bằng ví**: ở cảnh Sửa và Xin thêm quyền, nút "Ký bằng ví" cho thành viên Hội đồng tự ký `approve` bằng MetaMask/Core thẳng vào `GuardianCouncil`, backend không ký thay. Bật khi chạy live với `VITE_L1_RPC_URL` và `VITE_COUNCIL_ADDRESS` (xem [Frontend/README.md](Frontend/README.md)); người trình bày tự nhập khoá test của thành viên vào ví.
+- **Cảnh Sự cố**: sau khi khoá khu, thẻ "Node của Guardian L1 từ chối giao dịch" hiện nguyên văn lỗi của node, không có mã giao dịch, và 5 thẻ của anh Minh đều "bị chặn".
+- **Khoá API ghi khi chạy trên L1**: stack L1 chỉ mở cổng trên `127.0.0.1`; tuỳ chọn `DEMO_SIGNING_TOKEN` bắt mọi lệnh ký phải có header `X-Demo-Token`.
 
 ## Bảo mật và giới hạn
 
