@@ -72,7 +72,7 @@ Tiền tố `/api`. Số tiền: `{ "raw": "<base unit>", "display": "30.000" }`
 
 | Method | Path | Mô tả | Trạng thái |
 |---|---|---|---|
-| GET | `/health` | block L1/C, `indexerLagBlocks`, agent, `demoMode`, `chainMode`, `simulated`, `policyVersion` (thô) và `policyLabel` (số hiển thị, mục 4.1); quan sát `lastBlockAt`, `blockStalled`, `warnings`, `eventToSse` (mục 4.3) | có |
+| GET | `/health` | block L1/C, `indexerLagBlocks`, agent, `demoMode`, `chainMode`, `simulated`, `policyVersion` (thô) và `policyLabel` (số hiển thị, mục 4.1); quan sát `lastBlockAt`, `blockStalled`, `warnings`, `eventToSse`, `worker` (mục 4.3) | có |
 | GET | `/org` | công ty, quỹ chính, kho (`vault.balance` tUSDC + `vault.balanceTkb` tTKB, mục 4.4), Council | có |
 | GET | `/graph` | `GraphSnapshot` (`policyVersion` thô + `policyLabel`, mục 4.1); cạnh tự khai có `note` (mục 4.4) | có |
 | GET | `/city/states` | trạng thái 8 công trình cho thành phố 3D | có |
@@ -117,6 +117,7 @@ Hợp đồng giữa Backend và Frontend được kiểm tự động: OpenAPI 
 - `lastBlockAt`: unix giây lúc head L1 tiến lần cuối (`null` khi chưa có lần đọc `/health` nào; head được ghi nhận mỗi lần gọi `/health`).
 - `blockStalled`: `true` khi head không tiến quá 60 giây. Chỉ kiểm ở `CHAIN_MODE=l1`; sim mỗi tx đúc một block nên không bao giờ đứng.
 - `warnings`: mã cảnh báo, rỗng khi ổn. `BLOCK_STALLED` (block đứng > 60 giây), `INDEXER_LAG` (lag > 10 block), `INDEXER_ERROR` (chu kỳ indexer gần nhất lỗi), `SSE_SLOW` (latency event→SSE tối đa trong 100 event gần nhất > 3000 ms).
+- `worker`: `{status, lastHeartbeatAt}` (API-006). Worker (`guardian-worker`) ghi `meta.worker_heartbeat_at` (unix giây) và `meta.worker_chain_mode` lúc khởi động và mỗi 5 giây, ở mọi chain mode khi có `DATABASE_URL`. `status`: `running` khi heartbeat gần nhất ≤ 15 giây (3×5), `stale` khi quá 15 giây hoặc chưa có heartbeat nào, `unknown` khi API không có DB (`lastHeartbeatAt` = `null`).
 - `eventToSse`: `{lastMs, maxMs, samples}`, đo từ lúc API nhận chain event đến lúc đẩy xong vào hàng đợi của mọi subscriber SSE, trên 100 event gần nhất. Spec yêu cầu < 3 giây. `lastMs`/`maxMs` là `null` khi `samples` = 0.
 
 Các trường này bổ sung, không đổi trường cũ.

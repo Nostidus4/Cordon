@@ -2440,6 +2440,9 @@
             },
             "title": "Warnings",
             "type": "array"
+          },
+          "worker": {
+            "$ref": "#/components/schemas/WorkerStatus"
           }
         },
         "required": [
@@ -2452,7 +2455,8 @@
           "policyVersion",
           "policyLabel",
           "graphVersion",
-          "agent"
+          "agent",
+          "worker"
         ],
         "title": "HealthOut",
         "type": "object"
@@ -5296,6 +5300,35 @@
           "text"
         ],
         "title": "WarningOut",
+        "type": "object"
+      },
+      "WorkerStatus": {
+        "properties": {
+          "lastHeartbeatAt": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastheartbeatat"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "stale",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "WorkerStatus",
         "type": "object"
       }
     }

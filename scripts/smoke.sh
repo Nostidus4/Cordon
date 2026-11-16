@@ -28,6 +28,7 @@ call POST /api/demo/reset >/dev/null
 h=$(call GET /api/health)
 check "health chainMode" "$(jq -r .chainMode <<<"$h")" sim
 check "health agent status present" "$(jq -r '.agent.status' <<<"$h")" never_run
+check "health worker heartbeat" "$(jq -r '.worker.status' <<<"$h")" running
 check "graph districts" "$(call GET /api/graph | jq '.districts | length')" 7
 
 t=$(call POST /api/simulate '{"compromised":["minh"]}' | jq -r '.totals | "\(.enforced.display) \(.estimated.display)"')

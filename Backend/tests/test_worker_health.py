@@ -19,7 +19,7 @@ from guardian.core.logging import event_extra, setup_logging
 from guardian.main import create_app
 from guardian.services.runtime import Runtime
 from guardian.workers.graph_worker import GraphWorker
-from guardian.workers.health import BlockWatch, LatencyStats
+from guardian.workers.health import HEARTBEAT_SECONDS, BlockWatch, LatencyStats, worker_status
 from tests.conftest import T0, make_settings
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -158,3 +158,22 @@ async def test_latency_for_an_event_from_another_thread(client: Any, rt: Runtime
     assert q.get_nowait()[0] == "event"
     out = rt.sse_latency.out()
     assert out["samples"] == before + 1 and out["maxMs"] < 3000
+
+
+def test_worker_status() -> None:
+    assert worker_status(1000, 999, has_db=False) == "unknown"
+    assert worker_status(1000, None, has_db=True) == "stale"
+    assert worker_status(1000, 1000 - 3 * HEARTBEAT_SECONDS, has_db=True) == "running"
+    assert worker_status(1000, 999 - 3 * HEARTBEAT_SECONDS, has_db=True) == "stale"
+
+
+async def test_health_reports_worker_heartbeat(client: Any, rt: Runtime) -> None:
+    h = (await client.get("/api/health")).json()
+    if rt.stores.bridge is None:
+        assert h["worker"] == {"status": "unknown", "lastHeartbeatAt": None}
+        return
+    assert h["worker"] == {"status": "stale", "lastHeartbeatAt": None}
+    now = int(rt.clock())
+    rt.stores.meta.set("worker_heartbeat_at", str(now))
+    h = (await client.get("/api/health")).json()
+    assert h["worker"] == {"status": "running", "lastHeartbeatAt": now}

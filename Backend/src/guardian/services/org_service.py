@@ -8,6 +8,7 @@ from guardian.chain.factory import load_seed
 from guardian.services import views
 from guardian.services.runtime import Runtime
 from guardian.shared.money import TOKEN_18_DECIMALS
+from guardian.workers.health import worker_status
 
 
 def org(rt: Runtime) -> dict[str, Any]:
@@ -75,6 +76,9 @@ def health(rt: Runtime) -> dict[str, Any]:
         if on
     ]
     runs = rt.stores.agent_runs.all()
+    has_db = rt.stores.bridge is not None
+    beat = rt.stores.meta.get("worker_heartbeat_at") if has_db else None
+    beat_at = int(beat) if beat else None
     return {
         "status": "ok",
         "chainMode": rt.settings.chain_mode,
@@ -91,6 +95,10 @@ def health(rt: Runtime) -> dict[str, Any]:
             "status": "idle" if runs else "never_run",
             "lastRunAt": runs[-1].ts if runs else None,
             "lastOutcome": runs[-1].outcome if runs else None,
+        },
+        "worker": {
+            "status": worker_status(rt.clock(), beat_at, has_db),
+            "lastHeartbeatAt": beat_at,
         },
         "lastBlockAt": rt.block_watch.last_block_at,
         "blockStalled": rt.block_watch.stalled,

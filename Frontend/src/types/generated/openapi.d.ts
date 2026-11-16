@@ -1944,6 +1944,7 @@ export interface components {
             status: string;
             /** Warnings */
             warnings?: string[];
+            worker: components["schemas"]["WorkerStatus"];
         };
         /** Highlights */
         Highlights: {
@@ -2912,6 +2913,16 @@ export interface components {
             code: string;
             /** Text */
             text: string;
+        };
+        /** WorkerStatus */
+        WorkerStatus: {
+            /** Lastheartbeatat */
+            lastHeartbeatAt?: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "stale" | "unknown";
         };
     };
     responses: never;

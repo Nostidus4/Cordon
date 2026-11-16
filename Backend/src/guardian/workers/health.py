@@ -1,10 +1,23 @@
-"""Liveness signals for /api/health: L1 block stall and event->SSE latency (API-004)."""
+"""Liveness signals for /api/health: L1 block stall, event->SSE latency (API-004), worker heartbeat (API-006)."""
 
 from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
 from typing import Any
+
+HEARTBEAT_SECONDS = 5  # worker writes meta.worker_heartbeat_at this often (issue: N <= 10)
+
+
+def worker_status(
+    now: float, last_heartbeat: int | None, has_db: bool, every: float = HEARTBEAT_SECONDS
+) -> str:
+    """ "unknown" without a shared DB; "stale" when no heartbeat for 3x the interval (or never)."""
+    if not has_db:
+        return "unknown"
+    if last_heartbeat is None or now - last_heartbeat > 3 * every:
+        return "stale"
+    return "running"
 
 
 class BlockWatch:
