@@ -71,13 +71,29 @@ def infer_change(calls: list[dict[str, Any]]) -> dict[str, Any] | None:
     return None
 
 
-def _executed_events(rt: Runtime) -> dict[int, tuple[int, str]]:
-    """proposal id -> (ts, tx hash) of the current Council's `Executed` events (kept in `event_log`)."""
+def _executed_events(rt: Runtime) -> dict[int, tuple[int, str, int | None]]:
+    """proposal id -> (ts, tx hash, bumped policy version) of the current Council's `Executed` events (kept in
+    `event_log`); the version is the `PolicyVersionBumped` of the same tx."""
     first = int(rt.chain.dep.deploy_block)
-    out: dict[int, tuple[int, str]] = {}
+    evs = [ev for ev in rt.event_log if ev.block >= first]
+    bumped = {
+        ev.tx_hash: int(ev.payload["version"]) for ev in evs if ev.name == "PolicyVersionBumped"
+    }
+    return {
+        int(ev.payload["id"]): (ev.ts, ev.tx_hash, bumped.get(ev.tx_hash))
+        for ev in evs
+        if ev.name == "Executed"
+    }
+
+
+def _approved_at(rt: Runtime, by_addr: dict[str, str]) -> dict[int, dict[str, int]]:
+    """proposal id -> member id -> unix s of its `Approved` event."""
+    first = int(rt.chain.dep.deploy_block)
+    out: dict[int, dict[str, int]] = {}
     for ev in rt.event_log:
-        if ev.name == "Executed" and ev.block >= first:
-            out[int(ev.payload["id"])] = (ev.ts, ev.tx_hash)
+        if ev.name == "Approved" and ev.block >= first:
+            member = by_addr.get(ev.payload["member"], ev.payload["member"])
+            out.setdefault(int(ev.payload["id"]), {})[member] = ev.ts
     return out
 
 
@@ -97,6 +113,7 @@ def rebuild_from_chain(rt: Runtime) -> list[int]:
     snap = rt.snapshot()
     by_addr = {m.address: m.id for m in snap.council}
     executed = _executed_events(rt)
+    approved_at = _approved_at(rt, by_addr)
     for pid in range(1, count + 1):
         if rt.stores.proposals.get(pid) is not None:
             continue
@@ -140,6 +157,8 @@ def rebuild_from_chain(rt: Runtime) -> list[int]:
                 report_basis=REBUILT_BASIS,
                 executed_at=ex[0] if ex else (head["created_at"] if state.executed else None),
                 executed_tx_hash=ex[1] if ex else None,
+                approved_at=approved_at.get(pid, {}),
+                resulting_policy_version=ex[2] if ex else None,
             )
         )
         added.append(pid)

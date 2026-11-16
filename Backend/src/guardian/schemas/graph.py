@@ -22,6 +22,7 @@ class GraphEdge(CamelModel):
     to: str
     type: str
     source: str
+    note: str | None = None  # declared edges only (untrusted text)
 
 
 class GraphDistrict(CamelModel):

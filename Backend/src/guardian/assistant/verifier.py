@@ -35,15 +35,30 @@ def norm(v: Any) -> str:
     return str(v)
 
 
-def verify(answer: str, numbers: list[dict[str, Any]], ctx: dict[str, Any]) -> bool:
-    allowed: set[str] = set()
+def check(
+    answer: str, numbers: list[dict[str, Any]], ctx: dict[str, Any]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Per-number checks `{label, value, toolValue, match}` and the numbers written in `answer` that no entry
+    covers (rule 2). `toolValue` is None when the path does not resolve or names another source."""
+    checks: list[dict[str, Any]] = []
     for n in numbers:
         try:
-            if n["source"] != n["path"].split(".")[0]:
-                return False
-            if norm(resolve(ctx, n["path"])) != n["value"]:
-                return False
+            tool = norm(resolve(ctx, n["path"])) if n["source"] == n["path"].split(".")[0] else None
         except (KeyError, IndexError, ValueError):
-            return False
-        allowed.add(n["value"])
-    return all(tok in allowed for tok in NUMBER_RE.findall(answer))
+            tool = None
+        checks.append(
+            {
+                "label": n["label"],
+                "value": n["value"],
+                "toolValue": tool,
+                "match": tool == n["value"],
+            }
+        )
+    allowed = {n["value"] for n in numbers}
+    uncovered = [t for t in dict.fromkeys(NUMBER_RE.findall(answer)) if t not in allowed]
+    return checks, uncovered
+
+
+def verify(answer: str, numbers: list[dict[str, Any]], ctx: dict[str, Any]) -> bool:
+    checks, uncovered = check(answer, numbers, ctx)
+    return all(c["match"] for c in checks) and not uncovered

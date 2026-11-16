@@ -444,6 +444,13 @@
             "title": "Answer",
             "type": "string"
           },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/NumberCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
           "flaggedUntrusted": {
             "default": false,
             "title": "Flaggeduntrusted",
@@ -483,9 +490,23 @@
             ],
             "title": "Screen"
           },
+          "toolCalls": {
+            "items": {
+              "$ref": "#/components/schemas/ToolCall"
+            },
+            "title": "Toolcalls",
+            "type": "array"
+          },
           "ts": {
             "title": "Ts",
             "type": "integer"
+          },
+          "uncovered": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Uncovered",
+            "type": "array"
           }
         },
         "required": [
@@ -2200,6 +2221,17 @@
             "title": "Id",
             "type": "string"
           },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
           "source": {
             "title": "Source",
             "type": "string"
@@ -2703,6 +2735,17 @@
             "title": "Approved",
             "type": "boolean"
           },
+          "approvedAt": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approvedat"
+          },
           "canApprove": {
             "title": "Canapprove",
             "type": "boolean"
@@ -2769,6 +2812,41 @@
           "display"
         ],
         "title": "Money",
+        "type": "object"
+      },
+      "NumberCheck": {
+        "description": "One `numbers[]` entry re-read from the tool result (spec §9.4); `toolValue` null when the path did not resolve.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "match": {
+            "title": "Match",
+            "type": "boolean"
+          },
+          "toolValue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toolvalue"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value",
+          "match"
+        ],
+        "title": "NumberCheck",
         "type": "object"
       },
       "NumberRef": {
@@ -2844,9 +2922,7 @@
             "type": "integer"
           },
           "vault": {
-            "additionalProperties": true,
-            "title": "Vault",
-            "type": "object"
+            "$ref": "#/components/schemas/VaultOut"
           }
         },
         "required": [
@@ -4053,6 +4129,17 @@
             "title": "Reportbasis",
             "type": "string"
           },
+          "resultingPolicyVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resultingpolicyversion"
+          },
           "riskReport": {
             "additionalProperties": true,
             "title": "Riskreport",
@@ -4731,6 +4818,24 @@
         "title": "Suggestion",
         "type": "object"
       },
+      "ToolCall": {
+        "properties": {
+          "args": {
+            "additionalProperties": true,
+            "title": "Args",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ToolCall",
+        "type": "object"
+      },
       "TopUpOut": {
         "description": "One simulated top-up: the C-Chain transfer (treasury -> escrow) and the L1 `TopUpRecorded`, joined by the\nC-Chain tx hash. UI label: \"nạp tiền giả lập\".",
         "properties": {
@@ -5044,6 +5149,37 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VaultOut": {
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "balance": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "balanceTkb": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "address",
+          "balance",
+          "balanceTkb",
+          "paused",
+          "label"
+        ],
+        "title": "VaultOut",
         "type": "object"
       },
       "ViolationOut": {

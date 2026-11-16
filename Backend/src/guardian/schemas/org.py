@@ -10,6 +10,14 @@ class CouncilMemberOut(CamelModel):
     principal_id: str | None = None
 
 
+class VaultOut(CamelModel):
+    address: str
+    balance: Money  # tUSDC
+    balance_tkb: Money  # tTKB (18 decimals)
+    paused: bool
+    label: str
+
+
 class OrgOut(CamelModel):
     id: str
     name: str
@@ -17,9 +25,9 @@ class OrgOut(CamelModel):
     policy_version: int
     policy_label: int
     main_treasury: JsonDict
-    vault: JsonDict
+    vault: VaultOut
     council: list[CouncilMemberOut]
     threshold: int
 
 
-__all__ = ["CouncilMemberOut", "Money", "OrgOut"]
+__all__ = ["CouncilMemberOut", "Money", "OrgOut", "VaultOut"]

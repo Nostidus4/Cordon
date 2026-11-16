@@ -6,6 +6,9 @@ quotes must come from these results and are re-read by `verifier.verify` through
 
 from __future__ import annotations
 
+import functools
+import inspect
+from collections.abc import Callable
 from typing import Any
 
 from guardian.graph import changes as chg
@@ -20,13 +23,27 @@ from guardian.services import proposal_service as ps
 from guardian.services.runtime import Runtime
 
 
+def _recorded[F: Callable[..., Any]](fn: F) -> F:
+    """Append `{name, args}` to `self.calls` (shown in the assistant log, spec §9.4)."""
+    params = list(inspect.signature(fn).parameters)[1:]
+
+    @functools.wraps(fn)
+    def wrapper(self: AssistantTools, *args: Any, **kwargs: Any) -> Any:
+        self.calls.append({"name": fn.__name__, "args": {**dict(zip(params, args)), **kwargs}})
+        return fn(self, *args, **kwargs)
+
+    return wrapper  # type: ignore[return-value]
+
+
 class AssistantTools:
     def __init__(self, rt: Runtime) -> None:
         self._rt = rt
+        self.calls: list[dict[str, Any]] = []
 
     def snapshot_key_address(self, seed_id: str) -> str:
         return self._rt.key_by_seed(seed_id).address
 
+    @_recorded
     def get_graph(self) -> dict[str, Any]:
         """Condensed snapshot: districts + balances (no node/edge lists)."""
         g = graph_service.graph(self._rt)
@@ -47,20 +64,25 @@ class AssistantTools:
             ],
         }
 
+    @_recorded
     def simulate_compromise(
         self, principals: list[str], change: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         return graph_service.simulate(self._rt, principals, change)
 
+    @_recorded
     def get_district(self, principal_id: str) -> dict[str, Any]:
         return district_service.district(self._rt, principal_id)
 
+    @_recorded
     def get_proposal(self, proposal_id: int) -> dict[str, Any]:
         return ps.proposal_out(self._rt, proposal_id)
 
+    @_recorded
     def list_findings(self) -> list[dict[str, Any]]:
         return graph_service.findings(self._rt)
 
+    @_recorded
     def evaluate_change(self, change_raw: dict[str, Any]) -> dict[str, Any]:
         """Read-only what-if for a ProposedChange that is not (yet) a proposal."""
         snap = self._rt.snapshot()

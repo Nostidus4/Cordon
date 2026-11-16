@@ -102,7 +102,7 @@ def _run_rec(r: ScenarioRun) -> ScenarioRunRec:
 
 _PROPOSAL_EXTRA = (
     "subject_principal", "change", "description_vi", "proposer", "created_at", "finding_id",
-    "report_basis", "executed_at", "executed_tx_hash",
+    "report_basis", "executed_at", "executed_tx_hash", "approved_at", "resulting_policy_version",
 )  # fmt: skip
 
 
@@ -149,7 +149,7 @@ def _assistant_row(a: AssistantLogRec) -> AssistantLog:
     return AssistantLog(
         id=str(a.id),
         question=a.question,
-        tool_calls=[],
+        tool_calls=a.tool_calls,
         answer={"rec": asdict(a)},
         numbers_verified=a.numbers_verified,
         created_at=_dt(a.ts),

@@ -51,6 +51,7 @@ class MemberApproval(CamelModel):
     conflicted: bool
     can_approve: bool
     disabled_reason: str | None = None
+    approved_at: int | None = None  # unix s of the approval tx
 
 
 class ProposalOut(CamelModel):
@@ -75,6 +76,7 @@ class ProposalOut(CamelModel):
     created_at: int
     executed_at: int | None = None
     executed_tx_hash: str | None = None
+    resulting_policy_version: int | None = None  # PolicyVersionBumped of the execute tx
     # timelock (#77): `eta` = earliest execution (unix s) once the threshold was reached, `queued` while waiting
     eta: int | None = None
     queued: bool = False

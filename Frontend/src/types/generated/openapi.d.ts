@@ -1292,6 +1292,8 @@ export interface components {
         AssistantLogOut: {
             /** Answer */
             answer: string;
+            /** Checks */
+            checks?: components["schemas"]["NumberCheck"][];
             /**
              * Flaggeduntrusted
              * @default false
@@ -1307,8 +1309,12 @@ export interface components {
             questionId?: string | null;
             /** Screen */
             screen?: string | null;
+            /** Toolcalls */
+            toolCalls?: components["schemas"]["ToolCall"][];
             /** Ts */
             ts: number;
+            /** Uncovered */
+            uncovered?: string[];
         };
         /** AssistantWarning */
         AssistantWarning: {
@@ -1859,6 +1865,8 @@ export interface components {
             from: string;
             /** Id */
             id: string;
+            /** Note */
+            note?: string | null;
             /** Source */
             source: string;
             /** To */
@@ -2025,6 +2033,8 @@ export interface components {
         MemberApproval: {
             /** Approved */
             approved: boolean;
+            /** Approvedat */
+            approvedAt?: number | null;
             /** Canapprove */
             canApprove: boolean;
             /** Conflicted */
@@ -2047,6 +2057,20 @@ export interface components {
             display: string;
             /** Raw */
             raw: string;
+        };
+        /**
+         * NumberCheck
+         * @description One `numbers[]` entry re-read from the tool result (spec §9.4); `toolValue` null when the path did not resolve.
+         */
+        NumberCheck: {
+            /** Label */
+            label: string;
+            /** Match */
+            match: boolean;
+            /** Toolvalue */
+            toolValue?: string | null;
+            /** Value */
+            value: string;
         };
         /** NumberRef */
         NumberRef: {
@@ -2082,10 +2106,7 @@ export interface components {
             policyVersion: number;
             /** Threshold */
             threshold: number;
-            /** Vault */
-            vault: {
-                [key: string]: unknown;
-            };
+            vault: components["schemas"]["VaultOut"];
         };
         /** PauseRequest */
         PauseRequest: {
@@ -2516,6 +2537,8 @@ export interface components {
             queued: boolean;
             /** Reportbasis */
             reportBasis: string;
+            /** Resultingpolicyversion */
+            resultingPolicyVersion?: number | null;
             /** Riskreport */
             riskReport: {
                 [key: string]: unknown;
@@ -2715,6 +2738,15 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** ToolCall */
+        ToolCall: {
+            /** Args */
+            args?: {
+                [key: string]: unknown;
+            };
+            /** Name */
+            name: string;
+        };
         /**
          * TopUpOut
          * @description One simulated top-up: the C-Chain transfer (treasury -> escrow) and the L1 `TopUpRecorded`, joined by the
@@ -2829,6 +2861,17 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VaultOut */
+        VaultOut: {
+            /** Address */
+            address: string;
+            balance: components["schemas"]["Money"];
+            balanceTkb: components["schemas"]["Money"];
+            /** Label */
+            label: string;
+            /** Paused */
+            paused: boolean;
         };
         /**
          * ViolationOut
