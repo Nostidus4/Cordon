@@ -1,4 +1,4 @@
-.PHONY: stack-l1 stack-l1-down l1-proxy deploy-cchain topup copilot-eval openapi parity shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web dev-live test lint build docker-up docker-down stack-up smoke db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
+.PHONY: l1-readonly-rpc stack-l1 stack-l1-down l1-proxy deploy-cchain topup copilot-eval openapi parity shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web dev-live test lint build docker-up docker-down stack-up smoke db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
 
 API_URL ?= http://localhost:8000
 
@@ -68,6 +68,11 @@ stack-l1-down:
 # Host RPC proxy for the containers: 127.0.0.1:9660 -> validator 127.0.0.1:9650 with Host: localhost (docs/DEVELOPMENT.md).
 l1-proxy:
 	python3 infra/l1/host_rpc_proxy.py
+
+# Read-only JSON-RPC proxy (allowlisted read methods, CORS, rate limit) so the L1 can be exposed publicly: 127.0.0.1:9670.
+# Upstream from L1_RPC_URL; add RO_RPC_HOST=0.0.0.0 to expose it. Page /bang-chung reads through it (VITE_L1_RPC_URL).
+l1-readonly-rpc:
+	python3 infra/l1/readonly_rpc_proxy.py
 
 # Smoke test of the running stack, incl. `docker compose restart api` keeping attempts + proposals
 smoke:
