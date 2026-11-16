@@ -7,6 +7,7 @@ import { sfx } from "../../audio/sounds";
 import { useActions } from "../../hooks/useActions";
 import { useAttempts } from "../../hooks/useAttempts";
 import { useCityStates } from "../../hooks/useCityStates";
+import { useDistrict } from "../../hooks/useDistrict";
 import { useGraph } from "../../hooks/useGraph";
 import { useScenarioRuns } from "../../hooks/useScenarioRuns";
 import { useStream } from "../../hooks/useStream";
@@ -19,6 +20,7 @@ import { useUiStore } from "../../store/uiStore";
 import type { Attempt } from "../../types";
 import type { BuildingCode, CityStageProps } from "../contract";
 import { LEFT_FULL, attackErrorVi, incidentNumbers, nextIncidentAction, recipientVi, signerShort, type IncidentAction } from "../logic";
+import { NodeRejectCard, findNodeReject } from "../NodeRejectCard";
 import { Tile } from "../parts";
 import { useCityProps, usePrimaryAction, useStageStore } from "../stageStore";
 import { CheckIcon, Counter, CrossIcon, GateIcon, KindIcon, Ribbon, ToyButton, ToyCard, WarnIcon } from "../ui";
@@ -85,6 +87,7 @@ export function IncidentScene() {
   const { data: cityStates } = useCityStates();
   const { data: runs } = useScenarioRuns();
   const live = useLiveAttempts();
+  const { data: minhDistrict } = useDistrict("minh");
   const [attacking, setAttacking] = useState(false);
   const [attackError, setAttackError] = useState<string | null>(null);
   const preparing = useStageStore((s) => s.preparing);
@@ -178,6 +181,8 @@ export function IncidentScene() {
             </Tile>
           </ToyCard>
         )}
+
+        {policyV2 && nums.step7Done ? <NodeRejectCard attempt={findNodeReject(attempts)} keys={replay ? undefined : minhDistrict?.keys} /> : null}
 
         {policyV2 ? (
           <ToyCard className="flex max-h-[min(300px,calc(100vh-500px))] min-h-[130px] flex-col overflow-hidden px-4 pb-3 pt-3" label="Các lần thử" delay={0.1}>
