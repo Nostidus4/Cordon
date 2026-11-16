@@ -1,4 +1,4 @@
-.PHONY: deploy-cchain topup copilot-eval openapi parity shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web dev-live test lint build docker-up docker-down stack-up smoke db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
+.PHONY: stack-l1 stack-l1-down l1-proxy deploy-cchain topup copilot-eval openapi parity shared-tables e2e e2e-l1 conformance contracts-deps contracts-build contracts-test abis setup dev-api dev-web dev-live test lint build docker-up docker-down stack-up smoke db-up db-migrate demo-reset demo-scene4 blender-rebuild l1-local-up l1-local-down l1-local-verify deploy-l1 l1-status deploy-contracts verify-handover l1-deploy l1-seed l1-handover l1-policy-v2 l1-baseline l1-local-env l1-local-bootstrap l1-local-checks
 
 API_URL ?= http://localhost:8000
 
@@ -56,6 +56,18 @@ docker-down:
 # Full live stack (QA-002): db, migrate, api, worker, agent, web; needs POSTGRES_PASSWORD in the root .env
 stack-up:
 	docker compose up --build -d --wait
+
+# Same stack on CHAIN_MODE=l1 (L1-003, #35): env file Backend/.env.l1-fuji.docker (infra/l1/fuji_env.py) or L1_ENV_FILE;
+# start `make l1-proxy` first (containers reach the validator through it). Check with scripts/smoke-l1.sh.
+stack-l1:
+	docker compose -f docker-compose.yml -f docker-compose.l1.yml up --build -d --wait
+
+stack-l1-down:
+	docker compose -f docker-compose.yml -f docker-compose.l1.yml down
+
+# Host RPC proxy for the containers: 127.0.0.1:9660 -> validator 127.0.0.1:9650 with Host: localhost (docs/DEVELOPMENT.md).
+l1-proxy:
+	python3 infra/l1/host_rpc_proxy.py
 
 # Smoke test of the running stack, incl. `docker compose restart api` keeping attempts + proposals
 smoke:

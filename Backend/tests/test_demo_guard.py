@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
+import pytest
 import pytest_asyncio
 
 from guardian.chain.sim import SimChain
@@ -70,3 +71,29 @@ async def test_rate_limit_and_audit() -> None:
         assert (await c.get("/api/health")).status_code == 200  # reads are not rate limited
         assert [e["action"] for e in rt.guard.audit] == ["agent.run_once"] * 3
         assert rt.guard.audit[0]["path"] == "/api/agent/run-once"
+
+
+def test_demo_mode_refuses_a_chain_id_off_the_test_list() -> None:
+    """#35: DEMO_MODE on CHAIN_MODE=l1 refuses to start on a chain id that is not a test chain (no anvil needed)."""
+    from guardian.core.config import Settings
+    from guardian.core.demo_guard import DemoModeError, ensure_test_chain
+
+    s = Settings(chain_mode="l1", demo_mode=True)
+    for ok in (31337, 424242, 845357):  # anvil, local L1, Guardian L1 on Fuji
+        ensure_test_chain(s, ok)
+    for bad in (43114, 43113, 1):  # Avalanche mainnet C-Chain, Fuji C-Chain, Ethereum
+        with pytest.raises(DemoModeError, match=f"chain id {bad} is not a test chain"):
+            ensure_test_chain(s, bad)
+    ensure_test_chain(Settings(chain_mode="l1", demo_mode=False), 43114)  # read-only API is fine
+    ensure_test_chain(Settings(chain_mode="sim"), 43114)  # no chain id in sim
+
+
+def test_demo_chain_ids_come_from_the_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    from guardian.core.config import Settings
+    from guardian.core.demo_guard import DemoModeError, ensure_test_chain
+
+    monkeypatch.setenv("DEMO_CHAIN_IDS", "[845357]")  # what infra/l1/fuji_env.py writes
+    s = Settings(chain_mode="l1", demo_mode=True)
+    ensure_test_chain(s, 845357)
+    with pytest.raises(DemoModeError):
+        ensure_test_chain(s, 31337)
