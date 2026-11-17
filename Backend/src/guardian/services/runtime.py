@@ -458,6 +458,7 @@ class Runtime:
         self._responder_task: asyncio.Task[None] | None = None
         self._keeper_task: asyncio.Task[None] | None = None
         self._unsubscribe: Callable[[], None] = lambda: None
+        self._decimals_seen: dict[str, int] = {}
         self._init_payroll()
         if self.is_l1:
             self._forget_other_deployment()
@@ -564,6 +565,10 @@ class Runtime:
         )
         self.indexer.sync_once()
         self._rebuild_proposals()
+        try:
+            self.token_decimals()  # decimals for the first event come from memory, not a snapshot (#117)
+        except Exception:
+            log.exception("token decimals warm-up failed")
         self._live = True
         self.indexer.start()
         self._start_cchain_indexer()
@@ -644,6 +649,22 @@ class Runtime:
     def bind_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
         self.bus.bind_loop(loop)
 
+    async def _warm_snapshot(self) -> None:
+        """L1: read the head's snapshot (~90 eth_calls, 0.5-2 s on a new block) on a worker thread. The tick that
+        follows runs on the event loop and then hits the per-block memo; read there, it froze every SSE fan-out
+        and request behind it, which was the bulk of the 2-4 s event-to-screen delay (#117)."""
+        if not self.is_l1:
+            return
+
+        def warm() -> None:
+            for _ in range(
+                3
+            ):  # a block mined during the read makes it stale: read again, it is memoised per head
+                if self.chain.snapshot().block >= int(self.chain.w3.eth.block_number):
+                    return
+
+        await asyncio.to_thread(warm)
+
     def start_responder_ticker(self, interval: float = 2.0) -> None:
         """Time-based incident transitions (recovering -> resolved) need a clock tick, not only events."""
         if self._responder_task is not None or not self.settings.responder_enabled:
@@ -653,6 +674,7 @@ class Runtime:
             while True:
                 await asyncio.sleep(interval)
                 try:
+                    await self._warm_snapshot()
                     self.responder_tick()
                 except Exception:
                     log.exception("responder tick failed")
@@ -669,6 +691,7 @@ class Runtime:
             while True:
                 await asyncio.sleep(interval)
                 try:
+                    await self._warm_snapshot()
                     timelock_keeper.tick(self)
                 except Exception:
                     log.exception("timelock keeper tick failed")
@@ -719,7 +742,17 @@ class Runtime:
         return compute_findings(self.snapshot())
 
     def token_decimals(self) -> dict[str, int]:
-        return {t.address: t.decimals for t in self.snapshot().tokens}
+        dec = {t.address: t.decimals for t in self.snapshot().tokens}
+        self._decimals_seen.update(dec)
+        return dec
+
+    def _event_decimals(self, ev: ChainEvent) -> dict[str, int]:
+        """Decimals for rendering one event. A token's decimals never change, so tokens already seen are served
+        from memory: a fresh snapshot per new block (~90 eth_calls) before the publish cost 0.6-2 s (#117)."""
+        tokens = [v for k, v in ev.payload.items() if k in ("token", "tokenIn", "tokenOut")]
+        if all(t in self._decimals_seen for t in tokens):
+            return self._decimals_seen
+        return self.token_decimals()
 
     def key_by_seed(self, seed_id: str, snap: PolicySnapshot | None = None) -> KeyState:
         for k in (snap or self.snapshot()).keys.values():
@@ -747,7 +780,7 @@ class Runtime:
             self._sim_sink.write(ev)
         if self._live:
             t0 = time.perf_counter()
-            item = views.api_event(ev, self.token_decimals())
+            item = views.api_event(ev, self._event_decimals(ev))
 
             def publish_and_record() -> None:
                 self.bus.publish("event", item)
