@@ -3,7 +3,7 @@ import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Building2, LayoutDashboard, Radar, Scale, ScrollText, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Building2, Info, LayoutDashboard, Radar, Scale, ScrollText, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import "../../stage/toy.css";
 import { useAudioUnlock } from "../../audio/director";
 import { SoundToggle } from "../../audio/SoundToggle";
@@ -15,6 +15,7 @@ import { useTitle } from "../../hooks/useTitle";
 import { useSysInvalidation } from "./data";
 import { useSystemDevHooks } from "./devHooks";
 import { useFeed, useSystemFeed } from "./feed";
+import { About } from "./sections/About";
 import { Architecture } from "./sections/Architecture";
 import * as AgentMod from "./sections/AgentRebalance";
 import * as AssistantMod from "./sections/Assistant";
@@ -45,6 +46,7 @@ export const TABS = [
   { id: "hoi-dong", label: "Hội đồng", color: ACCENT.council, icon: Scale },
   { id: "rui-ro", label: "Rủi ro", color: ACCENT.growth, icon: Radar },
   { id: "tro-ly", label: "Trợ lý", color: ACCENT.resp, icon: Sparkles },
+  { id: "gioi-thieu", label: "Giới thiệu", color: ACCENT.plaza, icon: Info },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -70,6 +72,7 @@ function Body({ tab }: { tab: TabId }): ReactNode {
     case "hoi-dong": return <Council />;
     case "rui-ro": return <Simulation />;
     case "tro-ly": return <Assistants />;
+    case "gioi-thieu": return <About />;
   }
 }
 

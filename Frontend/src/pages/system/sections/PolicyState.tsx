@@ -60,7 +60,7 @@ export function PolicyState() {
       <div style={{ minWidth: 0 }}>
       <h3 className="sx-h3">Khu và thẻ <span title="Tx AllowList là danh sách của node: thẻ ở trạng thái None bị từ chối trước khi vào block, không có tx hash." style={{ color: "var(--ink-2)", display: "inline-flex" }}><Info size={14} aria-label="Giải thích Tx AllowList" /></span></h3>
       {!graph ? <Empty>Đang tải…</Empty> : (
-        <div className="sx-scroll" style={{ border: "1.5px solid #efe2c6", borderRadius: 18, background: "#fff", overflowX: "auto" }}>
+        <div className="sx-scroll" data-tour="sys-districts" style={{ border: "1.5px solid #efe2c6", borderRadius: 18, background: "#fff", overflowX: "auto" }}>
           <table className="sx-table" style={{ minWidth: 640 }}>
             <thead><tr><th>Khu / thẻ</th><th>Tx AllowList</th><th className="r">Hạn mức thẻ</th><th className="r">Hạn mức khu</th><th style={{ width: 210 }}>Đã dùng hôm nay</th><th>Trạng thái</th></tr></thead>
             <tbody>

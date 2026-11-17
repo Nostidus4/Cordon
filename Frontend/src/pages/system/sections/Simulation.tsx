@@ -1,13 +1,19 @@
 // Rủi ro: simulateCompromise runner (youThink / enforced / estimated), findings R1-R4 and the §8.4 reference table.
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Play } from "lucide-react";
+import "../ports.css";
+import { useActions } from "../../../hooks/useActions";
 import { useFindings } from "../../../hooks/useFindings";
 import { useGraph } from "../../../hooks/useGraph";
 import { useProposals } from "../../../hooks/useProposals";
 import { useSimulate } from "../../../hooks/useSimulate";
 import { fmtPercent } from "../../../lib/format";
 import { ToyButton } from "../../../stage/ui";
-import type { ProposedChange, RuleId, SimResult } from "../../../types";
+import { useUiStore } from "../../../store/uiStore";
+import type { Finding, ProposedChange, RuleId, SimResult } from "../../../types";
+import { PROPOSER } from "./ProposalsParts";
+import { proposalForFinding, youThinkOf } from "../proposals.logic";
 import { REFERENCE, matchReference, presetsFrom } from "../sim.logic";
 import { ACCENT, Empty, JsonView, Section, Stat } from "../ui";
 import { policyLabel } from "../../../lib/policy";
@@ -27,12 +33,20 @@ function useRunner() {
   const { data: graph } = useGraph();
   const { data: proposals } = useProposals();
   const presets = useMemo(() => presetsFrom(proposals), [proposals]);
-  const [pick, setPick] = useState<string[]>(["minh"]);
+  // the picked districts follow the shared selection (the tour and the city set it), but can still be changed by hand
+  const selected = useUiStore((s) => s.selectedPrincipals);
+  const setSelected = useUiStore((s) => s.setSelectedPrincipals);
+  const [pick, setPick] = useState<string[]>(selected);
   const [preset, setPreset] = useState<string>(NO_CHANGE);
-  const [run, setRun] = useState<RunState>({ ids: ["minh"], changeId: NO_CHANGE });
+  const [run, setRun] = useState<RunState>({ ids: selected, changeId: NO_CHANGE });
+  const selKey = selected.join();
+  useEffect(() => {
+    setPick((p) => (p.join() === selKey ? p : selected));
+    setRun((r) => (r.ids.join() === selKey ? r : { ...r, ids: selected }));
+  }, [selKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const change: ProposedChange | undefined = presets.find((p) => p.id === run.changeId)?.change;
   const q = useSimulate(run.ids, change);
-  return { graph, presets, pick, setPick, preset, setPreset, run, setRun, change, ...q };
+  return { graph, presets, pick, setPick, preset, setPreset, run, setRun, setSelected, change, ...q };
 }
 const RunnerCtx = createContext<ReturnType<typeof useRunner> | null>(null);
 const useRunnerCtx = () => { const c = useContext(RunnerCtx); if (!c) throw new Error("RunnerCtx"); return c; };
@@ -42,6 +56,7 @@ export function Simulation() {
   return (
     <RunnerCtx.Provider value={runner}>
       <Section id="mo-phong" accent={ACCENT.growth} title="Nếu thẻ bị chiếm thì mất bao nhiêu?" sub="Ba con số: bạn nghĩ, chain thật sự chặn, và ước tính gồm cả quan hệ tự khai.">
+        <YouThink />
         <div className="grid gap-x-8 gap-y-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))" }}>
           <Runner />
           <Rules />
@@ -52,11 +67,51 @@ export function Simulation() {
   );
 }
 
+/** "Bạn nghĩ anh Minh chỉ cầm: 20.000/ngày" next to what the simulation says; the button runs that person. */
+function YouThink() {
+  const { graph, run, data, setPick, setRun, setSelected } = useRunnerCtx();
+  const pid = run.ids[0];
+  const d = graph?.districts.find((x) => x.principalId === pid);
+  const think = graph && d ? youThinkOf(graph, d) : null;
+  if (!graph || !d || !think) return null;
+  const real = run.ids.length === 1 ? data?.totals : undefined;
+  const holds = !!real && BigInt(real.estimated.raw) <= BigInt(think.raw);
+  const who = d.label.charAt(0).toLowerCase() + d.label.slice(1);
+  const go = () => { setPick([pid]); setSelected([pid]); setRun((r) => ({ ...r, ids: [pid] })); };
+  return (
+    <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2" data-tour="sys-you-think" style={{ background: holds ? "var(--ok-soft)" : "var(--violet-soft)", borderRadius: 20, padding: "10px 16px" }}>
+      <div>
+        <div className="px-label">{holds ? <>Sau khi sửa, <b>{who}</b> chỉ cầm được tối đa</> : <>Bạn nghĩ <b>{who}</b> chỉ cầm:</>}</div>
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="font-toy tnum" style={{ fontWeight: 800, fontSize: 28 }}>{think.display}</span>
+          <span className="px-label">/ngày</span>
+          {real ? (holds ? <b style={{ color: "var(--ok-ink)", fontSize: 12.5 }}>✓ đúng như bạn nghĩ</b>
+            : <b style={{ color: "var(--amber-ink)", fontSize: 12.5 }}>▲ nhưng ước tính là {real.estimated.display}</b>) : <b style={{ color: "var(--amber-ink)", fontSize: 12.5 }}>▲ nhưng thật không?</b>}
+        </div>
+      </div>
+      <ToyButton size="sm" color={holds ? "cream" : "violet"} onClick={go}>{holds ? "Giả lập lại" : "Thử xem"}</ToyButton>
+    </div>
+  );
+}
+
+/** One open finding with a ready-made fix: creates the draft proposal and opens it on the Hội đồng tab. */
+function FixButton({ f }: { f: Finding }) {
+  const nav = useNavigate();
+  const { data: proposals } = useProposals();
+  const actions = useActions();
+  const existing = proposalForFinding(f, proposals);
+  const go = async () => {
+    const id = existing ? existing.id : (await actions.createProposal.mutateAsync({ member: PROPOSER, findingId: f.id })).id;
+    nav(`/he-thong/hoi-dong?id=${id}`);
+  };
+  return <ToyButton size="xs" color="violet" data-tour="sys-create-proposal" disabled={actions.createProposal.isPending} onClick={() => void go()}>{existing ? `Mở đề xuất #${existing.id}` : "Tạo đề xuất sửa"}</ToyButton>;
+}
+
 const h = { fontFamily: "var(--font-toy)", fontWeight: 800, fontSize: 17, margin: "0 0 8px" } as const;
 
 function Totals({ r, dim }: { r: SimResult; dim?: boolean }) {
   return (
-    <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", opacity: dim ? 0.62 : 1 }}>
+    <div className="grid gap-2.5" data-tour={dim ? undefined : "sys-sim-exposure"} style={{ gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", opacity: dim ? 0.62 : 1 }}>
       <Stat k="Bạn nghĩ" v={r.totals.youThink.display} />
       <Stat k="Chain chặn" v={r.totals.enforced.display} tone="ok" />
       <Stat k="Ước tính" v={r.totals.estimated.display} tone={r.totals.estimated.raw !== r.totals.enforced.raw ? "warn" : undefined} />
@@ -67,7 +122,7 @@ function Totals({ r, dim }: { r: SimResult; dim?: boolean }) {
 
 function Runner() {
   const rn = useRunnerCtx();
-  const { graph, presets, pick, setPick, preset, setPreset, run, setRun, data, isFetching, error } = rn;
+  const { graph, presets, pick, setPick, preset, setPreset, run, setRun, setSelected, data, isFetching, error } = rn;
   const ids = (graph?.districts ?? []).map((d) => ({ id: d.principalId, label: d.label }));
   const [json, setJson] = useState(false);
   const dirty = [...pick].sort().join() !== [...run.ids].sort().join() || preset !== run.changeId;
@@ -75,9 +130,9 @@ function Runner() {
   const hasBA = !!data?.before && !!data?.after;
   return (
     <div style={{ minWidth: 0 }}>
-      <form onSubmit={(e) => { e.preventDefault(); if (pick.length) setRun({ ids: pick, changeId: preset }); }}>
+      <form onSubmit={(e) => { e.preventDefault(); if (pick.length) { setSelected(pick); setRun({ ids: pick, changeId: preset }); } }}>
         <div style={{ fontWeight: 600, fontSize: 12.5, color: "var(--ink-2)", marginBottom: 6 }}>Giả sử bị chiếm</div>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Chọn khu bị chiếm">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Chọn khu bị chiếm" data-tour="sys-sim-picker">
           {ids.map((d) => <button key={d.id} type="button" className="sx-tog" style={{ ["--ac" as string]: ACCENT.growth }} aria-pressed={pick.includes(d.id)} onClick={() => toggle(d.id)}>{d.label}</button>)}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -138,7 +193,7 @@ function Rules() {
   }), [findings, proposals]);
   const nOpen = findings?.length ?? 0;
   return (
-    <div style={{ minWidth: 0 }}>
+    <div style={{ minWidth: 0 }} data-tour="sys-findings">
       <h3 style={h}>Phát hiện rủi ro <span style={{ fontSize: 13, fontWeight: 700, color: nOpen ? "var(--red-ink)" : "var(--ok-ink)", marginLeft: 6 }}>{nOpen ? `${nOpen} đang mở` : "không còn cái nào mở"}</span></h3>
       <div className="grid gap-2">
         {rows.map(({ r, open, inProposals, resolvedBy }) => {
@@ -156,6 +211,9 @@ function Rules() {
                 </div>
                 <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{sample ? findingDetail(sample) : r.cond}</div>
                 <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 2 }}>Đề xuất tự sinh: {r.fix}</div>
+                {open.filter((f) => f.proposal).map((f) => (
+                  <div key={f.id} className="mt-1.5 flex flex-wrap items-center gap-2"><span className="mono" style={{ fontSize: 12 }}>{f.principalId}</span><FixButton f={f} /></div>
+                ))}
               </div>
             </div>
           );
