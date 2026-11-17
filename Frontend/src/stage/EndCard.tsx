@@ -1,4 +1,5 @@
 // End card: the three numbers of the story + a way back to the technical screens.
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAttempts } from "../hooks/useAttempts";
 import { DISTRICT_CAP_V2, KEY_CAP, SCENE4_STEPS } from "../shared/scenario4";
@@ -16,6 +17,11 @@ export function EndCard() {
   const setEnded = useStageStore((s) => s.setEnded);
   const { data } = useAttempts();
   const attacker = data?.length ? deriveView(data, false).attackerSpent : 0n;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setEnded(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setEnded]);
   const stolen = attacker > 0n ? disp(attacker) : disp(SCRIPTED_STOLEN);
   return (
     <div data-slot="end-card" className="pointer-events-auto absolute inset-0 z-40 grid place-items-center bg-[rgba(45,34,80,0.38)] px-4" role="dialog" aria-modal="true" aria-label="Tóm tắt">

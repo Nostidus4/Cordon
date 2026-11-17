@@ -10,11 +10,13 @@ import type { Api } from "./endpoints";
 import { stepOf } from "../dto";
 
 const PORT = process.env.PARITY_PORT ?? "8199";
+// Council timelock (#77): both sides run the same short delay, so the queue -> keeper -> execute path is compared too (mock: mockConfig.timelockS, backend: COUNCIL_TIMELOCK_S)
+const TIMELOCK_S = 2;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const money = (m: Money | null | undefined) => (m ? m.display : null);
 const tiles = (r: SimResult) => [r.totals.youThink, r.totals.enforced, r.totals.estimated].map((m) => m.display).concat(String(r.totals.percentOfMainTreasury).replace(".", ","));
 const findingsOf = (fs: Finding[]) => fs.map((f) => ({ id: f.id, rule: f.ruleId, severity: f.severity })).sort((a, b) => a.id.localeCompare(b.id));
-const proposalsOf = (ps: Proposal[]) => ps.map((p) => ({ id: p.id, proposer: p.proposer, approvals: [...p.approvals].sort(), status: p.status, threshold: p.threshold })).sort((a, b) => a.id - b.id);
+const proposalsOf = (ps: Proposal[]) => ps.map((p) => ({ id: p.id, proposer: p.proposer, approvals: [...p.approvals].sort(), status: p.status, threshold: p.threshold, queued: p.queued, vetoedBy: p.vetoedBy })).sort((a, b) => a.id - b.id);
 // the mock stores the morning swap as step null, the backend as step 0 (the FE reads both via `stepOf`)
 const attemptsOf = (as: Attempt[]) => as.map((a) => ({ ...a, step: stepOf(a) })).sort((a, b) => a.step - b.step).map((a) => ({ step: a.step, outcome: a.outcome, reasonCode: a.reasonCode, principalSpentAfter: money(a.principalSpentAfter) }));
 // event names in order; ids and timestamps are not compared (hashes, blocks, addresses differ by design)
@@ -26,13 +28,19 @@ async function districts(a: Api) {
   return g.districts.filter((d) => ["huy", "lan", "minh"].includes(d.principalId)).map((d) => ({ id: d.principalId, cap: money(d.dailyCap), locked: !!d.locked })).sort((x, y) => x.id.localeCompare(y.id));
 }
 
+/** Waits until no proposal is queued any more (the keeper / mock timer executes it once eta passes). */
+async function settle(a: Api) {
+  for (let i = 0; i < 60; i++) { if (!(await a.getProposals()).some((p) => p.queued)) return; await sleep(250); }
+  throw new Error("a queued proposal never executed");
+}
+
 /** The five-scene script; returns a normalised snapshot (money as display strings, no ids / times / hashes / addresses). */
 async function play(a: Api): Promise<Record<string, unknown>> {
   const snap: Record<string, unknown> = {};
   // scene 2 (+ rows 3/4 of §4.5: policy v2, then the seeded request #12)
   await a.resetDemo();
   snap.v1 = { minh: tiles(await a.simulate({ compromised: ["minh"] })), minhHuy: tiles(await a.simulate({ compromised: ["minh", "huy"] })), findings: findingsOf(await a.getFindings()), districts: await districts(a) };
-  await a.applyPolicyV2();
+  await a.applyPolicyV2(); await settle(a);
   const p12 = (await a.getProposals()).find((p) => p.id === 12)!;
   const v2 = await a.simulate({ compromised: ["minh"] });
   const withChange = await a.simulate({ compromised: ["minh"], change: p12.change! });
@@ -44,13 +52,24 @@ async function play(a: Api): Promise<Record<string, unknown>> {
   const draft = await a.draftProposal({ findingId: fid });
   const made = await a.createProposal({ member: "lan", findingId: fid, title: draft.title });
   const afterLan = await a.approveProposal(made.id, "lan");
-  const done = await a.approveProposal(made.id, "trang");
+  const done = await a.approveProposal(made.id, "trang"); // 2/3 under a timelock: queued, not yet executed
+  const early = await a.executeProposal(made.id, "lan").then(() => null, (e: { code: string }) => (e.code === "TIMELOCK_NOT_READY" ? "TIMELOCK_NOT_READY" : "other"));
+  await settle(a);
+  const executed = (await a.getProposals()).find((p) => p.id === made.id)!;
   snap.scene3 = { draft: { classification: draft.classification, requiresCouncil: draft.requiresCouncil, before: tiles({ totals: draft.riskReport.before } as SimResult), after: tiles({ totals: draft.riskReport.after } as SimResult) },
-    afterLan: proposalsOf([afterLan]), done: proposalsOf([done]), policyVersion: (await a.getHealth()).policyVersion, districts: await districts(a), findings: findingsOf(await a.getFindings()), events: await eventNames(a) };
+    afterLan: proposalsOf([afterLan]), done: proposalsOf([done]), early, executed: proposalsOf([executed]), policyVersion: (await a.getHealth()).policyVersion, districts: await districts(a), findings: findingsOf(await a.getFindings()), events: await eventNames(a) };
+
+  // veto: one member stops a queued proposal during the delay
+  await a.resetDemo();
+  const vp = await a.createProposal({ member: "lan", findingId: fid, title: draft.title });
+  await a.approveProposal(vp.id, "lan"); await a.approveProposal(vp.id, "trang");
+  const vetoed = await a.vetoProposal(vp.id, "huy");
+  await sleep((TIMELOCK_S + 3) * 1000); // past eta: the cancelled proposal must stay cancelled
+  snap.veto = { vetoed: proposalsOf([vetoed]), later: proposalsOf((await a.getProposals()).filter((p) => p.id === vp.id)), policyVersion: (await a.getHealth()).policyVersion, events: await eventNames(a) };
 
   // scene 4: agent swap (step 0), attack steps 1-5, lock, step 7
   await a.resetDemo();
-  await a.applyPolicyV2();
+  await a.applyPolicyV2(); await settle(a);
   const run0 = await a.runAgentOnce();
   const sharedAfter0 = money((await a.getDistrict("minh")).spentToday);
   let run = await a.runScene4();
@@ -64,10 +83,11 @@ async function play(a: Api): Promise<Record<string, unknown>> {
 
   // scene 5: requests #12 / #13, Huy conflicted on #13
   await a.resetDemo();
-  await a.applyPolicyV2();
+  await a.applyPolicyV2(); await settle(a);
   const seeded = proposalsOf(await a.getProposals());
   const conflict = await a.approveProposal(13, "huy").then(() => null, (e: { code: string }) => e.code);
-  for (const id of [13, 12]) for (const m of ["lan", "trang"] as MemberId[]) { if ((await a.getProposals()).find((p) => p.id === id)?.status === "open") await a.approveProposal(id, m); }
+  for (const id of [13, 12]) for (const m of ["lan", "trang"] as MemberId[]) { const cur = (await a.getProposals()).find((p) => p.id === id); if (cur?.status === "open" && !cur.queued) await a.approveProposal(id, m); }
+  await settle(a);
   snap.scene5 = { seeded, conflict, final: proposalsOf(await a.getProposals()), districts: await districts(a), policyVersion: (await a.getHealth()).policyVersion, events: await eventNames(a) };
   // emergency: Trang pauses the whole treasury (event names after it)
   await a.pauseAll({ member: "trang" });
@@ -85,12 +105,12 @@ describe.skipIf(!process.env.PARITY)("mock vs live parity (sim backend)", () => 
   beforeAll(async () => {
     vi.stubEnv("VITE_API_BASE", `http://127.0.0.1:${PORT}/api`);
     const { mockConfig, mockApi } = await import("../mock/server");
-    mockConfig.latencyMs = 0; mockConfig.stepDelayMs = 0;
+    mockConfig.latencyMs = 0; mockConfig.stepDelayMs = 0; mockConfig.timelockS = TIMELOCK_S;
     mock = mockApi as unknown as Api; // copilot methods live in mock/copilot.ts
     live = (await import("./endpoints")).liveApi;
     server = spawn("uv", ["run", "uvicorn", "guardian.main:app", "--port", PORT], {
       cwd: new URL("../../../../Backend", import.meta.url).pathname, stdio: "pipe",
-      env: { ...process.env, CHAIN_MODE: "sim", DEMO_MODE: "true", DATABASE_URL: "", LLM_ENABLED: "false", SCENARIO_DELAY_SECONDS: "0.1", RATE_LIMIT_PER_MINUTE: "100000" },
+      env: { ...process.env, CHAIN_MODE: "sim", DEMO_MODE: "true", COUNCIL_TIMELOCK_S: String(TIMELOCK_S), DATABASE_URL: "", LLM_ENABLED: "false", SCENARIO_DELAY_SECONDS: "0.1", RATE_LIMIT_PER_MINUTE: "100000" },
     });
     let log = "";
     server.stdout?.on("data", (c) => (log += c)); server.stderr?.on("data", (c) => (log += c));
@@ -102,7 +122,7 @@ describe.skipIf(!process.env.PARITY)("mock vs live parity (sim backend)", () => 
     }
     mockSnap = await play(mock) as typeof mockSnap;
     liveSnap = await play(live) as typeof liveSnap;
-  }, 110_000);
+  }, 170_000);
   afterAll(() => { server?.kill("SIGTERM"); });
 
   it("acceptance figures (spec §4.5 rows)", () => {
@@ -118,7 +138,7 @@ describe.skipIf(!process.env.PARITY)("mock vs live parity (sim backend)", () => 
       expect(s.scene4.step7).toEqual([{ step: 7, outcome: "blocked_at_protocol", reasonCode: "BLOCKED_AT_PROTOCOL", principalSpentAfter: null }]);
     }
   });
-  for (const section of ["v1", "v2", "scene3", "scene4", "scene5"]) {
+  for (const section of ["v1", "v2", "scene3", "veto", "scene4", "scene5"]) {
     it(`section ${section} is equal on mock and live`, () => { expect(mockSnap[section]).toEqual(liveSnap[section]); });
   }
 });
