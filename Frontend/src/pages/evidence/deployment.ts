@@ -1,7 +1,7 @@
 // Frozen Guardian L1 + Fuji C-Chain deployment (copied from Backend/deployments/fuji-l1.json, fuji-c.json and the
 // seed roster). Static on purpose: it lets the page show addresses with no RPC (mock / GitHub Pages). Public addresses only.
 export const L1_CHAIN_ID = 845357;
-export const L1_DEPLOY_BLOCK = 834;
+export const L1_DEPLOY_BLOCK = 907;
 export const CCHAIN_ID = 43113;
 export const CCHAIN_RPC = "https://api.avax-test.network/ext/bc/C/rpc";
 export const SNOWTRACE = "https://testnet.snowtrace.io";
@@ -14,14 +14,14 @@ export const READ_ALLOW_LIST = "0xeb54dae1";
 export interface NamedAddress { id: string; label: string; code: string; address: string }
 
 export const L1_CONTRACTS: readonly NamedAddress[] = [
-  { id: "registry", label: "Sổ đăng ký chủ khu và khoá", code: "PrincipalRegistry", address: "0xabC0aD1F6Cb42263fBDD348FD2b78f7ac8bEb924" },
-  { id: "vault", label: "Kho chi tiêu (hạn mức, danh sách cho phép)", code: "PolicyVault", address: "0xFFF7FcaEbB53Db34a64065aEEA1573f1323D3865" },
-  { id: "council", label: "Hội đồng 2/3", code: "GuardianCouncil", address: "0xE5a4F0da66836cB79FAc4618101C8CFf5E49ab02" },
-  { id: "mockDex", label: "Sàn đối tác (đáng tin)", code: "MockDex", address: "0x2800b6d67a3d0cF4022ae70D93D571bAF3CC1b9A" },
-  { id: "evilDex", label: "Sàn giả mạo (dùng để thử chặn)", code: "EvilDex", address: "0x54420aA8217299eD129092268Fadf4d440Cc0fb7" },
-  { id: "tUSDC", label: "Đồng thử tUSDC", code: "tUSDC", address: "0x58190c4686F0245bE6D6E498112F6F58E193215F" },
-  { id: "tTKB", label: "Đồng thử tTKB", code: "tTKB", address: "0x7B3a366776dfA2ec705d8Fd9a312D0F9C0d7D203" },
-  { id: "tSCAM", label: "Đồng lạ (không được phép)", code: "tSCAM", address: "0xB1404097C5C5D6E1a4abE6c8D446692fCE448837" },
+  { id: "registry", label: "Sổ đăng ký chủ khu và khoá", code: "PrincipalRegistry", address: "0xa11E04Bbb84Be9bA8c6C66C29Db6698c3eF47d18" },
+  { id: "vault", label: "Kho chi tiêu (hạn mức, danh sách cho phép)", code: "PolicyVault", address: "0xC98A26E09Bd2D436f50c7Be8B03651bA8A7D6b1c" },
+  { id: "council", label: "Hội đồng 2/3", code: "GuardianCouncil", address: "0x4B1A9b612Da1096d1Eba15A0F29ebee401488fc9" },
+  { id: "mockDex", label: "Sàn đối tác (đáng tin)", code: "MockDex", address: "0x9083aef7eB049556883a0bf5748E0a34d90Ed73f" },
+  { id: "evilDex", label: "Sàn giả mạo (dùng để thử chặn)", code: "EvilDex", address: "0xDfBF9752cEF55ec39a6a0617103FC450b18b16A8" },
+  { id: "tUSDC", label: "Đồng thử tUSDC", code: "tUSDC", address: "0x3962547137D8Bb8B8e2e9B772F1c976b892a3952" },
+  { id: "tTKB", label: "Đồng thử tTKB", code: "tTKB", address: "0x23Ec33ec9bF588c4D943701555532483ff93A13d" },
+  { id: "tSCAM", label: "Đồng lạ (không được phép)", code: "tSCAM", address: "0x68f1Cd00B8ef225943150F67AcBB371657e6b47e" },
 ];
 
 /** Built-in contracts of the L1 itself (no Solidity source), shown with the contracts but labelled as chain rules. */
