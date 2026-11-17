@@ -7,12 +7,12 @@ import { SCENE4_STEPS } from "../../shared/scenario4";
 import { ASSISTANT_QUESTIONS } from "../../shared/assistantQuestions";
 import { policyLabel } from "../policy";
 import { fmtPercent } from "../format";
-import { deriveView } from "../../pages/incident/incidentView";
+import { deriveView } from "../../shared/incident/incidentView";
 import { buildSpreadPlan, counterAt } from "../../graph/spread";
 import { ensureV2 } from "../../stage/ensure";
 import { requestNumbers } from "../../stage/logic";
 import { buildingStatesFrom, latestRunWithSteps, pickTrackedIncident, stepViews, faultsOfBuilding } from "../ops";
-import { buildHistory } from "../../pages/council/councilHistory";
+import { buildHistory } from "../../shared/council/councilHistory";
 import { approvalSummary, callSymbol, conflictCheck, emergencyActions } from "../../pages/system/council.logic";
 import { contractOf, filterEvents, summarize } from "../../pages/system/eventLog";
 import { traceAttempt } from "../../pages/system/trace";
@@ -180,7 +180,7 @@ describe.skipIf(!process.env.LIVE_API)("live walkthrough (sim backend)", () => {
     expect(ans.answer.length).toBeGreaterThan(0);
   });
 
-  it("dashboard reads: every GET succeeds and feeds the /he-thong and /chi-tiet helpers", { timeout: 60_000 }, async () => {
+  it("dashboard reads: every GET succeeds and feeds the /he-thong helpers", { timeout: 60_000 }, async () => {
     await a.resetDemo();
     expect((await a.getFindings()).length).toBeGreaterThan(0); // v1: R1 flags are open
     await a.applyPolicyV2();

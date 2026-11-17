@@ -20,6 +20,6 @@ describe("scene 5 finale", () => {
     expect(html).toContain("Cùng một vụ chiếm máy, hai kết cục");
     expect(html).toContain("← Quay lại");
     expect(html).toContain("Xem lại từ đầu");
-    expect(html).toContain('href="/chi-tiet/map"');
+    expect(html).toContain('href="/he-thong"');
   });
 });

@@ -12,7 +12,7 @@ import { useOrg } from "../hooks/useOrg";
 import { useProposals } from "../hooks/useProposals";
 import { ApiError, api } from "../lib/api";
 import { INCIDENT_STATUS_VI, actionOutcomeVi, awaitsCouncil, faultsOfBuilding, reasonTextVi, shortHash, stepViews } from "../lib/ops";
-import { MEMBER_SHORT, approvalSlots } from "../pages/requests/logic";
+import { MEMBER_SHORT, approvalSlots } from "../shared/requests/logic";
 import { BUILDING_BY_ID, type BuildingId, type RuleState } from "../shared/buildings";
 import type { AgentRun, BuildingDetail, BuildingEvidence, FaultAction, FaultDef, FaultResult, Incident, MemberId } from "../types";
 import { PayrollPanel } from "./PayrollPanel";

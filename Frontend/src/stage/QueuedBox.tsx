@@ -1,7 +1,7 @@
 // A fully approved proposal waiting out its timelock (#77): countdown + "Phủ quyết" (demo mode: any member may stop it).
 import { useEffect, useState } from "react";
 import { useActions } from "../hooks/useActions";
-import { MEMBER_SHORT } from "../pages/requests/logic";
+import { MEMBER_SHORT } from "../shared/requests/logic";
 import type { MemberId, Proposal } from "../types";
 import { countdownText } from "./timelock";
 import { FaceAvatar, ToyButton } from "./ui";

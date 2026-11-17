@@ -1,15 +1,9 @@
-// Routes: "/" and "/s/:scene" = the 3D stage (main experience); the old 2D screens live under /chi-tiet/* (secondary).
-// Old top-level paths (/map, /simulate, ...) redirect there. /city (the raw 3D explorer) and /_kit stay as they were.
+// Routes: "/" and "/s/:scene" = the 3D stage (main experience); /he-thong/:tab = technical dashboard; /bang-chung = on-chain proof; /city = raw 3D explorer.
+// The old 2D screens (/chi-tiet/*, /map, /simulate, ...) were removed; their paths redirect into /he-thong so old links never 404.
 import { lazy, Suspense } from "react";
 import { RouteSkeleton } from "./components/layout/RouteSkeleton";
 import { createBrowserRouter, Link, Navigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-const MapPage = lazy(() => import("./pages/map/MapPage"));
-const SimulatePage = lazy(() => import("./pages/simulate/SimulatePage"));
-const IncidentPage = lazy(() => import("./pages/incident/IncidentPage"));
-const RequestsPage = lazy(() => import("./pages/requests/RequestsPage"));
-const CouncilPage = lazy(() => import("./pages/council/CouncilPage"));
-const AboutPage = lazy(() => import("./pages/about/AboutPage"));
 const AppShell = lazy(() => import("./components/layout/AppShell").then((m) => ({ default: m.AppShell })));
 const Root = lazy(() => import("./components/layout/Root").then((m) => ({ default: m.Root })));
 const StagePage = lazy(() => import("./stage/StagePage"));
@@ -24,7 +18,7 @@ function CityRoute() {
   return (
     <>
       <Suspense fallback={<RouteSkeleton kind="full" />}><CityPage /></Suspense>
-      <Link to="/chi-tiet/map" className="fixed bottom-4 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-[#070a1c]/75 px-4 py-2 text-xs font-semibold text-slate-100 backdrop-blur-md transition-colors hover:bg-[#10163f]">
+      <Link to="/he-thong" className="fixed bottom-4 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-[#070a1c]/75 px-4 py-2 text-xs font-semibold text-slate-100 backdrop-blur-md transition-colors hover:bg-[#10163f]">
         <ArrowLeft className="size-3.5" aria-hidden /> Về bảng điều khiển <kbd className="rounded border border-white/20 px-1 text-[10px] text-slate-300">⌘K</kbd>
       </Link>
     </>
@@ -37,7 +31,16 @@ function Redirect({ to }: { to: string }) {
   return <Navigate to={`${to}${search}`} replace />;
 }
 
-const DETAIL = ["map", "simulate", "incident", "requests", "council", "about"] as const;
+/** old 2D screen -> its home in the /he-thong dashboard (query string is preserved by <Redirect>) */
+const OLD_SCREENS: Array<[string, string]> = [
+  ["map", "chinh-sach"],
+  ["simulate", "rui-ro"],
+  ["incident", "giao-dich"],
+  ["requests", "hoi-dong"],
+  ["council", "hoi-dong"],
+  ["about", "gioi-thieu"],
+];
+const oldRedirects = (prefix: string) => OLD_SCREENS.map(([p, tab]) => ({ path: `${prefix}${p}`, element: <Redirect to={`/he-thong/${tab}`} /> }));
 
 /** GitHub Pages serves under /Cordon/: Vite's BASE_URL ("/" locally) without the trailing slash. */
 const basename = import.meta.env.BASE_URL.replace(/\/+$/, "") || undefined;
@@ -53,22 +56,14 @@ export const router = createBrowserRouter([
       { path: "he-thong", element: <Suspense fallback={<RouteSkeleton kind="full" />}><SystemPage /></Suspense>, children: [{ index: true, element: null }, { path: ":tab", element: null }] },
       // read-only proof page for judges: 2D shell, own path
       { path: "bang-chung", element: <Suspense fallback={<RouteSkeleton kind="full" />}><AppShell /></Suspense>, children: [{ index: true, element: <Suspense fallback={<RouteSkeleton />}><EvidencePage /></Suspense> }] },
-      {
-        path: "chi-tiet",
-        element: <Suspense fallback={<RouteSkeleton kind="full" />}><AppShell /></Suspense>,
-        children: [
-          { index: true, element: <Navigate to="/chi-tiet/map" replace /> },
-          { path: "map", element: <Suspense fallback={<RouteSkeleton />}><MapPage /></Suspense> },
-          { path: "simulate", element: <Suspense fallback={<RouteSkeleton />}><SimulatePage /></Suspense> },
-          { path: "incident", element: <Suspense fallback={<RouteSkeleton />}><IncidentPage /></Suspense> },
-          { path: "requests", element: <Suspense fallback={<RouteSkeleton />}><RequestsPage /></Suspense> },
-          { path: "council", element: <Suspense fallback={<RouteSkeleton />}><CouncilPage /></Suspense> },
-          { path: "about", element: <Suspense fallback={<RouteSkeleton />}><AboutPage /></Suspense> },
-          { path: "_kit", element: <Suspense fallback={<RouteSkeleton />}><KitPage /></Suspense> },
-        ],
-      },
-      ...DETAIL.map((p) => ({ path: p, element: <Redirect to={`/chi-tiet/${p}`} /> })),
-      { path: "_kit", element: <Redirect to="/chi-tiet/_kit" /> },
+      // legacy 2D screens: redirect only
+      { path: "chi-tiet", element: <Redirect to="/he-thong/tong-quan" /> },
+      ...oldRedirects("chi-tiet/"),
+      { path: "chi-tiet/_kit", element: <Redirect to="/_kit" /> },
+      { path: "chi-tiet/*", element: <Redirect to="/he-thong/tong-quan" /> },
+      ...oldRedirects(""),
+      // dev kit: standalone, inside AppShell only for the header
+      { path: "_kit", element: <Suspense fallback={<RouteSkeleton kind="full" />}><AppShell /></Suspense>, children: [{ index: true, element: <Suspense fallback={<RouteSkeleton />}><KitPage /></Suspense> }] },
       ...(SoundPage ? [{ path: "_sound", element: <Suspense fallback={<RouteSkeleton kind="full" />}><SoundPage /></Suspense> }] : []), // dev only: audition every cue
       { path: "*", element: <Navigate to="/" replace /> },
     ],
