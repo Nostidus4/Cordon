@@ -37,6 +37,10 @@ def make_web3(rpc_url: str, timeout: float = 15.0) -> Web3:
     """HTTP client. Subnet-EVM blocks carry an 86-byte `extraData` (the dynamic-fee window), which web3's
     default validation rejects ("quite likely that you are connected to a POA chain"); anvil's 32 bytes pass
     through the same middleware untouched. Found on the first run against a real Subnet-EVM node (L1-002)."""
-    w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": timeout}))
+    # `cache_allowed_requests`: web3's own whitelist (eth_chainId, web3_clientVersion, ...). Without it every
+    # `eth_call` is preceded by an `eth_chainId` round trip, twice (formatting middleware): 3 RPCs per read (#109).
+    w3 = Web3(
+        Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": timeout}, cache_allowed_requests=True)
+    )
     w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
     return w3

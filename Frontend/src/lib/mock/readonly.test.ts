@@ -6,6 +6,7 @@ import { ASSISTANT_QUESTIONS } from "../../shared/assistantQuestions";
 
 mockConfig.latencyMs = 0;
 mockConfig.stepDelayMs = 0;
+mockConfig.timelockS = 0; // the Council delay is covered by timelock.test.ts
 beforeEach(async () => { await mockApi.resetDemo(); });
 
 describe("getAgentRuns", () => {

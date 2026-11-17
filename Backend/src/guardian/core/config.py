@@ -70,6 +70,17 @@ class Settings(BaseSettings):
     responder_enabled: bool = True
     responder_auto_contain: bool | None = None
 
+    # Rebalance agent scheduler (`guardian-agent`, one swap every 5 min). None = "decide": off on a real chain in
+    # DEMO_MODE (l1), because its swaps eat the 20.000/day agent-key cap the scenes rely on and the incident
+    # manager then locks a district by itself (#110); on everywhere else (the sim agent has its own chain).
+    agent_loop_enabled: bool | None = None
+
+    @property
+    def agent_loop_on(self) -> bool:
+        if self.agent_loop_enabled is not None:
+            return self.agent_loop_enabled
+        return not (self.chain_mode == "l1" and self.demo_enabled)
+
     @property
     def auto_contain_enabled(self) -> bool:
         """Containment signs with a Council member's demo key, so it also needs DEMO_MODE."""

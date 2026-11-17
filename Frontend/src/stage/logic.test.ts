@@ -11,6 +11,7 @@ const U = (n: number) => BigInt(n) * 1_000_000n;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 mockConfig.latencyMs = 0;
 mockConfig.stepDelayMs = 0;
+mockConfig.timelockS = 0; // the Council delay is covered by timelock.test.ts
 
 describe("scene routing", () => {
   it("maps paths <-> scenes, with / as the intro", () => {

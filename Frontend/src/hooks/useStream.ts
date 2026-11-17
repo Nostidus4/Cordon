@@ -1,10 +1,10 @@
 // Subscribe to stream messages (SSE in live mode, in-process bus in mock mode).
 import { useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useConnStore } from "../store/connStore";
-import { toast } from "../store/uiStore";
+import { toast, useUiStore } from "../store/uiStore";
 import type { Attempt, CityStates, Incident, StreamListener, StreamMessage, StreamMessageType } from "../types";
 import { qk } from "./queryKeys";
 
@@ -16,6 +16,16 @@ export function councilEventKeys(name: string): readonly (readonly unknown[])[] 
   if (name === "Executed") return [qk.proposals, qk.findings, qk.graph, qk.health, qk.org, ["district"], ["simulate"], qk.city];
   if (COUNCIL_VOTE_EVENTS.has(name)) return [qk.proposals, qk.findings];
   return [];
+}
+
+/** `reset` (demo reset): attempts and runs are gone and run ids start over, so reset the cached lists and the selected
+ *  replay run. An open tab then shows 0 attempts and an empty Replay at once (a stale cache would linger until a hard
+ *  reload), then everything else refetches. */
+export function applyReset(qc: QueryClient) {
+  qc.resetQueries({ queryKey: ["attempts"] });
+  qc.resetQueries({ queryKey: qk.runs });
+  useUiStore.getState().setReplayRunId(null);
+  qc.invalidateQueries();
 }
 
 /** Custom subscription; optionally filter by message type. */
@@ -70,7 +80,7 @@ export function useStreamBridge() {
         break;
       }
       case "reset":
-        qc.invalidateQueries();
+        applyReset(qc);
         break;
     }
   }), [qc]);

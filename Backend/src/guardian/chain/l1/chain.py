@@ -10,6 +10,7 @@ optional seed metadata, matched by address; anything missing falls back to on-ch
 
 from __future__ import annotations
 
+import copy
 import logging
 import threading
 from collections.abc import Callable
@@ -90,6 +91,9 @@ class L1Chain(L1Writes):
         self._cand_recipients: dict[str, None] = {}
         self._cand_protocols: dict[tuple[str, str], None] = {}
         self._token_meta: dict[str, tuple[str, int]] = {}
+        # snapshot() memo: a snapshot is a pure function of the head block (#109)
+        self._snap_lock = threading.Lock()
+        self._snap_cache: tuple[int, PolicySnapshot] | None = None
         # Polling subscription
         self._subs: list[Callable[[ChainEvent], None]] = []
         self._sub_lock = threading.Lock()
@@ -305,7 +309,18 @@ class L1Chain(L1Writes):
 
     # -------------------------------------------------------------- snapshot
     def snapshot(self) -> PolicySnapshot:
+        """Every read is pinned to the head block, so the result only changes when the head does: the memo
+        costs one `eth_blockNumber` per call instead of ~90 `eth_call`s (the responder ticker, the keeper
+        and every request each asked for a fresh one: 10-20 s per request, #109). Callers get a copy."""
         head = int(self.w3.eth.block_number)
+        with self._snap_lock:
+            cached = self._snap_cache
+            if cached is None or cached[0] != head:
+                cached = (head, self._read_snapshot(head))
+                self._snap_cache = cached
+            return copy.deepcopy(cached[1])
+
+    def _read_snapshot(self, head: int) -> PolicySnapshot:
         ts = int(self.w3.eth.get_block(head)["timestamp"])
         day = ts // DAY
         self._sync_index(head)
