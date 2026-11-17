@@ -1,5 +1,5 @@
 // /he-thong/:tab: technical dashboard for engineers. One focused view per tab, toy pill tab bar like the stage stepper.
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { type ComponentType, type ReactNode } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
@@ -16,11 +16,10 @@ import { useSysInvalidation } from "./data";
 import { useSystemDevHooks } from "./devHooks";
 import { useFeed, useSystemFeed } from "./feed";
 import { Architecture } from "./sections/Architecture";
-import * as AgentMod from "./sections/AgentRebalance";
-import * as AssistantMod from "./sections/Assistant";
+import * as AgentsMod from "./sections/Agents";
 import * as CouncilMod from "./sections/Council";
 import * as EventLogMod from "./sections/EventLog";
-import { Controls, Overview } from "./sections/Overview";
+import { Controls, NowStrip, Overview } from "./sections/Overview";
 import * as PolicyMod from "./sections/PolicyState";
 import { Pipeline } from "./sections/Pipeline";
 import * as SimulationMod from "./sections/Simulation";
@@ -32,8 +31,7 @@ const EventLog = pick(EventLogMod, "EventLog");
 const PolicyState = pick(PolicyMod, "PolicyState");
 const Council = pick(CouncilMod, "Council");
 const Simulation = pick(SimulationMod, "Simulation");
-const AgentRebalance = pick(AgentMod, "AgentRebalance");
-const Assistant = pick(AssistantMod, "Assistant");
+const Agents = pick(AgentsMod, "Agents");
 
 const SCENE_DOT = { look: "#7a47e6", try: "#1565e8", fix: "#e8782a", incident: "#d62839", request: "#0e968c" } as const;
 
@@ -44,32 +42,19 @@ export const TABS = [
   { id: "chinh-sach", label: "Chính sách", color: ACCENT.spend, icon: SlidersHorizontal },
   { id: "hoi-dong", label: "Hội đồng", color: ACCENT.council, icon: Scale },
   { id: "rui-ro", label: "Rủi ro", color: ACCENT.growth, icon: Radar },
-  { id: "tro-ly", label: "Trợ lý", color: ACCENT.resp, icon: Sparkles },
+  { id: "agent", label: "Agent AI", color: ACCENT.resp, icon: Sparkles },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
-function Assistants() {
-  const [p, setP] = useState<"agent" | "ask">("agent");
-  return (
-    <div className="grid gap-4">
-      <div className="sx-seg" role="group" aria-label="Chọn trợ lý" style={{ justifySelf: "start" }}>
-        <button type="button" aria-pressed={p === "agent"} onClick={() => setP("agent")}>Trợ lý Cân đối</button>
-        <button type="button" aria-pressed={p === "ask"} onClick={() => setP("ask")}>Hỏi đáp</button>
-      </div>
-      {p === "agent" ? <AgentRebalance /> : <Assistant />}
-    </div>
-  );
-}
-
 function Body({ tab }: { tab: TabId }): ReactNode {
   switch (tab) {
-    case "tong-quan": return <div className="grid gap-4"><Overview /><Controls /><Architecture /></div>;
+    case "tong-quan": return <div className="grid gap-4"><Overview /><NowStrip /><Controls /><Architecture /></div>;
     case "giao-dich": return <Pipeline />;
     case "su-kien": return <EventLog />;
     case "chinh-sach": return <PolicyState />;
     case "hoi-dong": return <Council />;
     case "rui-ro": return <Simulation />;
-    case "tro-ly": return <Assistants />;
+    case "agent": return <Agents />;
   }
 }
 
@@ -84,6 +69,7 @@ export default function SystemPage() {
   useSystemDevHooks();
   const cur = TABS.find((t) => t.id === tab);
   useTitle("Kỹ thuật", cur?.label);
+  if (tab === "tro-ly") return <Navigate to="/he-thong/agent" replace />;
   if (!cur) return <Navigate to="/he-thong/tong-quan" replace />;
 
   return (

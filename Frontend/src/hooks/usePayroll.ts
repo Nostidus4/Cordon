@@ -14,6 +14,9 @@ export function usePayrollState() {
   return useQuery({ queryKey: payrollKeys.state, queryFn: payrollApi.getState });
 }
 
+/** Past runs of the payroll agent (empty list in the browser demo). */
+export const usePayrollRuns = () => useQuery({ queryKey: [...payrollKeys.state, "runs"] as const, queryFn: payrollApi.getRuns, retry: false, refetchInterval: 10_000 });
+
 export const usePayrollReport = () => useQuery({ queryKey: payrollKeys.report, queryFn: payrollApi.getReport });
 
 export function usePayrollActions() {
