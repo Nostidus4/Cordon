@@ -2,6 +2,6 @@
 import { env } from "../config/env";
 
 export function txUrl(hash: string | null | undefined, simulated = false): string | null {
-  if (!hash || simulated) return null;
+  if (!hash || simulated || !env.explorerUrl) return null; // VITE_EXPLORER_URL= (empty): this chain has no explorer, so no link
   return `${env.explorerUrl.replace(/\/$/, "")}/tx/${hash}`;
 }
