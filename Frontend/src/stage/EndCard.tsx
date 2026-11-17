@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAttempts } from "../hooks/useAttempts";
 import { DISTRICT_CAP_V2, KEY_CAP, SCENE4_STEPS } from "../shared/scenario4";
-import { deriveView } from "../pages/incident/incidentView";
+import { deriveView } from "../shared/incident/incidentView";
 import { disp } from "./logic";
 import { useStageStore } from "./stageStore";
 import { CordonMark } from "../components/brand/Logo";
@@ -38,7 +38,7 @@ export function EndCard() {
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <ToyButton color="cream" onClick={() => setEnded(false)}>← Quay lại</ToyButton>
           <ToyButton color="teal" onClick={() => { setEnded(false); nav("/s/look"); }}>Xem lại từ đầu</ToyButton>
-          <Link to="/chi-tiet/map" className="ml-auto text-[15px] font-bold underline underline-offset-4" style={{ color: "var(--violet-d)" }}>Xem chi tiết kỹ thuật</Link>
+          <Link to="/he-thong" className="ml-auto text-[15px] font-bold underline underline-offset-4" style={{ color: "var(--violet-d)" }}>Xem chi tiết kỹ thuật</Link>
         </div>
       </ToyCard>
     </div>

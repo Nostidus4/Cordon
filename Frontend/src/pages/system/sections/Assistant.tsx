@@ -74,7 +74,7 @@ export function Assistant() {
   return (
     <Section id="tro-ly" accent={ACCENT.edu} title="Hỏi đáp với Trợ lý" sub="AI chỉ đọc, không ký. Mọi số trong câu trả lời phải khớp số mà công cụ đọc được."
       right={<span style={{ fontWeight: 700, fontSize: 12.5, color: "var(--ink-2)", background: "#e4eef2", borderRadius: 999, padding: "3px 12px" }}>AI chỉ đọc · không ký</span>}>
-      <div className="mb-5 flex flex-wrap items-center gap-2" role="group" aria-label="Hỏi Trợ lý">
+      <div className="mb-5 flex flex-wrap items-center gap-2" role="group" aria-label="Hỏi Trợ lý" data-tour="sys-assistant-q">
         {QUICK.map((q) => <button key={q.id} type="button" className="toy-chip" style={{ fontSize: 14, padding: "4px 14px" }} disabled={ask.isPending} onClick={() => run(q)}>{q.text}</button>)}
         {ask.isPending ? <span style={{ fontSize: 12, color: "var(--ink-2)" }}>đang hỏi…</span> : null}
       </div>

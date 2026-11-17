@@ -1,5 +1,6 @@
 // Tab "Tổng quan": the numbers that matter right now + the scenario control row.
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Play, RotateCcw } from "lucide-react";
 import { env } from "../../../lib/api";
@@ -9,10 +10,15 @@ import { useEvents } from "../../../hooks/useEvents";
 import { useGraph } from "../../../hooks/useGraph";
 import { useHealth } from "../../../hooks/useHealth";
 import { Counter, ToyButton } from "../../../stage/ui";
-import { useNow } from "../data";
+import { useIncidents } from "../../../hooks/useBuildings";
+import { useViolations } from "../../../hooks/useViolations";
+import { isoOfSec } from "../../../lib/dto";
+import { reasonTextVi } from "../../../lib/ops";
+import { nowStrip } from "../agents.logic";
+import { useAgentRuns, useNow } from "../data";
 import { useFeed } from "../feed";
 import { playFullScenario, STEP_LABEL, type ScenarioStep } from "../scenario";
-import { Chip, Stat } from "../ui";
+import { Chip, Stat, fmtClock } from "../ui";
 import { policyLabel } from "../../../lib/policy";
 
 const fmtUptime = (s: number) => {
@@ -43,6 +49,25 @@ export function Overview() {
   );
 }
 
+/** "Đang chạy gì": the last agent run, an open incident and the last attacker attempt; links to the Agent AI tab. */
+export function NowStrip() {
+  const { data: runs } = useAgentRuns();
+  const { data: incidents } = useIncidents("all");
+  const { data: violations } = useViolations(50);
+  const n = nowStrip({ runs, incidents, violations });
+  const clk = (ts: number) => fmtClock(isoOfSec(ts));
+  const run = n.lastRun;
+  return (
+    <Link to="/he-thong/agent" data-tour="sys-now" aria-label="Đang chạy gì: mở mục Agent AI" className="flex flex-wrap items-center gap-x-5 gap-y-2" style={{ background: "#fff", borderRadius: 20, padding: "10px 16px", boxShadow: "0 2px 0 var(--line)", color: "inherit", textDecoration: "none" }}>
+      <span className="font-toy" style={{ fontWeight: 800, fontSize: 17 }}>Đang chạy gì</span>
+      <span style={{ fontSize: 13 }}>Agent Cân đối: {run ? <b>{run.outcome === "swapped" ? "đã đổi" : run.outcome === "no_action" ? "không cần làm gì" : "bị chặn"} lúc {clk(run.ts)}</b> : <span style={{ color: "var(--ink-2)" }}>chưa chạy</span>}</span>
+      <span style={{ fontSize: 13 }}>Sự cố: {n.openIncident ? <b style={{ color: "var(--red-ink)" }}>{n.openIncident.titleVi}</b> : <span style={{ color: "var(--ink-2)" }}>không có sự cố mở</span>}</span>
+      <span style={{ fontSize: 13 }}>Kẻ tấn công: {n.lastAttacker ? <b>bị chặn lúc {clk(n.lastAttacker.ts)}, {reasonTextVi(n.lastAttacker.reasonCode)}</b> : <span style={{ color: "var(--ink-2)" }}>chưa thử</span>}</span>
+      <span style={{ marginLeft: "auto", fontWeight: 700, fontSize: 13 }}>Xem Agent AI →</span>
+    </Link>
+  );
+}
+
 export function Controls() {
   const a = useActions();
   const qc = useQueryClient();
@@ -60,7 +85,7 @@ export function Controls() {
   };
   const off = busy !== null;
   return (
-    <div className="flex flex-wrap items-center gap-2.5" role="group" aria-label="Kịch bản">
+    <div className="flex flex-wrap items-center gap-2.5" role="group" aria-label="Kịch bản" data-tour="sys-controls">
       <span className="font-toy" style={{ fontWeight: 800, fontSize: 17, marginRight: 4 }}>Kịch bản</span>
       <ToyButton size="xs" color="cream" disabled={off} icon={<RotateCcw size={13} aria-hidden />} onClick={() => act(a.reset, undefined)}>Đặt lại</ToyButton>
       <ToyButton size="xs" color="violet" disabled={off || v2} done={v2} onClick={() => act(a.policyV2, undefined)}>① Chính sách v2</ToyButton>

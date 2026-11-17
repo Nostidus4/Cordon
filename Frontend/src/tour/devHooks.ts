@@ -18,8 +18,8 @@ export async function runDevState(nav: (to: string) => void, sp: URLSearchParams
   if (mode === "merged" || mode === "s5") {
     await createMerge({ nav: () => {} }); await approveMerge({ nav: () => {} });
     if (mode === "s5") {
-      nav("/chi-tiet/requests?id=12");
-      for (let i = 0; i < 20; i++) { await sleep(300); if (clickInTarget("req-assistant")) break; }
+      nav("/he-thong/hoi-dong?id=12");
+      for (let i = 0; i < 20; i++) { await sleep(300); if (clickInTarget("sys-assistant")) break; }
     }
     return;
   }

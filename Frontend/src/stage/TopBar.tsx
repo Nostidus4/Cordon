@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { MoreHorizontal, RotateCcw, Wrench } from "lucide-react";
+import { MoreHorizontal, Play, RotateCcw, Wrench } from "lucide-react";
 import { SoundToggle } from "../audio/SoundToggle";
 import { useUiStore } from "../store/uiStore";
 import type { SceneId } from "./contract";
@@ -63,6 +63,7 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
           </button>
           <button type="button" aria-pressed={mode === "replay"} onClick={() => { setMode("replay"); onGo("incident"); }}>Xem lại</button>
         </div>
+        <Link to="/he-thong?tour=1" title="Tour 3 phút" aria-label="Tour 3 phút" className="toy-card inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-bold no-underline" style={{ borderRadius: 999, color: "var(--ink-2)", borderWidth: 2 }}><Play size={16} strokeWidth={2.6} aria-hidden /><span className="hidden min-[1441px]:inline">Tour 3 phút</span></Link>
         <Link to="/he-thong" title="Bảng kỹ thuật" aria-label="Bảng kỹ thuật" className="toy-card inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-bold no-underline" style={{ borderRadius: 999, color: "var(--ink-2)", borderWidth: 2 }}><Wrench size={16} strokeWidth={2.6} aria-hidden /><span className="hidden min-[1441px]:inline">Bảng kỹ thuật</span></Link>
         <button type="button" onClick={onReset} disabled={resetting} className="toy-btn" data-c="cream" data-size="sm" aria-label="Chơi lại từ đầu"><RotateCcw size={16} strokeWidth={2.6} aria-hidden />Chơi lại<span className="hidden 2xl:inline"> từ đầu</span></button>
       </div>

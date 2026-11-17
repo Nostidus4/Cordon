@@ -59,7 +59,7 @@ export function useStreamBridge() {
         break;
       case "proposal_updated":
         qc.invalidateQueries({ queryKey: qk.proposals }); qc.invalidateQueries({ queryKey: qk.findings });
-        if (m.data.status === "executed") toast.success(`Đề xuất #${m.data.proposalId} đã thực thi`, "Bản đồ được vẽ lại theo chính sách mới.", { label: "Xem trên Map", onClick: () => navRef.current("/map") });
+        if (m.data.status === "executed") toast.success(`Đề xuất #${m.data.proposalId} đã thực thi`, "Bản đồ được vẽ lại theo chính sách mới.", { label: "Xem trên bảng kỹ thuật", onClick: () => navRef.current("/he-thong/chinh-sach") });
         break;
       case "agent_run":
         qc.invalidateQueries({ queryKey: qk.health }); qc.invalidateQueries({ queryKey: qk.org }); qc.invalidateQueries({ queryKey: qk.agentRuns });

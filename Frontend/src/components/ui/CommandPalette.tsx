@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactN
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Boxes, Bot, Building2, CornerDownLeft, FileCheck2, FlaskConical, Info, Lock, Map as MapIcon, PauseCircle, Play, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Swords, Users } from "lucide-react";
+import { Boxes, Bot, Building2, CornerDownLeft, Lock, PauseCircle, Play, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Swords } from "lucide-react";
 import { useUiStore } from "../../store/uiStore";
 import { useActions } from "../../hooks/useActions";
 import { Kbd } from "./Kbd";
@@ -28,7 +28,7 @@ const subscribe = (f: () => void) => { subs.add(f); return () => { subs.delete(f
 const getSnapshot = () => snapshot;
 const strip = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").toLowerCase();
 
-/** ⌘K / Ctrl+K: jump to screens, run demo actions. Mount once (AppShell). */
+/** ⌘K / Ctrl+K: jump to screens, run demo actions. Mount once (Root). */
 export function CommandPalette() {
   const open = useUiStore((s) => s.paletteOpen);
   const setOpen = useUiStore((s) => s.setPaletteOpen);
@@ -54,22 +54,18 @@ export function CommandPalette() {
 
   const go = (p: string) => () => nav(p);
   const cmds: Cmd[] = useMemo(() => [
-    { id: "map", group: "Chuyển màn", label: "Map · Bản đồ quyền", icon: <MapIcon className="size-4" />, run: go("/map"), keywords: "ban do canh 1" },
-    { id: "sim", group: "Chuyển màn", label: "Simulate · Giả lập bị chiếm", icon: <FlaskConical className="size-4" />, run: go("/simulate"), keywords: "gia lap canh 2" },
-    { id: "inc", group: "Chuyển màn", label: "Incident · Sự cố", icon: <ShieldAlert className="size-4" />, run: go("/incident"), keywords: "su co canh 4" },
-    { id: "req", group: "Chuyển màn", label: "Requests · Đơn đề xuất", icon: <FileCheck2 className="size-4" />, run: go("/requests"), keywords: "de xuat don canh 3 5" },
-    { id: "cou", group: "Chuyển màn", label: "Council · Hội đồng", icon: <Users className="size-4" />, run: go("/council"), keywords: "hoi dong" },
-    { id: "abo", group: "Chuyển màn", label: "About · Pháp lý", icon: <Info className="size-4" />, run: go("/about"), keywords: "phap ly" },
+    { id: "sys", group: "Chuyển màn", label: "Bảng kỹ thuật", icon: <ShieldAlert className="size-4" />, run: go("/he-thong"), keywords: "he thong ky thuat ban do de xuat hoi dong gia lap su co phap ly" },
+    { id: "evi", group: "Chuyển màn", label: "Bằng chứng trên chain", icon: <ShieldCheck className="size-4" />, run: go("/bang-chung"), keywords: "bang chung evidence" },
     { id: "city", group: "Chuyển màn", label: "Thành phố 3D", icon: <Building2 className="size-4" />, run: go("/city"), keywords: "city 3d" },
     { id: "kit", group: "Chuyển màn", label: "UI kit (dev)", icon: <Boxes className="size-4" />, run: go("/_kit") },
     { id: "mode", group: "Thao tác demo", label: mode === "live" ? "Chuyển sang Replay" : "Chuyển sang Live", icon: <Radio className="size-4" />, run: () => setMode(mode === "live" ? "replay" : "live") },
     { id: "agent", group: "Thao tác demo", label: "Chạy agent buổi sáng", hint: "swap 5.000 tUSDC → tTKB", icon: <Bot className="size-4" />, run: () => a.runAgent.mutate(), demoOnly: true, keywords: "agent rebalance" },
     { id: "v2", group: "Thao tác demo", label: "Áp dụng policy v2 (gom khu, 2/3 duyệt)", hint: "Lan + Trang duyệt", icon: <ShieldCheck className="size-4" />, run: () => a.policyV2.mutate(), demoOnly: true, keywords: "policy v2 gom khu" },
-    { id: "atk", group: "Thao tác demo", label: "Bắt đầu tấn công (cảnh 4)", icon: <Swords className="size-4" />, run: () => { nav("/incident"); a.runScene4.mutate(); }, demoOnly: true, keywords: "attacker scene4" },
+    { id: "atk", group: "Thao tác demo", label: "Bắt đầu tấn công (cảnh 4)", icon: <Swords className="size-4" />, run: () => { nav("/he-thong/giao-dich"); a.runScene4.mutate(); }, demoOnly: true, keywords: "attacker scene4" },
     { id: "lock", group: "Thao tác demo", label: "Khoá khu anh Minh (Lan)", icon: <Lock className="size-4" />, run: () => a.lock.mutate({ principalId: "minh", member: "lan" }), demoOnly: true },
     { id: "s7", group: "Thao tác demo", label: "Thử gửi bằng thẻ đã khoá (bước 7)", icon: <ShieldAlert className="size-4" />, run: () => a.step7.mutate(), demoOnly: true },
     { id: "pause", group: "Thao tác demo", label: "Dừng cả kho (Lan)", icon: <PauseCircle className="size-4" />, run: () => a.pause.mutate({ member: "lan" }), demoOnly: true },
-    { id: "tour", group: "Thao tác demo", label: "Bắt đầu tour demo", hint: "hướng dẫn từng bước", icon: <Play className="size-4" />, run: () => window.dispatchEvent(new Event("guardian:start-tour")), keywords: "tour huong dan demo gioi thieu" },
+    { id: "tour", group: "Thao tác demo", label: "Bắt đầu tour demo", hint: "hướng dẫn từng bước", icon: <Play className="size-4" />, run: () => nav("/he-thong/tong-quan?tour=1"), keywords: "tour huong dan demo gioi thieu" },
     { id: "reset", group: "Thao tác demo", label: "Đặt lại kịch bản", hint: "về đầu cảnh 1", icon: <RotateCcw className="size-4" />, run: () => a.reset.mutate(), demoOnly: true },
   ], [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -154,7 +154,7 @@ Nửa trái màn Incident ("không có Cordon") **không chạy on-chain**: fron
 
 ```text
 ┌──────────────────── Frontend · React + Vite + TypeScript ────────────────────┐
-│ Stage (thành phố 3D, / và /s/:scene)  ·  /chi-tiet/* (2D)  ·  /he-thong/*    │
+│ Stage (thành phố 3D, / và /s/:scene)  ·  /he-thong/*  ·  /bang-chung  │
 │ transport: mock (trong trình duyệt) | live (REST + SSE)                      │
 └───────────────▲──────────────────────────────▲───────────────────────────────┘
                 │ REST + SSE (API_CONTRACT.md)  │
@@ -201,7 +201,7 @@ Chi tiết từng module trong `docs/modules/`.
 
 ### 8.1. Màn hình (đã có trên mock; việc còn lại là chạy trên backend thật)
 
-Stage (`/`, `/s/:scene`, `src/stage/**`) chạy 5 cảnh trên thành phố 3D với thẻ nổi "toy UI"; màn 2D cũ ở `/chi-tiet/*`; bảng kỹ thuật ở `/he-thong/*`. Quy tắc chung: màu có nghĩa cố định (xanh ngọc bình thường, vàng chú ý, đỏ bị ảnh hưởng/chặn, xám đã khoá); số format `30.000` kèm "/ngày" khi là hạn mức; mỗi giao dịch có hash → huy hiệu "giao dịch thật" mở explorer; lệnh `BLOCKED_AT_PROTOCOL` → "bị chain từ chối" kèm lỗi RPC rút gọn; chân trang "Mây Labs là giả định · Avalanche Fuji testnet · token test".
+Stage (`/`, `/s/:scene`, `src/stage/**`) chạy 5 cảnh trên thành phố 3D với thẻ nổi "toy UI"; màn 2D cũ `/chi-tiet/*` đã xoá (đường dẫn cũ chuyển hướng), tính năng nằm trong bảng kỹ thuật `/he-thong/*`. Quy tắc chung: màu có nghĩa cố định (xanh ngọc bình thường, vàng chú ý, đỏ bị ảnh hưởng/chặn, xám đã khoá); số format `30.000` kèm "/ngày" khi là hạn mức; mỗi giao dịch có hash → huy hiệu "giao dịch thật" mở explorer; lệnh `BLOCKED_AT_PROTOCOL` → "bị chain từ chối" kèm lỗi RPC rút gọn; chân trang "Mây Labs là giả định · Avalanche Fuji testnet · token test".
 
 Màn Incident: số bên phải lấy từ event (`principalSpentAfter`), không cộng ở client; bên trái tính ở client từ cùng danh sách bước và **đồng bộ theo bước bên phải**; chế độ Replay phát lại một `scenario_run` đã lưu, nhịp 3 giây/bước, dùng tx hash thật đã ghi.
 

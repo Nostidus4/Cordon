@@ -15,6 +15,19 @@ describe("tour script (spec §14.3 order)", () => {
     expect(stepIndexById("req-approve")).toBeLessThan(stepIndexById("inc-agent"));
   });
 });
+describe("tour targets and routes (the tour runs on /he-thong)", () => {
+  const sources = Object.values(import.meta.glob("../pages/system/**/*.tsx", { query: "?raw", import: "default", eager: true }) as Record<string, string>).join("\n");
+  it("every static route lives under /he-thong (or is a resolver)", () => {
+    for (const s of TOUR_STEPS) if (typeof s.route === "string") expect(s.route, s.id).toMatch(/^\/he-thong(\/|$|\?)/);
+  });
+  it("every data-tour target exists in src/pages/system", () => {
+    const names = new Set(TOUR_STEPS.flatMap((s) => s.target ?? []));
+    expect(names.size).toBeGreaterThan(10);
+    // plain data-tour="x", or an expression such as data-tour={dim ? undefined : "x"} / data-tour={`sys-approve-${s.member}`}
+    const has = (n: string) => new RegExp(`data-tour=\\{?[^\\n]*?["\`]${n.replace(/-(lan|trang|huy)$/, "-")}`).test(sources);
+    for (const n of names) expect(has(n), n).toBe(true);
+  });
+});
 describe("tour store", () => {
   it("clamps, finishes at the last step and resets on stop", () => {
     const s = useTourStore.getState();

@@ -1,8 +1,8 @@
 // Pure logic of the scene stage: routing between scenes, spread -> city props + counter, incident numbers, popover text.
 // Nothing here touches React, timers or the network, so it is unit-tested directly (logic.test.ts).
 import { buildSpreadPlan, counterAt, spreadOrder, type SpreadPlan } from "../graph/spread";
-import { deriveView } from "../pages/incident/incidentView";
-import { leftStateAtStep, leftStepFromAttempts } from "../pages/incident/leftSimulation";
+import { deriveView } from "../shared/incident/incidentView";
+import { leftStateAtStep, leftStepFromAttempts } from "../shared/incident/leftSimulation";
 import { KEY_CAP } from "../shared/scenario4";
 import { fmtDisplay, fmtPercent, percentOf } from "../lib/format";
 import type { Attempt, GraphSnapshot, Proposal, SimResult } from "../types";

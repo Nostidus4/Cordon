@@ -21,8 +21,8 @@ export function useTargetRect(names: string[] | undefined, enabled: boolean, scr
         let r = el.getBoundingClientRect();
         if (scrolledFor !== el) {
           scrolledFor = el;
-          const vh = window.innerHeight, top = 150;
-          if (r.top < top || r.bottom > vh - 20) window.scrollTo({ top: Math.max(0, window.scrollY + r.top - (r.height > vh - 260 ? top + 10 : Math.max(top + 10, (vh - r.height) / 2 - 40))), behavior: "smooth" });
+          const vh = window.innerHeight;
+          if (r.top < 150 || r.bottom > vh - 20) el.scrollIntoView({ block: r.height > vh - 260 ? "start" : "center", behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
         }
         r = el.getBoundingClientRect();
         const next = { top: Math.round(r.top), left: Math.round(r.left), width: Math.round(r.width), height: Math.round(r.height) };
