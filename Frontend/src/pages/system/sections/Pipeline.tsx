@@ -111,6 +111,7 @@ export function Pipeline() {
           ))}
         </div>
       }>
+      <div data-tour="sys-pipeline">
       {isLoading ? <Empty>Đang tải…</Empty> : shown.length === 0 ? (
         <Empty>Chưa có lần thử nào{filter !== "all" ? " khớp bộ lọc" : ""}. Bấm “Chạy Trợ lý Cân đối” hoặc “Kẻ gian: bước 1–5” ở trên.</Empty>
       ) : (
@@ -121,6 +122,7 @@ export function Pipeline() {
           {shown.length > limit ? <li style={{ listStyle: "none", textAlign: "center" }}><button type="button" className="sx-tog" onClick={() => setLimit((l) => l + 10)}>Xem thêm {shown.length - limit} lần thử cũ hơn</button></li> : null}
         </ul>
       )}
+      </div>
       <AttemptDrawer attempt={sel} onClose={() => setSelId(null)} />
     </Section>
   );

@@ -18,7 +18,7 @@ const INK2 = "var(--ink-2)";
 
 /** Static diagram of the rule engine, one calm line. */
 function RuleDiagram() {
-  const steps: [string, string][] = [["Đầu vào", "số dư vault, hạn mức còn lại"], ["Lệch quá 5%?", "tTKB so với mục tiêu 20%"], ["amountIn = min(…)", "thiếu · thẻ · khu · 5.000"], ["Chạy thử", "simulateContract"]];
+  const steps: [string, string][] = [["Đầu vào", "số dư vault, hạn mức còn lại"], ["Lệch quá 5%?", "tTKB so với mục tiêu 20%"], ["amountIn = min(…)", "thiếu · thẻ · khu · 5.000"], ["Chạy thử", "hỏi chain trước, chưa gửi"]];
   return (
     <div className="flex flex-wrap items-stretch gap-y-2" role="img" aria-label="Rule engine: đầu vào, kiểm tra lệch, tính amountIn, chạy thử, rồi swap hoặc bị chặn">
       {steps.map(([t, s]) => (
@@ -113,7 +113,7 @@ function RunRow({ r, first, simulated, onAttempt }: { r: AgentRun; first: boolea
           <summary style={{ cursor: "pointer", color: INK2, fontWeight: 600 }}>Chi tiết kỹ thuật</summary>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1" style={{ color: INK2 }}>
             <span>reasonHash {r.reasonHash ? <code className="mono" title={r.reasonHash}>{r.reasonHash.slice(0, 14)}…{r.reasonHash.slice(-6)}</code> : "không có (không gửi tx)"}</span>
-            <span>tx {r.txHash ? <Hash value={r.txHash} simulated={simulated} /> : v.kind === "blocked" ? "simulateContract revert, không gửi" : "không có"}</span>
+            <span>tx {r.txHash ? <Hash value={r.txHash} simulated={simulated} /> : v.kind === "blocked" ? "chạy thử bị chain từ chối, không gửi" : "không có"}</span>
             <code className="mono">{r.id}</code>
           </div>
         </details>

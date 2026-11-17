@@ -107,7 +107,7 @@ export function buildRoster(x: RosterInput): RosterCard[] {
       id: "payroll", name: "Quỹ lương", role: "Giữ đủ tiền cho ngày lương, phần dư đem gửi sinh lời",
       mayDo: "Rút hoặc gửi quỹ theo bậc thang; xin bật công tắc dừng khi có rủi ro",
       never: "Không vượt trần quỹ; công tắc dừng và Hội đồng đứng trên nó",
-      bindings: [], bindingNote: "Chạy qua hợp đồng quỹ lương, không thuộc khu nào",
+      bindings: [], bindingNote: "Khoá riêng của hợp đồng quỹ lương; mới chạy trên chain giả lập, chưa deploy lên L1",
       status: x.payrollRuns ? st(ago(lastPay?.ts ?? null, x.now), lastPay?.ts ?? null) : st("unavailable", null),
       outcome: payrollOutcome(lastPay),
     },
