@@ -25,7 +25,9 @@ export class ApiError extends Error {
   constructor(public code: string, message: string, public status = 400) { super(message); }
 }
 
-export const mockConfig = { latencyMs: 140, stepDelayMs: 2600 };
+/** Council timelock of the demo build (s): the real Guardian L1 uses 15 s. Parity runs set `mockConfig.timelockS` to the backend's `COUNCIL_TIMELOCK_S`; 0 = execute at the threshold. */
+export const MOCK_TIMELOCK_S = 15;
+export const mockConfig = { latencyMs: 140, stepDelayMs: 2600, timelockS: MOCK_TIMELOCK_S };
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const lat = () => (mockConfig.latencyMs > 0 ? sleep(mockConfig.latencyMs) : Promise.resolve());
 
@@ -207,7 +209,7 @@ function buildDraft(change: ProposedChange, findingId: string | null = null): Pr
   if (conflicted.length) {
     const m = S.members.find((x) => x.id === conflicted[0])!;
     warnings.push({ code: "CONFLICT_OF_INTEREST", text: `${m.label} đang ngồi Hội đồng và là chủ khu nhận thêm quyền, không được duyệt đề xuất này.` });
-    warnings.push({ code: "CONCENTRATION", text: `Khu ${subject} sẽ lên ${after.totals.enforced.display}/ngày (từ ${before.totals.enforced.display}) kèm một phiếu duyệt. Nên lập khu do Hội đồng sở hữu.` });
+    warnings.push({ code: "CONCENTRATION", text: `Khu ${subject} có thể chi tới ${after.totals.estimated.display}/ngày (hiện ${before.totals.estimated.display}) kèm một phiếu duyệt. Nên lập khu do Hội đồng sở hữu.` });
     findingsAfter.push({ id: `R4_COUNCIL_CONCENTRATION:${subject}`, ruleId: "R4_COUNCIL_CONCENTRATION", severity: "HIGH", principalId: subject,
       title: `${m.label} vừa giữ phiếu duyệt vừa nhận thêm quyền`, data: {}, proposal: null });
   }
@@ -267,6 +269,7 @@ function executeProposal(p: Proposal) {
   const calls = p.calls;
   const firstConsolidate = p.change?.kind === "merge_district";
   applyCalls(S, calls);
+  p.queued = false;
   p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = fakeTxHash(`exec${p.id}`);
   p.resultingPolicyVersion = S.policyVersion;
   for (const c of calls) {
@@ -281,8 +284,36 @@ function executeProposal(p: Proposal) {
   graphUpdated();
   if (firstConsolidate && !S.requestsSeeded) seedRequests();
 }
+/** Timelock (#77): threshold reached -> `Queued`, executable from `eta`; the mock keeper below runs it, like the backend keeper (every member may veto meanwhile). */
+function queueProposal(p: Proposal, instant: boolean) {
+  p.eta = nowSec() + (instant ? 0 : mockConfig.timelockS); p.queued = true;
+  pushEvent("Queued", { id: p.id, eta: p.eta });
+  emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
+  if (instant) { keeperExecute(p.id); return; }
+  startKeeper();
+}
+/** Like the backend keeper (`services/timelock_keeper.py`): a 1 s tick executes every queued proposal whose eta has passed, in id order; stops when nothing is queued. */
+let keeperTimer: ReturnType<typeof setInterval> | null = null;
+function startKeeper() {
+  if (keeperTimer) return;
+  const at = epoch;
+  keeperTimer = setInterval(() => {
+    if (at !== epoch) { clearInterval(keeperTimer!); keeperTimer = null; return; }
+    const queued = S.proposals.filter((x) => x.status === "open" && x.queued).sort((a, b) => a.id - b.id);
+    for (const q of queued) if (nowSec() >= q.eta!) keeperExecute(q.id);
+    if (!S.proposals.some((x) => x.status === "open" && x.queued)) { clearInterval(keeperTimer!); keeperTimer = null; }
+  }, 1000);
+}
+function keeperExecute(id: number) {
+  const p = S.proposals.find((x) => x.id === id);
+  if (!p || p.status !== "open" || !p.queued) return; // vetoed or already run
+  p.queued = false;
+  executeProposal(p);
+  emitCity();
+}
 const approvedAt = new Map<string, number>(); // `${proposalId}:${member}` -> unix s
-function approve(id: number, member: MemberId): Proposal {
+/** `instant`: demo setup only (applyPolicyV2): the Queued event is still emitted, but the delay is skipped. */
+function approve(id: number, member: MemberId, instant = false): Proposal {
   const p = S.proposals.find((x) => x.id === id);
   if (!p) throw new ApiError("PROPOSAL_NOT_FOUND", `Không có đề xuất #${id}`, 404);
   if (p.status !== "open") throw new ApiError("PROPOSAL_NOT_OPEN", "Đề xuất đã đóng");
@@ -294,8 +325,10 @@ function approve(id: number, member: MemberId): Proposal {
   p.approvals.push(member);
   approvedAt.set(`${p.id}:${member}`, nowSec());
   pushEvent("Approved", { id, member: addrOf(member) });
-  if (p.approvals.length >= p.threshold) executeProposal(p);
-  else emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
+  if (p.approvals.length >= p.threshold && p.eta == null) {
+    if (mockConfig.timelockS <= 0) executeProposal(p); // delay 0: like the chain, `approve` itself executes
+    else queueProposal(p, instant);
+  } else emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
   emitCity();
   return liveProposal(p);
 }
@@ -303,9 +336,10 @@ function approve(id: number, member: MemberId): Proposal {
 function liveProposal(p: Proposal): Proposal {
   const c = structuredClone(p);
   c.approvalCount = c.approvals.length;
+  c.queued = c.eta != null && c.status === "open";
   c.members = S.members.map((m) => {
     const approved = c.approvals.includes(m.id), conflicted = c.conflictedMembers.includes(m.id);
-    const disabledReason = c.status !== "open" ? "Đề xuất không còn mở." : approved ? "Đã duyệt." : conflicted ? "Xung đột lợi ích." : null;
+    const disabledReason = c.status !== "open" ? "Đề xuất không còn mở." : approved ? "Đã duyệt." : c.queued ? "Đã đủ phiếu, đang chờ hết giờ." : conflicted ? "Xung đột lợi ích." : null;
     return { id: m.id, label: m.label, principalId: m.principalId ?? null, approved, conflicted, canApprove: disabledReason === null, disabledReason, approvedAt: approved ? approvedAt.get(`${p.id}:${m.id}`) ?? null : null };
   });
   return c;
@@ -322,7 +356,10 @@ function cityMap(): Record<CityBuildingId, MockStatus> {
   const locked = Object.values(S.principals).filter((p) => p.locked);
   const nearCap = activeNear();
   const c = {} as Record<CityBuildingId, MockStatus>;
-  c.B01 = openProps.length ? { state: "warning", reasonVi: `${openProps.length} đề xuất đang chờ Hội đồng duyệt`, evidence: { kind: "proposal", ref: String(openProps[0].id) } }
+  const queuedProps = openProps.filter((p) => p.eta != null).sort((a, b) => a.eta! - b.eta!);
+  const waitingProps = openProps.filter((p) => p.eta == null);
+  c.B01 = waitingProps.length ? { state: "warning", reasonVi: `${waitingProps.length} đề xuất đang chờ Hội đồng duyệt`, evidence: { kind: "proposal", ref: String(waitingProps[0].id) } }
+    : queuedProps.length ? (() => { const q = queuedProps[0], left = Math.max(0, q.eta! - nowSec()); return { state: "warning" as const, reasonVi: `Đề xuất #${q.id} đủ phiếu, còn ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} nữa mới thực thi. Tự thực thi khi hết giờ.`, evidence: { kind: "proposal", ref: String(q.id) } }; })()
     : { state: "normal", reasonVi: "Hội đồng không có đề xuất nào chờ duyệt" };
   const lastLog = assistantLogs[assistantLogs.length - 1];
   c.B02 = lastLog && !lastLog.numbersVerified ? { state: "warning", reasonVi: "Câu trả lời gần nhất có số liệu chưa kiểm chứng", evidence: { kind: "event", ref: `assistant:${lastLog.id}` } }
@@ -410,18 +447,23 @@ function answerFor(req: AskRequest): RawAnswer {
     };
   }
   if (q === "Có nên giao trợ lý Cân đối cho anh Huy?") {
+    // same figures as the backend (assistant/fixed_questions.py `_huy_agent`): what the district could LOSE (estimated), not the cap that binds
     const d = buildDraft({ kind: "move_key", key: S.keys.key_agent_rebalance.address, to: "huy" });
-    const b = d.riskReport.before.enforced.display, a = d.riskReport.after.enforced.display;
+    const b = d.riskReport.before.estimated.display, a = d.riskReport.after.estimated.display;
+    const cap = fmtDisplay(U(100000));
+    const warnings: AssistantAnswer["warnings"] = [];
+    if (d.conflictedMembers.length) warnings.push({ code: "CONFLICT_OF_INTEREST", text: "Anh Huy đang ngồi Hội đồng và sẽ giữ một phiếu duyệt cho chính khu của mình." });
+    if (d.warnings.some((w) => w.code === "CONCENTRATION")) warnings.push({ code: "CONCENTRATION", text: "Quyền chi tập trung vào khu của một thành viên Hội đồng." });
     return {
-      answer: `Không nên. Anh Huy đang ngồi Hội đồng; khu anh sẽ lên ${a}/ngày (từ ${b}) kèm một phiếu duyệt. Nên lập khu do Hội đồng sở hữu, hạn mức ${fmtDisplay(U(100000))}/ngày, chỉ sàn đã duyệt.`,
+      answer: `Anh Huy đang ngồi Hội đồng. Nếu nhận thêm trợ lý Cân đối, khu của anh ấy có thể chi tới ${a} USDC/ngày (hiện ${b}) và vẫn giữ một phiếu duyệt: xung đột lợi ích. Nên giao cho khu do Hội đồng sở hữu, hạn mức ${cap} USDC/ngày, chỉ qua chợ đã duyệt.`,
       numbers: [
-        { label: "Khu anh Huy trước", value: b, source: "proposal", path: "riskReport.before.enforced.display" },
-        { label: "Khu anh Huy sau", value: a, source: "proposal", path: "riskReport.after.enforced.display" },
-        { label: "Hạn mức khu Hội đồng", value: fmtDisplay(U(100000)), source: "proposal", path: "suggestions[0].change.districtCap" },
+        { label: "Ước tính sau khi giao", value: a, source: "proposal", path: "riskReport.after.estimated.display" },
+        { label: "Ước tính hiện tại", value: b, source: "proposal", path: "riskReport.before.estimated.display" },
+        { label: "Hạn mức khu Hội đồng đề xuất", value: cap, source: "proposal", path: "suggestions[0].change.districtCap" },
       ],
       highlight: { nodeIds: ["p:huy", "k:key_agent_rebalance", "m:huy"], edgeIds: [] },
-      warnings: d.warnings.filter((w) => w.code !== "DATA_DECLARED"),
-      suggestions: [{ title: "Lập khu do Hội đồng sở hữu, hạn mức 100.000/ngày", change: { kind: "create_district", principalId: "council_ops", label: "Khu do Hội đồng sở hữu", owner: "council", keys: [S.keys.key_agent_rebalance.address], districtCap: money(U(100000)) } }],
+      warnings,
+      suggestions: [{ title: "Tạo khu do Hội đồng sở hữu cho trợ lý Cân đối", change: { kind: "create_district", principalId: "council_ops", label: "Khu do Hội đồng sở hữu", owner: "council", keys: [S.keys.key_agent_rebalance.address], districtCap: money(U(100000)) } }],
     };
   }
   return { answer: "Mình chỉ trả lời 4 câu hỏi có sẵn ở bản demo này. Hãy bấm một trong các nút câu hỏi.", numbers: [], highlight: { nodeIds: [], edgeIds: [] } };
@@ -445,7 +487,7 @@ function assistantTools(q: string, answer: RawAnswer): { toolCalls: AssistantToo
   }
   if (q === "Có nên giao trợ lý Cân đối cho anh Huy?") {
     const d = buildDraft({ kind: "move_key", key: S.keys.key_agent_rebalance.address, to: "huy" });
-    return { toolCalls: [call("get_proposal", { id: 13 }, `conflictedMembers ${d.conflictedMembers.join(",") || "không"} · sau ${d.riskReport.after.enforced.display}`)], roots: { proposal: { ...d, suggestions: answer.suggestions } } };
+    return { toolCalls: [call("get_proposal", { id: 13 }, `conflictedMembers ${d.conflictedMembers.join(",") || "không"} · sau ${d.riskReport.after.estimated.display}`)], roots: { proposal: { ...d, suggestions: answer.suggestions } } };
   }
   return { toolCalls: [], roots: {} };
 }
@@ -799,9 +841,28 @@ export const mockApi = {
   async draftProposal(req: DraftProposalRequest): Promise<ProposalDraft> { await lat(); return buildDraft(resolveChange(req), req.findingId ?? null); },
   async createProposal(req: CreateProposalRequest): Promise<Proposal> { await lat(); memberOf(req.member); return liveProposal(addProposal(resolveChange(req), req.member, undefined, req.findingId ?? null, req.title)); },
   async approveProposal(id: number, member: MemberId): Promise<Proposal> { await lat(); return approve(id, member); },
-  // the mock Council has no timelock (delay 0): nothing is ever queued, so there is nothing to execute or veto
-  async executeProposal(): Promise<Proposal> { await lat(); throw new ApiError("NeedsThreshold", "Mock không có timelock", 409); },
-  async vetoProposal(): Promise<Proposal> { await lat(); throw new ApiError("ProposalNotOpen", "Mock không có timelock", 409); },
+  // timelock (#77), same rules as chain/sim: execute only once queued and past eta; any member may veto a queued proposal
+  async executeProposal(id: number, member: MemberId): Promise<Proposal> {
+    await lat(); memberOf(member);
+    const p = S.proposals.find((x) => x.id === id);
+    if (!p) throw new ApiError("PROPOSAL_NOT_FOUND", `Không có đề xuất #${id}`, 404);
+    if (p.status !== "open") throw new ApiError("PROPOSAL_NOT_OPEN", "Đề xuất đã đóng", 409);
+    if (p.eta == null) throw new ApiError("NEEDS_THRESHOLD", "Đề xuất chưa đủ phiếu", 409);
+    if (nowSec() < p.eta) throw new ApiError("TIMELOCK_NOT_READY", `Chưa tới giờ thực thi (còn ${p.eta - nowSec()} giây)`, 409);
+    keeperExecute(id);
+    return liveProposal(p);
+  },
+  async vetoProposal(id: number, member: MemberId): Promise<Proposal> {
+    await lat(); memberOf(member);
+    const p = S.proposals.find((x) => x.id === id);
+    if (!p) throw new ApiError("PROPOSAL_NOT_FOUND", `Không có đề xuất #${id}`, 404);
+    if (p.status !== "open" || p.eta == null) throw new ApiError("PROPOSAL_NOT_OPEN", "Chỉ phủ quyết được đề xuất đang chờ hết giờ", 409);
+    p.status = "cancelled"; p.queued = false; p.vetoedBy = member;
+    pushEvent("Cancelled", { id }); pushEvent("Vetoed", { id, member: addrOf(member) });
+    emit({ type: "proposal_updated", data: { proposalId: id, status: p.status, approvals: p.approvals.length } });
+    emitCity();
+    return liveProposal(p);
+  },
   async getProposals(): Promise<Proposal[]> { await lat(); return S.proposals.map(liveProposal).sort((a, b) => b.id - a.id); },
   async lockDistrict(req: LockRequest): Promise<ActionResult> {
     await lat(); memberOf(req.member);
@@ -831,7 +892,8 @@ export const mockApi = {
     const f = computeFindings(S)[0];
     if (!f?.proposal) return ok(null);
     const p = addProposal(f.proposal!, "lan");
-    for (const m of ["lan", "trang"] as MemberId[]) if (p.status === "open") approve(p.id, m);
+    // demo setup: skips the Council delay (Queued is still emitted), so scene 4/5 never wait 15 s for policy v2
+    for (const m of ["lan", "trang"] as MemberId[]) if (p.status === "open") approve(p.id, m, true);
     return ok(null);
   },
   async getCityStates(): Promise<CityStates> { await lat(); return deriveCity(); },
@@ -840,7 +902,7 @@ export const mockApi = {
   async getScenarioRuns(): Promise<ScenarioRun[]> { await lat(); return [recordedRun(), ...runs.map((r) => structuredClone(r))]; },
   async resetDemo(): Promise<ActionResult> {
     await lat();
-    epoch++; runActive = false; S = seedState(); events = []; attempts = []; runs = []; agentRuns = []; assistantLogs = []; currentRunId = null; lastAgentBlocked = false; lastCityJson = ""; incidents = []; incidentRecovery.clear(); proposalIncident.clear(); approvedAt.clear(); resetTxGuardMock();
+    epoch++; if (keeperTimer) { clearInterval(keeperTimer); keeperTimer = null; } runActive = false; S = seedState(); events = []; attempts = []; runs = []; agentRuns = []; assistantLogs = []; currentRunId = null; lastAgentBlocked = false; lastCityJson = ""; incidents = []; incidentRecovery.clear(); proposalIncident.clear(); approvedAt.clear(); resetTxGuardMock();
     emit({ type: "reset", data: { at: nowIso() } }); graphUpdated(); emitCity(true);
     return ok(null);
   },

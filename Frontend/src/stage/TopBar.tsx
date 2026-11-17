@@ -9,6 +9,8 @@ import type { SceneId } from "./contract";
 import { SCENE_META, STAGE_SCENES, type StageScene } from "./logic";
 import { useStageStore } from "./stageStore";
 import { CordonLogo } from "../components/brand/Logo";
+import { env } from "../config/env";
+import { SimPill } from "./SimPill";
 import { CheckIcon, MoonIcon, SunIcon } from "./ui";
 
 const DOT: Record<StageScene, string> = { look: "#7a47e6", try: "#1565e8", fix: "#e8782a", incident: "#d62839", request: "#0e968c" };
@@ -20,6 +22,8 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
   const [more, setMore] = useState(false);
   const mode = useUiStore((s) => s.mode);
   const setMode = useUiStore((s) => s.setMode);
+  const mock = env.apiMode !== "live";
+  const [liveLabel, modeGroup] = mock ? ["Chạy thử", "Chạy thử hay xem lại"] : ["Trực tiếp", "Chạy thật hay xem lại"];
   return (
     <header data-slot="top-bar" className="stage-topbar-in pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 px-4 pt-3.5">
       <Link to="/" onClick={() => onGo("intro")} className="toy-card pointer-events-auto flex items-center gap-2.5 py-1.5 pl-3 pr-4 no-underline max-sm:hidden" style={{ borderRadius: 999 }} aria-label="Cordon, về đầu. Mây Labs (giả định)">
@@ -47,14 +51,15 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
       </nav>
 
       <div className="pointer-events-auto flex items-center gap-2 max-sm:hidden" data-topbar-right>
+        {mock ? <SimPill /> : null}
         <SoundToggle />
         <div className="toy-card toy-pill-toggle" role="group" aria-label="Ngày hay đêm" style={{ borderRadius: 999, padding: 4 }}>
           <button type="button" aria-pressed={!night} onClick={() => onNight(false)}><SunIcon size={18} /><span className="hidden 2xl:inline">Ngày</span></button>
           <button type="button" aria-pressed={night} onClick={() => onNight(true)}><MoonIcon size={18} /><span className="hidden 2xl:inline">Đêm</span></button>
         </div>
-        <div className="toy-card toy-pill-toggle" role="group" aria-label="Chạy thật hay xem lại" style={{ borderRadius: 999, padding: 4 }}>
+        <div className="toy-card toy-pill-toggle" role="group" aria-label={modeGroup} style={{ borderRadius: 999, padding: 4 }}>
           <button type="button" aria-pressed={mode === "live"} onClick={() => setMode("live")}>
-            <span className={mode === "live" ? "toy-live" : ""} style={{ width: 9, height: 9, borderRadius: 9, background: "var(--green-d)", display: "inline-block" }} aria-hidden />Trực tiếp
+            {mock ? null : <span className={mode === "live" ? "toy-live" : ""} style={{ width: 9, height: 9, borderRadius: 9, background: "var(--green-d)", display: "inline-block" }} aria-hidden />}{liveLabel}
           </button>
           <button type="button" aria-pressed={mode === "replay"} onClick={() => { setMode("replay"); onGo("incident"); }}>Xem lại</button>
         </div>
@@ -70,10 +75,11 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
                 <button type="button" aria-pressed={!night} onClick={() => onNight(false)}><SunIcon size={18} /></button>
                 <button type="button" aria-pressed={night} onClick={() => onNight(true)}><MoonIcon size={18} /></button>
               </div></div>
-            <div className="toy-pill-toggle self-start" role="group" aria-label="Chạy thật hay xem lại">
-              <button type="button" aria-pressed={mode === "live"} onClick={() => setMode("live")}>Trực tiếp</button>
+            <div className="toy-pill-toggle self-start" role="group" aria-label={modeGroup}>
+              <button type="button" aria-pressed={mode === "live"} onClick={() => setMode("live")}>{liveLabel}</button>
               <button type="button" aria-pressed={mode === "replay"} onClick={() => { setMode("replay"); onGo("incident"); setMore(false); }}>Xem lại</button>
             </div>
+            {mock ? <SimPill onNavigate={() => setMore(false)} /> : null}
             <Link to="/he-thong" className="font-toy text-[15px] font-bold no-underline" style={{ color: "var(--ink)" }}>Bảng kỹ thuật</Link>
             <button type="button" onClick={() => { setMore(false); onReset(); }} disabled={resetting} className="toy-btn self-start" data-c="cream" data-size="sm"><RotateCcw size={16} strokeWidth={2.6} aria-hidden />Chơi lại từ đầu</button>
           </div>

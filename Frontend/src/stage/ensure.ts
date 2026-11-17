@@ -19,16 +19,23 @@ export function ensureV2(): Promise<void> {
   inflight = (async () => {
     const g = await api.getGraph();
     if ((policyLabel(g) ?? 1) >= 2) return;
-    let merge = (await api.getProposals()).filter(isMerge).sort((a, b) => b.id - a.id)[0];
+    const merge = (await api.getProposals()).filter(isMerge).sort((a, b) => b.id - a.id)[0];
     if (!merge) {
-      const f = (await api.getFindings()).find((x) => x.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && x.principalId === "minh" && x.proposal);
-      if (!f) { await api.applyPolicyV2(); return; } // no finding to start from: fall back to the demo shortcut
-      merge = await api.createProposal({ findingId: f.id, member: "lan" });
+      // setup step: the demo shortcut (Lan proposes, Lan + Trang approve). The mock skips the Council delay here, so scene 4/5 never wait silently.
+      await api.applyPolicyV2();
+    } else {
+      for (const m of ["lan", "trang"] as MemberId[]) {
+        const cur = (await api.getProposals()).find((p) => p.id === merge.id);
+        if (!cur || cur.status !== "open") break;
+        if (!cur.approvals.includes(m)) await api.approveProposal(merge.id, m);
+      }
     }
-    for (const m of ["lan", "trang"] as MemberId[]) {
-      const cur = (await api.getProposals()).find((p) => p.id === merge.id);
-      if (!cur || cur.status !== "open") break;
-      if (!cur.approvals.includes(m)) await api.approveProposal(merge.id, m);
+    // a Council timelock may still be running (half-finished scene 3, or a live backend with a delay): wait for the keeper, at most ~20 s
+    for (let i = 0; i < 40; i++) {
+      if ((policyLabel(await api.getGraph()) ?? 1) >= 2) break;
+      const cur = merge && (await api.getProposals()).find((p) => p.id === merge.id);
+      if (cur && cur.status === "cancelled") break;
+      await new Promise((r) => setTimeout(r, 500));
     }
   })().finally(() => { inflight = null; });
   return inflight;

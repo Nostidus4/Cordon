@@ -5,6 +5,7 @@ import { mockApi, mockConfig } from "./server";
 
 mockConfig.latencyMs = 0;
 mockConfig.stepDelayMs = 0;
+mockConfig.timelockS = 0; // the Council delay is covered by timelock.test.ts
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function until<T>(f: () => Promise<T | null | false>, ms = 3000): Promise<T> {
   const t0 = Date.now();

@@ -1,5 +1,6 @@
 // Static About content: vault model, how Cordon works, legal notes, protection limits (spec §10.7, §12, §3).
 import { BRAND } from "../../config/brand";
+import { env } from "../../config/env";
 
 export const ABOUT_HERO = {
   eyebrow: "Mô hình & pháp lý",
@@ -44,7 +45,7 @@ export const LEGAL = {
   en: "Legal notes",
   items: [
     { k: "Mây Labs là giả định", v: "Công ty, nhân vật và số liệu trong demo đều hư cấu, chỉ để minh hoạ kịch bản." },
-    { k: "Token test, không có giá trị", v: "Chạy trên Avalanche Fuji testnet với tUSDC, tTKB, tSCAM do chúng tôi tự mint. Không có tiền thật." },
+    { k: "Token test, không có giá trị", v: env.apiMode === "live" ? "Chạy trên Avalanche Fuji testnet với tUSDC, tTKB, tSCAM do chúng tôi tự mint. Không có tiền thật." : "Bản demo này chạy chain mô phỏng trong trình duyệt; contract thật nằm trên Guardian L1 (Fuji), xem trang Bằng chứng. Token test tUSDC, tTKB, tSCAM do chúng tôi tự mint. Không có tiền thật." },
     { k: "Không lưu dữ liệu cá nhân on-chain", v: "On-chain chỉ có địa chỉ và mã khu; tên người là nhãn giả định nằm ngoài chain." },
     { k: "Khoá demo chỉ dùng testnet", v: "Private key nằm trong .env, không commit và không dùng cho mạng thật." },
   ],
