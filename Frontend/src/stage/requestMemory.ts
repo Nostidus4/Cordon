@@ -17,7 +17,7 @@ export function useRememberRequestNumbers() {
   useEffect(() => {
     const locked = !!graph?.districts.find((d) => d.principalId === "minh")?.locked;
     if (locked || !proposals) return;
-    const n = requestNumbers(proposals.find((p) => p.id === 12), proposals.find((p) => p.id === 13), false, null);
+    const n = requestNumbers(proposals.find((p) => p.id === 12), proposals.find((p) => p.id === 13), null);
     if (n) remembered = n;
   }, [graph, proposals]);
 }

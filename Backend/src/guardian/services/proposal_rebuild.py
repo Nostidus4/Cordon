@@ -8,15 +8,34 @@ construction. Records already in the store win and are never overwritten.
 
 from __future__ import annotations
 
+import copy
 import logging
 from typing import Any
 
+from guardian.domain.snapshot import PolicySnapshot
 from guardian.graph import changes as chg
 from guardian.graph.simulate import simulate_compromise
 from guardian.services.runtime import ProposalRec, Runtime
 
 log = logging.getLogger("guardian.proposal_rebuild")
 REBUILT_BASIS = "rebuilt_from_chain"
+
+
+def neutral_snapshot(snap: PolicySnapshot) -> PolicySnapshot:
+    """The state a request is judged on: no spend, no lock. A locked district (scene 4) has its keys switched off and
+    its remaining budget at 0, which would turn every number of a pending request into 0; undo that on a copy."""
+    out = copy.deepcopy(snap)
+    for p in out.principals.values():
+        p.spent_today = 0
+        if p.locked:
+            p.locked = False
+            for a in p.keys:
+                if a in out.keys:
+                    out.keys[a].active = True
+                    out.keys[a].allow_listed = True
+    for k in out.keys.values():
+        k.spent_today = 0
+    return out
 
 
 def infer_change(calls: list[dict[str, Any]]) -> dict[str, Any] | None:

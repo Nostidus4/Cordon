@@ -151,11 +151,11 @@ describe("scene 5 numbers on deep link and after playing 1-4 (never 0 / post-loc
 
   it("fresh state: there is nothing yet (skeleton), then the council flow of ensureV2 provides the story numbers", async () => {
     const [a0, b0] = await pick();
-    expect(requestNumbers(a0, b0, false, null)).toBeNull();
+    expect(requestNumbers(a0, b0, null)).toBeNull();
     await ensureV2();
     expect((await mockApi.getGraph()).policyVersion).toBe(2);
     const [a, b] = await pick();
-    expectStory(requestNumbers(a, b, false, null));
+    expectStory(requestNumbers(a, b, null));
     await ensureV2(); // idempotent
     expect((await mockApi.getProposals()).filter((p) => p.change?.kind === "merge_district")).toHaveLength(1);
   });
@@ -163,7 +163,7 @@ describe("scene 5 numbers on deep link and after playing 1-4 (never 0 / post-loc
   it("after scenes 1-4 (agent, attack, lock): the live report collapses to 0, the remembered snapshot still tells the story", async () => {
     await ensureV2();
     let [a, b] = await pick();
-    const snap = requestNumbers(a, b, false, null)!; // what useRememberRequestNumbers keeps while Minh is open
+    const snap = requestNumbers(a, b, null)!; // what useRememberRequestNumbers keeps while Minh is open
     expectStory(snap);
     await mockApi.runAgentOnce();
     await mockApi.runScene4();
@@ -172,8 +172,11 @@ describe("scene 5 numbers on deep link and after playing 1-4 (never 0 / post-loc
     await mockApi.runScene4Step7();
     [a, b] = await pick();
     expect(a!.riskReport.after.enforced.display).toBe("130.000"); // spec §6.5: the report is frozen at propose, locking minh does not change it
-    expect(requestNumbers(a, b, true, null)).toBeNull(); // no snapshot -> skeleton, not zeros
-    expectStory(requestNumbers(a, b, true, snap));
+    expectStory(requestNumbers(a, b, null)); // fresh page load after the lock: the live report is enough, no snapshot needed
+    const zero = { ...a!, riskReport: { ...a!.riskReport, after: { ...a!.riskReport.after, enforced: { raw: "0", display: "0" } } } };
+    expect(requestNumbers(zero, b, null)).toBeNull(); // a zeroed live report never shows as 0: skeleton
+    expectStory(requestNumbers(zero, b, snap)); // ...or the remembered story
+    expectStory(requestNumbers(a, b, snap));
   });
 
   it("a half-finished merge (proposed, Lan approved) is completed by ensureV2", async () => {
@@ -182,7 +185,7 @@ describe("scene 5 numbers on deep link and after playing 1-4 (never 0 / post-loc
     await mockApi.approveProposal(p.id, "lan");
     await ensureV2();
     const [a, b] = await pick();
-    expectStory(requestNumbers(a, b, false, null));
+    expectStory(requestNumbers(a, b, null));
   });
 });
 

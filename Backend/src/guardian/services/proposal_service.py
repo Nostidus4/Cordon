@@ -14,6 +14,7 @@ from guardian.graph.findings import compute_findings
 from guardian.graph.risk_report import build_risk_report, risk_report_hash
 from guardian.graph.simulate import simulate_compromise
 from guardian.services import views
+from guardian.services.proposal_rebuild import REBUILT_BASIS, neutral_snapshot
 from guardian.services.runtime import ProposalRec, Runtime
 
 THRESHOLD = 2
@@ -342,18 +343,36 @@ def veto(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
     return proposal_out(rt, proposal_id)
 
 
+def _live_report(rec: ProposalRec, snap: PolicySnapshot, open_: bool) -> dict[str, Any]:
+    """The report to show. A record rebuilt from the chain has no original report (placeholder: before == after,
+    computed on whatever the state was at API start), so while it is open its report is recomputed from its `change`
+    on the live state, with the incident state set aside (see `proposal_rebuild.neutral_snapshot`): the story of a
+    request must not collapse to 0 because the district was locked meanwhile. Everything else stays frozen
+    (the hash is on-chain, spec §6.5)."""
+    if not (open_ and rec.report_basis == REBUILT_BASIS and rec.change):
+        return rec.risk_report
+    try:
+        return build_risk_report(
+            neutral_snapshot(snap),
+            rec.change,
+            generated_at=rec.risk_report["generatedAt"],  # type: ignore[arg-type]
+        )
+    except (ValueError, KeyError):
+        return rec.risk_report
+
+
 def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
     rec = rt.stores.proposals.get(proposal_id)
     if rec is None:
         raise ApiError(404, "PROPOSAL_NOT_FOUND", f"Không có đề xuất #{proposal_id}.")
     cp = rt.chain.proposal_state(proposal_id)
     snap = rt.snapshot()
+    report = _live_report(rec, snap, cp.status == "open")
     by_addr = {m.address: m.id for m in snap.council}
     approved = sorted(by_addr[a] for a in cp.approved_by)
     status = cp.status
     conflicted = sorted(
-        set(conflicted_members(snap, rec.subject_principal))
-        | set(rec.risk_report["conflictedMembers"])
+        set(conflicted_members(snap, rec.subject_principal)) | set(report["conflictedMembers"])
     )
     members = []
     for m in snap.council:
@@ -395,7 +414,7 @@ def proposal_out(rt: Runtime, proposal_id: int) -> dict[str, Any]:
         "change": views.change_out(rec.change) if rec.change else None,  # type: ignore[arg-type]
         "calls": views.calls_out(rec.calls),
         "descriptionVi": rec.description_vi,
-        "riskReport": views.api_risk_report(rec.risk_report),
+        "riskReport": views.api_risk_report(report),
         "riskReportHash": rec.risk_report_hash,
         "reportBasis": rec.report_basis,
         "warnings": (

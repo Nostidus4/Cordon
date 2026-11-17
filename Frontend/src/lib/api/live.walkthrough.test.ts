@@ -142,7 +142,7 @@ describe.skipIf(!process.env.LIVE_API)("live walkthrough (sim backend)", () => {
     const p12 = ps.find((p) => p.id === 12), p13 = ps.find((p) => p.id === 13);
     expect(p12?.status).toBe("open");
     expect(p13?.status).toBe("open");
-    const nums = requestNumbers(p12, p13, !!g.districts.find((d) => d.principalId === "minh")?.locked, null);
+    const nums = requestNumbers(p12, p13, null);
     expect(nums).toEqual({
       p12: { before: "30.000", after: "130.000", beforePct: "1,5%", afterPct: "6,5%" },
       p13: { before: "40.000", after: "60.000", huyConflicted: true },

@@ -173,13 +173,12 @@ const pctText = (raw: string) => fmtPercent(percentOf(BigInt(raw), TREASURY));
 /** Numbers of requests #12 / #13 as the story tells them, or null while they are not real yet (-> skeleton, never "0 → 0").
  *  Open proposals are recomputed live, so once Lan has locked Minh's district (scene 4) the live report collapses to 0.
  *  `remembered` is the snapshot taken while the district was still open; it wins over a live report of a locked district. */
-export function requestNumbers(p12: Proposal | undefined, p13: Proposal | undefined, minhLocked: boolean, remembered: RequestNumbers | null): RequestNumbers | null {
+export function requestNumbers(p12: Proposal | undefined, p13: Proposal | undefined, remembered: RequestNumbers | null): RequestNumbers | null {
   if (!p12 || !p13) return null;
   const nz = (p: Proposal) => BigInt(p.riskReport.before.enforced.raw) > 0n && BigInt(p.riskReport.after.enforced.raw) > 0n;
   const live = (): RequestNumbers => ({
     p12: { before: p12.riskReport.before.enforced.display, after: p12.riskReport.after.enforced.display, beforePct: pctText(p12.riskReport.before.enforced.raw), afterPct: pctText(p12.riskReport.after.enforced.raw) },
     p13: { before: p13.riskReport.before.enforced.display, after: p13.riskReport.after.enforced.display, huyConflicted: p13.conflictedMembers.includes("huy") },
   });
-  if (minhLocked) return remembered; // live values describe a locked district: only the snapshot is the story
   return nz(p12) && nz(p13) ? live() : remembered;
 }

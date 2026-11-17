@@ -54,6 +54,7 @@ const shortHash = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
 function evidence(a: Attempt): string {
   if (a.outcome === "blocked_at_protocol") return `bị chain từ chối · ${shortRpc(a.errorRaw)}`;
   if (!a.txHash) return "";
+  if (a.outcome === "reverted" && !a.simulated) return `bị chain từ chối (revert) · ${shortHash(a.txHash)}`;
   return `${a.simulated ? "mô phỏng" : "giao dịch thật"} · ${shortHash(a.txHash)}`;
 }
 
