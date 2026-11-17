@@ -11,6 +11,7 @@ import { useProposals } from "../../hooks/useProposals";
 import type { MemberId } from "../../types";
 import type { CityStageProps } from "../contract";
 import { MemberButton, Tile } from "../parts";
+import { TimelockBanner } from "../TimelockBanner";
 import { WalletApproveButton } from "../WalletApproveButton";
 import { useCityProps, usePrimaryAction } from "../stageStore";
 import { Confetti, Ribbon, Stamp, ToyButton, ToyCard } from "../ui";
@@ -24,11 +25,13 @@ export function FixScene() {
   const { data: findings } = useFindings();
   const { data: proposals } = useProposals();
   const finding = findings?.find((f) => f.ruleId === "R1_MULTI_KEY_NO_SHARED_CAP" && f.principalId === "minh" && f.proposal);
-  const merge = useMemo(() => (proposals ?? []).filter((p) => p.change?.kind === "merge_district").sort((a, b) => b.id - a.id)[0], [proposals]);
+  const merge = useMemo(() => (proposals ?? []).filter((p) => p.change?.kind === "merge_district" && p.status !== "cancelled").sort((a, b) => b.id - a.id)[0], [proposals]);
   const { data: draft } = useQuery({ queryKey: ["stage-draft", finding?.id], queryFn: () => api.draftProposal({ findingId: finding!.id }), enabled: !!finding && !merge });
   const report = (merge ?? draft)?.riskReport;
 
-  const status: "draft" | "open" | "done" = !merge ? "draft" : merge.status === "executed" ? "done" : "open";
+  const vetoed = useMemo(() => (proposals ?? []).some((p) => p.change?.kind === "merge_district" && p.status === "cancelled"), [proposals]);
+  // "queued": 2/3 reached, the Council timelock runs (executes by itself at eta unless a member vetoes)
+  const status: "draft" | "open" | "queued" | "done" = !merge ? "draft" : merge.status === "executed" ? "done" : merge.queued ? "queued" : "open";
   const approved = new Set(merge?.approvals ?? []);
   const [burst, setBurst] = useState(0);
   const prev = useRef(status);
@@ -49,7 +52,7 @@ export function FixScene() {
   const propose = async () => { if (!finding || busy) return; setBusy(true); try { await actions.createProposal.mutateAsync({ findingId: finding.id, member: "lan" }); } finally { setBusy(false); } };
   const approve = async (member: MemberId) => { if (!merge || busy) return; setBusy(true); try { await actions.approve.mutateAsync({ id: merge.id, member }); } finally { setBusy(false); } };
   const nextApprover = ORDER.find((m) => !approved.has(m));
-  usePrimaryAction(status === "draft" ? (finding ? () => void propose() : null) : status === "open" ? (nextApprover ? () => void approve(nextApprover) : null) : () => nav("/s/incident"));
+  usePrimaryAction(status === "draft" ? (finding ? () => void propose() : null) : status === "open" ? (nextApprover ? () => void approve(nextApprover) : null) : status === "queued" ? null : () => nav("/s/incident"));
 
   // dev-only: ?approve=1 plays the whole flow (propose -> Lan -> Trang)
   useEffect(() => {
@@ -92,7 +95,7 @@ export function FixScene() {
           {status === "draft" ? (
             <div className="flex items-center gap-3">
               <ToyButton size="lg" pulse disabled={!finding || busy} onClick={() => void propose()}>Lan gửi đề xuất</ToyButton>
-              <span className="toy-body">Cần 2 trong 3 người duyệt.</span>
+              <span className="toy-body">{vetoed ? "Đề xuất trước đã bị phủ quyết. Gửi lại được." : "Cần 2 trong 3 người duyệt."}</span>
             </div>
           ) : null}
           {status !== "draft" ? (
@@ -100,13 +103,14 @@ export function FixScene() {
               <div className="flex items-end justify-between gap-1" role="group" aria-label="Hội đồng duyệt">
                 {MEMBERS.map((m) => (
                   <MemberButton key={m.id} member={m.id} name={m.name}
-                    state={approved.has(m.id) ? "approved" : status === "done" ? "waiting" : "ready"} busy={busy} onClick={() => void approve(m.id)} />
+                    state={approved.has(m.id) ? "approved" : status === "done" || status === "queued" ? "waiting" : "ready"} busy={busy} onClick={() => void approve(m.id)} />
                 ))}
                 <div className="flex min-w-0 flex-1 items-center justify-end pl-2">
                   {status === "done" ? <Stamp sub="policy v2">Đã thực thi</Stamp>
-                    : <div className="text-right"><div className="num" style={{ fontSize: 34 }}>{approvedCount}/3</div><div className="toy-body">đã duyệt, cần 2</div></div>}
+                    : <div className="text-right"><div className="num" style={{ fontSize: 34 }}>{approvedCount}/3</div><div className="toy-body">{status === "queued" ? "đủ phiếu, đang chờ" : "đã duyệt, cần 2"}</div></div>}
                 </div>
               </div>
+              {status === "queued" && merge ? <TimelockBanner proposal={merge} vetoBy={{ id: "huy", name: "Huy" }} /> : null}
               {status === "open" && nextApprover ? <p className="toy-body mb-0 mt-3">{merge?.proposer === "lan" ? "Lan đã gửi đề xuất. " : ""}Bấm vào mặt người duyệt để duyệt.</p> : null}
               {status === "open" && merge && nextApprover ? <WalletApproveButton proposalId={merge.id} /> : null}
             </>

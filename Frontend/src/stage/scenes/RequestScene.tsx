@@ -13,6 +13,7 @@ import { useUiStore } from "../../store/uiStore";
 import type { MemberId, Proposal } from "../../types";
 import type { CityStageProps } from "../contract";
 import { AssistantBubble, MemberButton, Tile } from "../parts";
+import { TimelockBanner } from "../TimelockBanner";
 import { WalletApproveButton } from "../WalletApproveButton";
 import { useCityProps, usePrimaryAction, useStageStore } from "../stageStore";
 import { EndCard } from "../EndCard";
@@ -21,6 +22,11 @@ import { ArrowRightGlyph, PersonIcon, Ribbon, RobotIcon, ToyButton, ToyCard, War
 const TREASURY = toBase(2_000_000);
 const pct = (m: { raw: string }) => fmtPercent(percentOf(rawToBig(m), TREASURY));
 const MEMBERS: { id: MemberId; name: string }[] = [{ id: "trang", name: "Trang" }, { id: "lan", name: "Lan" }, { id: "huy", name: "Huy" }];
+
+/** The stage overlay (<main>) is pointer-events-none, so every clickable wrapper must opt back in or the click falls through to the 3D canvas. */
+export function SummaryCta({ onClick }: { onClick: () => void }) {
+  return <div className="pointer-events-auto flex items-center gap-3 pl-1" data-slot="summary-cta"><ToyButton size="lg" color="teal" onClick={onClick}>Xem tóm tắt →</ToyButton></div>;
+}
 
 export function RequestScene() {
   const nav = useNavigate();
@@ -79,6 +85,7 @@ export function RequestScene() {
                 <Tile label="Chain chặn"><div className="flex flex-wrap items-center gap-x-2"><span className="num" style={{ fontSize: 20, color: "var(--ink-2)" }}>{nums.p12.before}</span><ArrowRightGlyph /><span className="num" style={{ fontSize: 28, color: "var(--red-ink)" }}>{nums.p12.after}</span></div></Tile>
                 <Tile label="Phần quỹ chính" tone="amber"><div className="flex flex-wrap items-center gap-x-2"><span className="num" style={{ fontSize: 20, color: "var(--ink-2)" }}>{nums.p12.beforePct}</span><ArrowRightGlyph /><span className="num" style={{ fontSize: 28, color: "var(--amber-ink)" }}>{nums.p12.afterPct}</span></div></Tile>
               </div>
+              {p12.queued ? <TimelockBanner proposal={p12} /> : null}
             </ToyCard>
 
             <ToyCard className="px-6 pb-4 pt-4" label="Đơn đi kèm" delay={0.1}>
@@ -90,7 +97,7 @@ export function RequestScene() {
                 </div>
                 <div className="flex items-center gap-1.5 whitespace-nowrap"><span className="num" style={{ fontSize: 20, color: "var(--ink-2)" }}>{nums.p13.before}</span><ArrowRightGlyph /><span className="num" style={{ fontSize: 26, color: "var(--red-ink)" }}>{nums.p13.after}</span></div>
               </div>
-              <div className="mt-3 flex items-end justify-between gap-1" role="group" aria-label="Hội đồng duyệt đơn giao trợ lý">
+              {p13.queued ? <TimelockBanner proposal={p13} /> : <div className="mt-3 flex items-end justify-between gap-1" role="group" aria-label="Hội đồng duyệt đơn giao trợ lý">
                 {MEMBERS.map((m) => {
                   const blocked = m.id === "huy" && huyConflicted;
                   const done = p13.approvals.includes(m.id);
@@ -99,8 +106,8 @@ export function RequestScene() {
                     reason={blocked ? "Anh Huy ngồi Hội đồng và là người nhận thêm quyền" : undefined} onClick={() => void approve(p13, m.id)} />;
                 })}
                 <div className="flex-1" />
-              </div>
-              {p13.status === "open" ? <WalletApproveButton proposalId={p13.id} /> : null}
+              </div>}
+              {p13.status === "open" && !p13.queued ? <WalletApproveButton proposalId={p13.id} /> : null}
               {huyConflicted ? (
                 <p className="m-0 mt-2.5 flex items-start gap-1.5 text-[13.5px] font-bold leading-snug" style={{ color: "var(--red-ink)" }}>
                   <span className="mt-0.5"><WarnIcon size={15} /></span>Anh Huy vừa ngồi Hội đồng vừa nhận thêm quyền, nên không tự duyệt được.
@@ -109,7 +116,7 @@ export function RequestScene() {
             </ToyCard>
           </>
         )}
-        <div className="flex items-center gap-3 pl-1"><ToyButton size="lg" color="teal" onClick={() => setEnded(true)}>Xem tóm tắt →</ToyButton></div>
+        <SummaryCta onClick={() => setEnded(true)} />
       </div>
 
       <div className="absolute right-6 top-24" data-slot="scene-right">

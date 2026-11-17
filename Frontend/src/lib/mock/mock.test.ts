@@ -7,6 +7,7 @@ import type { Attempt, StreamMessage } from "../../types";
 
 mockConfig.latencyMs = 0;
 mockConfig.stepDelayMs = 0;
+mockConfig.timelockS = 0; // the Council delay is covered by timelock.test.ts
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const U = (n: number) => String(BigInt(n) * 1_000_000n);
 
