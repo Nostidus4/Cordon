@@ -9,13 +9,16 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from collections.abc import Callable
+from functools import lru_cache
 from typing import Any
 
 from guardian.assistant import fixed_questions as fq
 from guardian.assistant.prompt import ASSISTANT_SYSTEM, untrusted_block
 from guardian.assistant.tools import AssistantTools
 from guardian.assistant.verifier import NUMBER_RE, norm, verify
+from guardian.chain.sim.engine import load_seed
 from guardian.core.errors import ApiError
 from guardian.core.llm import LlmSession, LlmUnavailable
 
@@ -226,19 +229,35 @@ def _result(tool_use_id: str, content: str, is_error: bool) -> dict[str, Any]:
     return r
 
 
+@lru_cache(maxsize=4)
+def _seed_texts(seed_file: str | None) -> dict[str, frozenset[str]]:
+    seed = load_seed()
+    return {
+        "principal": frozenset(p["label"] for p in seed["principals"]),
+        "key": frozenset(k["label"] for k in seed["keys"]),
+        "note": frozenset(e["note"] for e in seed["declared_edges"]),
+        "council": frozenset(m["label"] for m in seed["council"]),
+        "recipient": frozenset(r["label"] for r in seed["recipients"]),
+        "protocol": frozenset(p["label"] for p in seed["protocols"]),
+    }
+
+
 def untrusted_numbers(rt: Any) -> set[str]:
     """Number tokens in third-party text (labels, declared-edge notes). The asker's own question is not
-    included: a what-if answer must be able to repeat the amount the question named."""
+    included: a what-if answer must be able to repeat the amount the question named. Text exactly equal to
+    a seed label/note of the same kind comes from the seed file, not a runtime edit, so it is skipped as a whole; a renamed label
+    is not, and all its tokens count (per text, never per token)."""
     s = rt.snapshot()
-    labels = [
-        *(p.label for p in s.principals.values()),
-        *(k.label for k in s.keys.values()),
-        *(e.note for e in s.declared_edges),
-        *(m.label for m in s.council),
-        *(r.label for r in s.recipients),
-        *(p.label for p in s.protocols),
+    ours = _seed_texts(os.environ.get("GUARDIAN_SEED_FILE"))
+    texts = [
+        *((p.label, "principal") for p in s.principals.values()),
+        *((k.label, "key") for k in s.keys.values()),
+        *((e.note, "note") for e in s.declared_edges),
+        *((m.label, "council") for m in s.council),
+        *((r.label, "recipient") for r in s.recipients),
+        *((p.label, "protocol") for p in s.protocols),
     ]
-    return {t for x in labels for t in NUMBER_RE.findall(x)}
+    return {t for x, kind in texts if x not in ours[kind] for t in NUMBER_RE.findall(x)}
 
 
 def _finish(text: str, data: dict[str, Any], untrusted: set[str]) -> tuple[fq.Built, bool]:
