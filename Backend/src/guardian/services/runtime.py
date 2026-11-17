@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 import time
 from collections import deque
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
@@ -454,7 +456,10 @@ class Runtime:
         self.sse_latency = LatencyStats()
         self._live = not self.is_l1  # L1: the backfill at startup is recorded, not streamed
         self._last_city: list[tuple[str, str, str]] | None = None
-        self._in_responder = False  # set by responder.react
+        self._follow_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="council-follow")
+        self._responder_lock = (
+            threading.Lock()
+        )  # held by responder.react: routes may now run in worker threads (#117)
         self._responder_task: asyncio.Task[None] | None = None
         self._keeper_task: asyncio.Task[None] | None = None
         self._unsubscribe: Callable[[], None] = lambda: None
@@ -649,22 +654,6 @@ class Runtime:
     def bind_loop(self, loop: asyncio.AbstractEventLoop | None) -> None:
         self.bus.bind_loop(loop)
 
-    async def _warm_snapshot(self) -> None:
-        """L1: read the head's snapshot (~90 eth_calls, 0.5-2 s on a new block) on a worker thread. The tick that
-        follows runs on the event loop and then hits the per-block memo; read there, it froze every SSE fan-out
-        and request behind it, which was the bulk of the 2-4 s event-to-screen delay (#117)."""
-        if not self.is_l1:
-            return
-
-        def warm() -> None:
-            for _ in range(
-                3
-            ):  # a block mined during the read makes it stale: read again, it is memoised per head
-                if self.chain.snapshot().block >= int(self.chain.w3.eth.block_number):
-                    return
-
-        await asyncio.to_thread(warm)
-
     def start_responder_ticker(self, interval: float = 2.0) -> None:
         """Time-based incident transitions (recovering -> resolved) need a clock tick, not only events."""
         if self._responder_task is not None or not self.settings.responder_enabled:
@@ -674,8 +663,9 @@ class Runtime:
             while True:
                 await asyncio.sleep(interval)
                 try:
-                    await self._warm_snapshot()
-                    self.responder_tick()
+                    await self.run_chain_op(
+                        self.responder_tick
+                    )  # L1: a worker thread, never the loop
                 except Exception:
                     log.exception("responder tick failed")
 
@@ -691,8 +681,9 @@ class Runtime:
             while True:
                 await asyncio.sleep(interval)
                 try:
-                    await self._warm_snapshot()
-                    timelock_keeper.tick(self)
+                    # off the loop: an execute signs and waits for its receipt, and the indexer's publish of the
+                    # event (call_soon_threadsafe) would sit behind it (#117)
+                    await self.run_chain_op(timelock_keeper.tick, self)
                 except Exception:
                     log.exception("timelock keeper tick failed")
 
@@ -711,6 +702,7 @@ class Runtime:
         # let their `finally` (runs.save) finish while the DB bridge is still open
         await asyncio.gather(*tasks, return_exceptions=True)
         self._unsubscribe()
+        self._follow_pool.shutdown(wait=False)
         if self.indexer is not None:
             self.indexer.stop()
         if self.c_indexer is not None:
@@ -797,7 +789,9 @@ class Runtime:
             if (
                 self.settings.chain_mode == "l1"
             ):  # sim emits inside the backend's own chain call: nothing to follow
-                self._follow_council_event(ev)
+                # off the indexer thread: the follow-up reads snapshots (~90 eth_calls) and would hold back the
+                # publish of the next event of the batch (Approved -> Queued was 0.6 s apart, #117)
+                self._follow_pool.submit(self._follow_council_event, ev)
 
     def _follow_council_event(self, ev: ChainEvent) -> None:
         """L1: a Council event may come from a member's own wallet. Record what `approve` would have recorded and
@@ -813,18 +807,30 @@ class Runtime:
             return
         if not ids:
             return
-        loop = self.bus._loop
-        if loop is not None and not loop.is_closed() and not _on_loop(loop):
-            loop.call_soon_threadsafe(lambda: self.notify_state_changed(ids, graph=graph))
-        else:
-            self.notify_state_changed(ids, graph=graph)
+        self.notify_state_changed(
+            ids, graph=graph
+        )  # worker thread: bus.publish hops to the loop itself
 
     def _schedule_responder_tick(self) -> None:
         """Chain events can arrive from the indexer thread (L1) or inside a chain call (sim): never act
         there, hop to the event loop and let the responder look at the stores."""
         loop = self.bus._loop
         if loop is not None and not loop.is_closed() and self.settings.responder_enabled:
-            loop.call_soon_threadsafe(self.responder_tick)
+            loop.call_soon_threadsafe(lambda: loop.create_task(self._warm_and_tick()))
+
+    async def run_chain_op(self, fn: Callable[..., Any], *args: Any) -> Any:
+        """Run a blocking chain operation of a route. L1: on a worker thread (it signs, waits for the receipt and reads
+        ~90-call snapshots; on the loop it froze the SSE fan-out, so every event waited for it, #117). The sim chain
+        relies on the loop to serialise access, so it stays inline."""
+        if not self.is_l1:
+            return fn(*args)
+        return await asyncio.to_thread(fn, *args)
+
+    async def _warm_and_tick(self) -> None:
+        try:
+            await self.run_chain_op(self.responder_tick)
+        except Exception:
+            log.exception("responder tick failed")
 
     def responder_tick(self, publish: bool = True) -> Any:
         """Run the responder once (idempotent, never re-entrant). With `publish`, a change it made is announced
