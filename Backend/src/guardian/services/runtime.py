@@ -460,6 +460,7 @@ class Runtime:
         self._unsubscribe: Callable[[], None] = lambda: None
         self._init_payroll()
         if self.is_l1:
+            self._forget_other_deployment()
             self._start_indexer()
         else:
             if self.stores.bridge is not None:
@@ -468,6 +469,24 @@ class Runtime:
                 self._sim_sink = PgEventSink(self.stores.bridge, chain="sim")
                 self._restore_sim()
             self._unsubscribe = self.chain.subscribe(self._on_chain_event)
+
+    def _deployment_key(self) -> str:
+        return f"{self.chain.w3.eth.chain_id}:{self.chain.vault_addr}"
+
+    def _forget_other_deployment(self) -> None:
+        """L1 only (#111): stored attempts, runs, incidents... belong to the contract set they were made on. A
+        Postgres that outlives the deployment (a restart after `make demo-reset` whose API reload was skipped, or
+        rows left by the sim) would show them as the new run's. The set in use is kept in `meta`; a different
+        (or unknown) one empties the stores, like `POST /api/demo/reset` does. The Council rebuild and the
+        event log (kept on purpose) are untouched."""
+        key = self._deployment_key()
+        if self.stores.meta.get("l1_deployment") != key:
+            if self.stores.meta.get("l1_deployment") is not None or any(
+                a.simulated for a in self.stores.attempts.all()
+            ):
+                log.warning("stores belong to another deployment: cleared (#111)")
+                self.stores.clear()
+            self.stores.meta.set("l1_deployment", key)
 
     def _init_payroll(self) -> None:
         """CITY-006: payroll float chain (separate from `chain`). Always the in-memory SimPayroll for now: there is
@@ -614,6 +633,7 @@ class Runtime:
         self._live = False
         self.chain = new_chain
         self._last_city = None
+        self.stores.meta.set("l1_deployment", self._deployment_key())
         self._book = None  # L1 addresses change with the deployment
         close = getattr(old, "close", None)
         if close is not None:
