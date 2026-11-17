@@ -464,6 +464,9 @@ class Runtime:
         self._keeper_task: asyncio.Task[None] | None = None
         self._unsubscribe: Callable[[], None] = lambda: None
         self._decimals_seen: dict[str, int] = {}
+        self._chain_op_lock = (
+            threading.Lock()
+        )  # L1: route/tick chain ops run off the loop but one at a time (#117)
         self._init_payroll()
         if self.is_l1:
             self._forget_other_deployment()
@@ -821,10 +824,17 @@ class Runtime:
     async def run_chain_op(self, fn: Callable[..., Any], *args: Any) -> Any:
         """Run a blocking chain operation of a route. L1: on a worker thread (it signs, waits for the receipt and reads
         ~90-call snapshots; on the loop it froze the SSE fan-out, so every event waited for it, #117). The sim chain
-        relies on the loop to serialise access, so it stays inline."""
+        relies on the loop to serialise access, so it stays inline. On L1 the ops still run one at a time
+        (`_chain_op_lock`): they used to be serialised by the loop, and the stores' read-modify-write (approvals,
+        incidents) assumes that."""
         if not self.is_l1:
             return fn(*args)
-        return await asyncio.to_thread(fn, *args)
+
+        def locked() -> Any:
+            with self._chain_op_lock:
+                return fn(*args)
+
+        return await asyncio.to_thread(locked)
 
     async def _warm_and_tick(self) -> None:
         try:
