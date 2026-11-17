@@ -104,20 +104,20 @@ flowchart LR
 
 - **Guardian L1:** Subnet-EVM trên Fuji, chain id **845357**, validator chạy cục bộ. Không có explorer công khai nên bằng chứng là biên nhận RPC. Genesis và bàn giao: [contracts/genesis/](contracts/genesis/), [infra/l1/](infra/l1/).
 - **Vì sao Avalanche:** Tx AllowList và Contract Deployer AllowList là precompile của Subnet-EVM. Khoá khẩn cấp chặn ở **tầng node**: khoá bị gỡ thì giao dịch bị từ chối trước khi vào chain, không dựa vào việc contract tự từ chối.
-- **Bản nộp đóng băng** (`deployBlock` 980): các địa chỉ dưới đây khớp [fuji-l1.json](Backend/deployments/fuji-l1.json) và [fuji-c.json](Backend/deployments/fuji-c.json). Mỗi lần `demo-reset` deploy lại, nên địa chỉ cũ trong lịch sử chain thuộc bản trước.
+- **Bản nộp đóng băng** (`deployBlock` 1057): các địa chỉ dưới đây khớp [fuji-l1.json](Backend/deployments/fuji-l1.json) và [fuji-c.json](Backend/deployments/fuji-c.json). Mỗi lần `demo-reset` deploy lại, nên địa chỉ cũ trong lịch sử chain thuộc bản trước.
 
 Guardian L1 (845357):
 
 | Contract | Địa chỉ |
 |---|---|
-| PrincipalRegistry | `0xB7672Fb5D3b05950f4360f49c06bC1aC907a0c13` |
-| PolicyVault | `0x07127c19b2e53ea4Fec0f866F66Cb56b52596F37` |
-| GuardianCouncil | `0x44e461ed1BC90D1F7ca65bEa935D3Ee98C5D916F` |
-| MockDEX | `0x9ba6a1bc23d0566AdAb6bE9A44edA0eA06c563d6` |
-| EvilDEX | `0x9ec823029153A58742F0199e8807511050C38e38` |
-| tUSDC | `0xFba6E1c81FD048E94Bd82da658aA399E4ad88Af7` |
-| tTKB | `0x51182fD9E15d06fC06e09C3780Fa2b77f05EbC7e` |
-| tSCAM | `0x2342f766e85323B0C741b108aD921b7fcEA5BFF5` |
+| PrincipalRegistry | `0xC92EcC9ED1D207Bae1ABb23Cef126Eb856B4aA71` |
+| PolicyVault | `0xe2459c0455dF46Fd16dB6d05C134AA480BEF9d53` |
+| GuardianCouncil | `0x09BaacAaFE18487e297f61859Aca6407cD8257bC` |
+| MockDEX | `0x0F703493e1E375c96b34D2aC19AF426Fc227e035` |
+| EvilDEX | `0x2Baf7b874614A019f41583BDa0651aF88AC40cf6` |
+| tUSDC | `0x6Da4eDe5723EFc770B42976556fF7aA8C3551eD4` |
+| tTKB | `0x52A0b2d2d576Ea86a1B221F93Ae9fEf2a24F1641` |
+| tSCAM | `0x253d4E90ADCb81E9309469798dbE35dbcB0a00D3` |
 | Tx AllowList (precompile) | `0x0200000000000000000000000000000000000002` |
 | Contract Deployer AllowList (precompile) | `0x0200000000000000000000000000000000000000` |
 
@@ -139,10 +139,10 @@ Fuji C-Chain (43113), xem trên Snowtrace:
       --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'
     # có mã contract tại PolicyVault (kết quả khác "0x")
     curl -s -X POST -H 'content-type: application/json' $RPC \
-      --data '{"jsonrpc":"2.0","id":1,"method":"eth_getCode","params":["0x07127c19b2e53ea4Fec0f866F66Cb56b52596F37","latest"]}' | head -c 120
+      --data '{"jsonrpc":"2.0","id":1,"method":"eth_getCode","params":["0xe2459c0455dF46Fd16dB6d05C134AA480BEF9d53","latest"]}' | head -c 120
     # vai trò của Council trên hai precompile: kỳ vọng 2 (admin)
-    cast call 0x0200000000000000000000000000000000000002 'readAllowList(address)(uint256)' 0x44e461ed1BC90D1F7ca65bEa935D3Ee98C5D916F --rpc-url $RPC
-    cast call 0x0200000000000000000000000000000000000000 'readAllowList(address)(uint256)' 0x44e461ed1BC90D1F7ca65bEa935D3Ee98C5D916F --rpc-url $RPC
+    cast call 0x0200000000000000000000000000000000000002 'readAllowList(address)(uint256)' 0x09BaacAaFE18487e297f61859Aca6407cD8257bC --rpc-url $RPC
+    cast call 0x0200000000000000000000000000000000000000 'readAllowList(address)(uint256)' 0x09BaacAaFE18487e297f61859Aca6407cD8257bC --rpc-url $RPC
     # ví quỹ trên Fuji C-Chain có mã
     cast code 0xD000D0cE700B455A360C27c87A230F5A2c197D4D --rpc-url https://api.avax-test.network/ext/bc/C/rpc | head -c 80
 
