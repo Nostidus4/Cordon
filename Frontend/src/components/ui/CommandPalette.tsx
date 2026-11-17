@@ -65,7 +65,7 @@ export function CommandPalette() {
     { id: "lock", group: "Thao tác demo", label: "Khoá khu anh Minh (Lan)", icon: <Lock className="size-4" />, run: () => a.lock.mutate({ principalId: "minh", member: "lan" }), demoOnly: true },
     { id: "s7", group: "Thao tác demo", label: "Thử gửi bằng thẻ đã khoá (bước 7)", icon: <ShieldAlert className="size-4" />, run: () => a.step7.mutate(), demoOnly: true },
     { id: "pause", group: "Thao tác demo", label: "Dừng cả kho (Lan)", icon: <PauseCircle className="size-4" />, run: () => a.pause.mutate({ member: "lan" }), demoOnly: true },
-    { id: "tour", group: "Thao tác demo", label: "Bắt đầu tour demo", hint: "hướng dẫn từng bước", icon: <Play className="size-4" />, run: () => { nav("/he-thong"); /* TODO(WP-D): tour wiring on /he-thong; until then TourOverlay only listens inside AppShell */ window.dispatchEvent(new Event("guardian:start-tour")); }, keywords: "tour huong dan demo gioi thieu" },
+    { id: "tour", group: "Thao tác demo", label: "Bắt đầu tour demo", hint: "hướng dẫn từng bước", icon: <Play className="size-4" />, run: () => nav("/he-thong/tong-quan?tour=1"), keywords: "tour huong dan demo gioi thieu" },
     { id: "reset", group: "Thao tác demo", label: "Đặt lại kịch bản", hint: "về đầu cảnh 1", icon: <RotateCcw className="size-4" />, run: () => a.reset.mutate(), demoOnly: true },
   ], [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 

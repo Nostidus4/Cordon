@@ -1,9 +1,9 @@
 // /he-thong/:tab: technical dashboard for engineers. One focused view per tab, toy pill tab bar like the stage stepper.
 import { type ComponentType, type ReactNode } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Building2, Info, LayoutDashboard, Radar, Scale, ScrollText, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Building2, Info, LayoutDashboard, Play, Radar, Scale, ScrollText, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import "../../stage/toy.css";
 import { useAudioUnlock } from "../../audio/director";
 import { SoundToggle } from "../../audio/SoundToggle";
@@ -25,6 +25,8 @@ import * as PolicyMod from "./sections/PolicyState";
 import { Pipeline } from "./sections/Pipeline";
 import * as SimulationMod from "./sections/Simulation";
 import { ACCENT } from "./ui";
+import { TourOverlay } from "../../tour/TourOverlay";
+import { startTour } from "../../tour/tourStore";
 
 /** Sections owned by other agents may export a named component or a default: accept both. */
 const pick = (mod: object, name: string): ComponentType => ((mod as Record<string, ComponentType>)[name] ?? (mod as { default?: ComponentType }).default ?? (() => null)) as ComponentType;
@@ -65,6 +67,7 @@ export default function SystemPage() {
   const qc = useQueryClient();
   const reduced = useReduced();
   const { tab } = useParams();
+  const { search } = useLocation(); // kept across the /he-thong -> /he-thong/tong-quan redirect so ?tour=1 survives
   const total = useFeed((s) => s.total);
   useAudioUnlock(); // soft clicks on tabs/buttons; the speaker toggle sits in the top bar
   useSystemFeed(); // page level: tab switches never remount the stream tap
@@ -73,9 +76,10 @@ export default function SystemPage() {
   const cur = TABS.find((t) => t.id === tab);
   useTitle("Kỹ thuật", cur?.label);
   if (tab === "tro-ly") return <Navigate to="/he-thong/agent" replace />;
-  if (!cur) return <Navigate to="/he-thong/tong-quan" replace />;
+  if (!cur) return <Navigate to={`/he-thong/tong-quan${search}`} replace />;
 
   return (
+    <>
     <div className="stage sys fixed inset-0 z-[1] overflow-y-auto overflow-x-hidden" data-testid="system-page">
       <div className="mx-auto px-5 pb-12 pt-4" style={{ maxWidth: 1480 }}>
         <header className="sx-bar-top">
@@ -92,6 +96,7 @@ export default function SystemPage() {
             })}
           </nav>
           <div className="flex items-center gap-3" style={{ marginLeft: "auto" }}>
+            <button type="button" className="toy-btn" data-c="cream" data-size="sm" onClick={() => startTour()} aria-label="Tour 3 phút"><Play size={15} strokeWidth={2.6} aria-hidden />Tour 3 phút</button>
             <SoundToggle />
             <span className="sx-chip" data-t="ok" title="tin trên stream kể từ lúc mở trang" style={{ background: "rgba(255,255,255,.85)" }}><span className="sx-dot" data-live="true" />{total}</span>
             <span className="sx-scenedots" aria-label="Các cảnh">
@@ -107,5 +112,7 @@ export default function SystemPage() {
         </AnimatePresence>
       </div>
     </div>
+    <TourOverlay />
+    </>
   );
 }

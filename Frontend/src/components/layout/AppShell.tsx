@@ -7,7 +7,6 @@ import { useUiStore } from "../../store/uiStore";
 import { Footer } from "./Footer";
 import { useTitle } from "../../hooks/useTitle";
 import { TopBar } from "./TopBar";
-import { TourOverlay } from "../../tour/TourOverlay";
 
 /** Shell for the remaining 2D screens (/bang-chung, /_kit). Page area height = `calc(100vh - var(--chrome-h))`; content is max 1440 wide and scrolls with the page. */
 export function AppShell() {
@@ -41,8 +40,6 @@ export function AppShell() {
         </motion.div>
       </main>
       <Footer />
-      {/* TODO(WP-D): tour moves to /he-thong; kept here only so the tour files keep compiling/mounting. */}
-      <TourOverlay />
     </div>
   );
 }

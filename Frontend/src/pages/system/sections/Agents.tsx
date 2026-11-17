@@ -1,6 +1,7 @@
 // Tab "Agent AI": which agents exist, which key/district binds each, what they did, and what the chain answered.
 // The rule engine decides money; the language model only words a reason, or drafts something a person confirms.
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useGraph } from "../../../hooks/useGraph";
 import { useIncidents } from "../../../hooks/useBuildings";
 import { useViolations } from "../../../hooks/useViolations";
@@ -182,7 +183,10 @@ function DraftsAndChecks() {
 }
 
 export function Agents() {
-  const [pane, setPane] = useState<"work" | "ask">("work");
+  const [sp] = useSearchParams();
+  const wantAsk = sp.get("pane") === "hoi-dap";
+  const [pane, setPane] = useState<"work" | "ask">(wantAsk ? "ask" : "work"); // ?pane=hoi-dap: the tour opens the Q&A directly
+  useEffect(() => { setPane(wantAsk ? "ask" : "work"); }, [wantAsk]); // tour steps flip between the panes by URL
   return (
     <div className="grid gap-4">
       <div className="sx-seg" role="group" aria-label="Chọn mục" style={{ justifySelf: "start" }}>
