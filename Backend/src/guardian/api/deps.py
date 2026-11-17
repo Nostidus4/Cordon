@@ -23,6 +23,12 @@ def demo_signing(action: str) -> Callable[[Request], Awaitable[None]]:
     async def dep(request: Request) -> None:
         rt = get_runtime(request)
         client = request.client.host if request.client else "unknown"
-        rt.guard.check(action, client, request.url.path, request.method)
+        rt.guard.check(
+            action,
+            client,
+            request.url.path,
+            request.method,
+            token=request.headers.get("x-demo-token"),
+        )
 
     return dep

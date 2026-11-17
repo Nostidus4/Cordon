@@ -11,6 +11,12 @@
 # Backend/deployments/fuji-l1.json into place) is seen by the containers. The Fuji seed file is mounted read-only
 # at /app/seed.l1-fuji.json (GUARDIAN_SEED_FILE in the env file); generate it first or docker mounts a directory.
 # Local anvil / local L1: point L1_ENV_FILE at your own env file (docs/DEVELOPMENT.md, Docker, l1).
+# Hardening (signing endpoints sign with test keys on the Fuji L1): api and web are published on 127.0.0.1 only
+# (set in docker-compose.yml, inherited here).
+# Optional DEMO_SIGNING_TOKEN: add `DEMO_SIGNING_TOKEN=<secret>` to the L1 env file (it reaches the api through env_file;
+# not listed under `environment:` so an unset shell var cannot blank it) and every signing endpoint then needs the
+# header `X-Demo-Token`. Frontend dev: VITE_DEMO_SIGNING_TOKEN.
+# The dockerised web image does not send the header (not baked into the build): use the token with the Vite dev server or curl.
 x-l1: &l1
   env_file:
     - path: ${L1_ENV_FILE:-./Backend/.env.l1-fuji.docker}

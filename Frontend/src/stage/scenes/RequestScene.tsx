@@ -13,6 +13,7 @@ import { useUiStore } from "../../store/uiStore";
 import type { MemberId, Proposal } from "../../types";
 import type { CityStageProps } from "../contract";
 import { AssistantBubble, MemberButton, Tile } from "../parts";
+import { WalletApproveButton } from "../WalletApproveButton";
 import { useCityProps, usePrimaryAction, useStageStore } from "../stageStore";
 import { EndCard } from "../EndCard";
 import { ArrowRightGlyph, PersonIcon, Ribbon, RobotIcon, ToyButton, ToyCard, WarnIcon } from "../ui";
@@ -99,6 +100,7 @@ export function RequestScene() {
                 })}
                 <div className="flex-1" />
               </div>
+              {p13.status === "open" ? <WalletApproveButton proposalId={p13.id} /> : null}
               {huyConflicted ? (
                 <p className="m-0 mt-2.5 flex items-start gap-1.5 text-[13.5px] font-bold leading-snug" style={{ color: "var(--red-ink)" }}>
                   <span className="mt-0.5"><WarnIcon size={15} /></span>Anh Huy vừa ngồi Hội đồng vừa nhận thêm quyền, nên không tự duyệt được.

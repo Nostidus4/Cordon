@@ -7,5 +7,6 @@ paths = [
   '''Backend/seed/.*\.json''',
   '''contracts/test/helpers/MayLabsBase\.sol''',
   '''contracts/genesis/(roster\..*|genesis)\.json''',
+  '''Backend/deployments/.*\.json''',
   '''Frontend/public/draco/.*''',
 ]

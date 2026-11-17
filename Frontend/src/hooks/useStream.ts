@@ -8,6 +8,16 @@ import { toast } from "../store/uiStore";
 import type { Attempt, CityStates, Incident, StreamListener, StreamMessage, StreamMessageType } from "../types";
 import { qk } from "./queryKeys";
 
+const COUNCIL_VOTE_EVENTS = new Set(["Approved", "Queued", "Vetoed", "Cancelled"]);
+
+/** Query keys to refetch for a chain event of the Council. A vote can be signed outside the backend (member's own wallet),
+ *  so the proposal views must follow the chain event, not only `proposal_updated`. `Executed` also redraws the map. */
+export function councilEventKeys(name: string): readonly (readonly unknown[])[] {
+  if (name === "Executed") return [qk.proposals, qk.findings, qk.graph, qk.health, qk.org, ["district"], ["simulate"], qk.city];
+  if (COUNCIL_VOTE_EVENTS.has(name)) return [qk.proposals, qk.findings];
+  return [];
+}
+
 /** Custom subscription; optionally filter by message type. */
 export function useStream(listener: StreamListener, types?: StreamMessageType[]) {
   const ref = useRef(listener);
@@ -28,6 +38,7 @@ export function useStreamBridge() {
     switch (m.type) {
       case "event":
         qc.invalidateQueries({ queryKey: qk.events }); qc.invalidateQueries({ queryKey: qk.health }); qc.invalidateQueries({ queryKey: ["district"] }); qc.invalidateQueries({ queryKey: qk.org });
+        for (const k of councilEventKeys(m.data.name)) qc.invalidateQueries({ queryKey: k });
         break;
       case "attempt":
         qc.setQueryData<Attempt[]>(qk.attempts(), (old) => (old?.some((a) => a.id === m.data.id) ? old : [...(old ?? []), m.data]));

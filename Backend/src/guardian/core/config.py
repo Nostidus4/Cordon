@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     # Council's `timelockDelay` (deploy script env of the same name); it only switches the keeper on. 0 = off.
     council_timelock_s: int = 0
     rate_limit_per_minute: int = 120
+    # Optional shared secret for every signing endpoint: when set, requests need header X-Demo-Token (401 otherwise).
+    demo_signing_token: SecretStr | None = None
 
     # LLM (assistant free text + agent reason). Credentials come from the SDK chain (ANTHROPIC_API_KEY, ...).
     # None = "decide from credentials": on when an API key is present, off otherwise (templates only).

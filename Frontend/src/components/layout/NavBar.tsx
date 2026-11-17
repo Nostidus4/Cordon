@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Building2, FileCheck2, FlaskConical, Info, Map as MapIcon, ShieldAlert, Users } from "lucide-react";
+import { ArrowLeft, Building2, FileCheck2, FlaskConical, Info, Map as MapIcon, ShieldAlert, ShieldCheck, Users } from "lucide-react";
 import { cn } from "../ui";
 
 export const NAV_ITEMS = [
@@ -10,6 +10,7 @@ export const NAV_ITEMS = [
   { to: "/chi-tiet/requests", label: "Requests", vi: "Đề xuất", icon: FileCheck2 },
   { to: "/chi-tiet/council", label: "Council", vi: "Hội đồng", icon: Users },
   { to: "/chi-tiet/about", label: "About", vi: "Pháp lý", icon: Info },
+  { to: "/bang-chung", label: "Evidence", vi: "Bằng chứng", icon: ShieldCheck },
 ] as const;
 
 export function NavBar() {

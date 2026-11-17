@@ -15,6 +15,7 @@ const Root = lazy(() => import("./components/layout/Root").then((m) => ({ defaul
 const StagePage = lazy(() => import("./stage/StagePage"));
 const CityPage = lazy(() => import("./pages/city/CityPage"));
 const KitPage = lazy(() => import("./pages/kit/KitPage"));
+const EvidencePage = lazy(() => import("./pages/evidence/EvidencePage"));
 const SystemPage = lazy(() => import("./pages/system/SystemPage"));
 const SoundPage = import.meta.env.DEV ? lazy(() => import("./pages/sound/SoundPage")) : null;
 
@@ -50,6 +51,8 @@ export const router = createBrowserRouter([
       { path: "city", element: <CityRoute /> },
       // one element for /he-thong and /he-thong/:tab so the live feed never remounts between tabs
       { path: "he-thong", element: <Suspense fallback={<RouteSkeleton kind="full" />}><SystemPage /></Suspense>, children: [{ index: true, element: null }, { path: ":tab", element: null }] },
+      // read-only proof page for judges: 2D shell, own path
+      { path: "bang-chung", element: <Suspense fallback={<RouteSkeleton kind="full" />}><AppShell /></Suspense>, children: [{ index: true, element: <Suspense fallback={<RouteSkeleton />}><EvidencePage /></Suspense> }] },
       {
         path: "chi-tiet",
         element: <Suspense fallback={<RouteSkeleton kind="full" />}><AppShell /></Suspense>,

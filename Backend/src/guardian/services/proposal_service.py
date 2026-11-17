@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from guardian.chain.base import TxResult
+from guardian.chain.base import ChainEvent, TxResult
 from guardian.chain.errors import ChainRevert
 from guardian.core.errors import ApiError
 from guardian.domain.snapshot import PolicySnapshot
@@ -258,6 +258,52 @@ def approve(rt: Runtime, proposal_id: int, member: str) -> dict[str, Any]:
     rt.stores.proposals.save(rec)
     rt.notify_state_changed((proposal_id,), graph=cp.executed)
     return proposal_out(rt, proposal_id)
+
+
+COUNCIL_SYNC_EVENTS = frozenset(
+    {"Approved", "Queued", "Executed", "Vetoed", "Cancelled", "PolicyVersionBumped"}
+)
+
+
+def sync_council_event(rt: Runtime, ev: ChainEvent) -> tuple[tuple[int, ...], bool]:
+    """A Council event the indexer saw: make the stored proposal follow it, so votes signed OUTSIDE the backend (a
+    member's own wallet) leave the same fields as `approve` does. Idempotent: fields already set (by `approve` or an
+    earlier call) are never overwritten. Returns (proposal ids to announce, graph changed)."""
+    p = ev.payload
+    if ev.name == "PolicyVersionBumped":
+        for rec in rt.stores.proposals.all():
+            if rec.executed_tx_hash == ev.tx_hash and rec.resulting_policy_version is None:
+                rec.resulting_policy_version = int(p["version"])
+                rt.stores.proposals.save(rec)
+                return (rec.id,), False
+        return (), False
+    if ev.name not in COUNCIL_SYNC_EVENTS:
+        return (), False
+    rec = rt.stores.proposals.get(int(p["id"]))
+    if rec is None:
+        return (), False
+    if ev.name == "Approved":
+        member = next(
+            (m.id for m in rt.snapshot().council if m.address.lower() == str(p["member"]).lower()),
+            None,
+        )
+        if member is not None and member not in rec.approved_at:
+            rec.approved_at[member] = ev.ts
+            rt.stores.proposals.save(rec)
+    elif ev.name == "Executed" and rec.executed_at is None:
+        rec.executed_at = ev.ts
+        rec.executed_tx_hash = ev.tx_hash
+        # PolicyVersionBumped of the same tx may already be in the log (event order within a tx is not guaranteed)
+        rec.resulting_policy_version = next(
+            (
+                int(e.payload["version"])
+                for e in rt.event_log
+                if e.name == "PolicyVersionBumped" and e.tx_hash == ev.tx_hash
+            ),
+            None,
+        )
+        rt.stores.proposals.save(rec)
+    return (rec.id,), ev.name == "Executed"
 
 
 def _mark_executed(rt: Runtime, rec: ProposalRec, executed: bool, res: TxResult) -> None:

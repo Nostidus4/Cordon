@@ -1,1 +1,12 @@
-{}
+{
+  "network": "fuji",
+  "chainId": 43113,
+  "rpcUrl": "https://api.avax-test.network/ext/bc/C/rpc",
+  "wsUrl": "wss://api.avax-test.network/ext/bc/C/ws",
+  "token": "0x65954209aa3cf99eb77A90e55cD1dD3e94b1Fc02",
+  "treasury": "0xD000D0cE700B455A360C27c87A230F5A2c197D4D",
+  "escrow": "0xF9f119A52B11FB6b92a7fB87e3B775C17d91ef3A",
+  "owners": ["0xB54e0a771df0AF7e47E59bB50f0c5182990E0B6b", "0x3951931242CC2699C0DF913Cb74F54B90Ea43810", "0x5Aa2a868D1A964f721D011d4890069dcAFe61331", "0x4Ad9B5C3d22784869Cd1EE3d2bf9F603A519d758", "0xAE58ee880a0eC6d031c0d7f0868f8Ee5422079EE"],
+  "threshold": 3,
+  "deployBlock": 61046898
+}

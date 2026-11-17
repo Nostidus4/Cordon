@@ -1,5 +1,7 @@
 # PAYROLL — quỹ lương có luật (B04, bộ contract mới, tách riêng)
 
+Triển khai: đã cài đặt, đã kiểm thử bằng forge và mô phỏng trong backend; **chưa deploy lên Guardian L1 (Fuji) cho bản nộp này** (không có trong `Backend/deployments/fuji-l1.json`).
+
 Trạng thái: **FROZEN** từ **2026-11-13** (Tech Lead duyệt, quyết định ở mục 11). Issue `CITY-006` (#65). Truy vết: [CITY_OPS.md](CITY_OPS.md) §1, §6; đề UniHack #21.
 
 Bộ contract này **mới và tách riêng**: không sửa một dòng nào trong bộ đã đóng băng ([CONTRACTS.md](CONTRACTS.md): `PrincipalRegistry`, `PolicyVault`, `GuardianCouncil`, `MockDEX`), không sửa `ChainPort`. Khi Tech Lead duyệt, chốt bằng một PR riêng (giống `CTR-001`): tài liệu này, `contracts/src/payroll/interfaces/I*.sol`, ABI cho backend và test so khớp. Chỉ sau đó mới viết cài đặt.

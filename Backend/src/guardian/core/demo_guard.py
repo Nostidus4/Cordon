@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import logging
 import time
 from collections import deque
@@ -40,8 +41,15 @@ class DemoGuard:
         self._hits: dict[str, deque[float]] = {}
         self.audit: list[dict[str, Any]] = []
 
-    def check(self, action: str, client: str, path: str = "", method: str = "POST") -> None:
-        """Raise ApiError 403 (not demo) / 429 (rate limit); otherwise append an audit entry."""
+    def check(
+        self,
+        action: str,
+        client: str,
+        path: str = "",
+        method: str = "POST",
+        token: str | None = None,
+    ) -> None:
+        """Raise ApiError 403 (not demo) / 401 (token) / 429 (rate limit); otherwise audit."""
         if not self.settings.demo_enabled:
             raise ApiError(403, "DEMO_MODE_REQUIRED", "Chức năng này chỉ có ở chế độ demo.")
         now = self._clock()
@@ -50,7 +58,17 @@ class DemoGuard:
             q.popleft()
         if len(q) >= self.settings.rate_limit_per_minute:
             raise ApiError(429, "RATE_LIMITED", "Quá nhiều yêu cầu ký, vui lòng thử lại sau.")
-        q.append(now)
+        q.append(now)  # wrong-token attempts count too: no free brute force
+        expected = self.settings.demo_signing_token
+        if expected is not None and expected.get_secret_value():
+            given = (token or "").encode()
+            if not hmac.compare_digest(given, expected.get_secret_value().encode()):
+                log.warning(
+                    "demo-sign rejected (token) %s %s %s from %s", action, method, path, client
+                )
+                raise ApiError(
+                    401, "DEMO_TOKEN_REQUIRED", "Thiếu hoặc sai mã demo (header X-Demo-Token)."
+                )
         entry = {
             "ts": int(time.time()),
             "action": action,

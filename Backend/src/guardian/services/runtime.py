@@ -741,6 +741,30 @@ class Runtime:
                 publish_and_record()
             if ev.name in RESPONDER_EVENTS:
                 self._schedule_responder_tick()
+            if (
+                self.settings.chain_mode == "l1"
+            ):  # sim emits inside the backend's own chain call: nothing to follow
+                self._follow_council_event(ev)
+
+    def _follow_council_event(self, ev: ChainEvent) -> None:
+        """L1: a Council event may come from a member's own wallet. Record what `approve` would have recorded and
+        announce `proposal_updated` (hopping to the event loop: this runs on the indexer thread)."""
+        from guardian.services import proposal_service as ps
+
+        if ev.name not in ps.COUNCIL_SYNC_EVENTS:
+            return
+        try:
+            ids, graph = ps.sync_council_event(self, ev)
+        except Exception:
+            log.exception("cannot sync council event %s", ev.name)
+            return
+        if not ids:
+            return
+        loop = self.bus._loop
+        if loop is not None and not loop.is_closed() and not _on_loop(loop):
+            loop.call_soon_threadsafe(lambda: self.notify_state_changed(ids, graph=graph))
+        else:
+            self.notify_state_changed(ids, graph=graph)
 
     def _schedule_responder_tick(self) -> None:
         """Chain events can arrive from the indexer thread (L1) or inside a chain call (sim): never act
