@@ -54,7 +54,8 @@ function Row({ a, label, selected, onOpen }: { a: Attempt; label: string; select
   return (
     <motion.li layout={reduced ? false : "position"} initial={reduced ? false : { opacity: 0, y: -16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 26 }} style={{ listStyle: "none" }}>
-      <button type="button" className="sx-row" data-o={a.outcome} data-sel={selected} onClick={onOpen} aria-label={`Mở chi tiết: ${attemptLabel(a)}`}>
+      <div role="button" tabIndex={0} className="sx-row" data-o={a.outcome} data-sel={selected} onClick={onOpen} aria-label={`Mở chi tiết: ${attemptLabel(a)}`}
+        onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(); } }}>
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
           <Chip t={a.outcome === "ok" ? "ok" : a.outcome === "reverted" ? "bad" : "warn"} mono>{a.outcome === "ok" ? "✓ OK" : a.outcome === "reverted" ? "✕ REVERTED" : "✕ BLOCKED_AT_PROTOCOL"}</Chip>
           <span style={{ color: "var(--ink-2)", fontSize: 12 }}>bước {stepOf(a)} · {timeOf(a)}</span>
@@ -78,7 +79,7 @@ function Row({ a, label, selected, onOpen }: { a: Attempt; label: string; select
           <span className="sep">·</span>
           {a.txHash ? <Hash value={a.txHash} /> : gated ? <Chip t="warn">không có tx hash</Chip> : <Chip>không có tx</Chip>}
         </div>
-      </button>
+      </div>
     </motion.li>
   );
 }

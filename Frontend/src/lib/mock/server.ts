@@ -71,7 +71,10 @@ function graphUpdated() {
 const COUNCIL_ADDRESS = fakeAddress("guardian_council");
 const addrOf = (m: MemberId): string => S.members.find((x) => x.id === m)?.address ?? m;
 function pushEvent(name: string, payload: Record<string, unknown>, txHash?: string): ChainEvent {
-  const e: ChainEvent = { block: currentBlock(), txHash: txHash ?? fakeTxHash(`ev${counter}`), simulated: true, logIndex: 0, name, payload, ts: nowSec() };
+  const hash = txHash ?? fakeTxHash(`ev${counter}`);
+  // (txHash, logIndex) is the event identity (eventKey): several events of one tx must not share logIndex 0
+  const logIndex = events.reduce((n, x) => (x.txHash === hash ? n + 1 : n), 0);
+  const e: ChainEvent = { block: currentBlock(), txHash: hash, simulated: true, logIndex, name, payload, ts: nowSec() };
   events.push(e); emit({ type: "event", data: e });
   return e;
 }
