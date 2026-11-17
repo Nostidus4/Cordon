@@ -439,13 +439,12 @@ def react(rt: Runtime) -> ReactResult:
     """Run the responder once; idempotent, not re-entrant. Called from `Runtime.responder_tick` (state changes,
     the ticker, chain events)."""
     res = ReactResult()
-    if not rt.settings.responder_enabled or rt._in_responder:
-        return res
-    rt._in_responder = True
+    if not rt.settings.responder_enabled or not rt._responder_lock.acquire(blocking=False):
+        return res  # off, or already running (this thread re-entering, or another thread: it sees the same stores)
     try:
         _react(rt, res)
     finally:
-        rt._in_responder = False
+        rt._responder_lock.release()
     return res
 
 

@@ -28,7 +28,9 @@ async def draft(body: DraftRequest, rt: RuntimeDep):  # type: ignore[no-untyped-
     dependencies=[Depends(demo_signing("proposals.propose"))],
 )
 async def propose(body: ProposeRequest, rt: RuntimeDep):  # type: ignore[no-untyped-def]
-    return ps.propose(rt, body.member, body.finding_id, body.change, body.title)
+    return await rt.run_chain_op(
+        ps.propose, rt, body.member, body.finding_id, body.change, body.title
+    )
 
 
 @router.get("/proposals", response_model=list[ProposalOut])
@@ -49,7 +51,7 @@ async def get_proposal(proposal_id: int, rt: RuntimeDep):  # type: ignore[no-unt
     dependencies=[Depends(demo_signing("proposals.execute"))],
 )
 async def execute(proposal_id: int, body: ApproveRequest, rt: RuntimeDep):  # type: ignore[no-untyped-def]
-    return ps.execute(rt, proposal_id, body.member)
+    return await rt.run_chain_op(ps.execute, rt, proposal_id, body.member)
 
 
 @router.post(
@@ -58,7 +60,7 @@ async def execute(proposal_id: int, body: ApproveRequest, rt: RuntimeDep):  # ty
     dependencies=[Depends(demo_signing("proposals.veto"))],
 )
 async def veto(proposal_id: int, body: ApproveRequest, rt: RuntimeDep):  # type: ignore[no-untyped-def]
-    return ps.veto(rt, proposal_id, body.member)
+    return await rt.run_chain_op(ps.veto, rt, proposal_id, body.member)
 
 
 @router.post(
@@ -67,4 +69,4 @@ async def veto(proposal_id: int, body: ApproveRequest, rt: RuntimeDep):  # type:
     dependencies=[Depends(demo_signing("proposals.approve"))],
 )
 async def approve(proposal_id: int, body: ApproveRequest, rt: RuntimeDep):  # type: ignore[no-untyped-def]
-    return ps.approve(rt, proposal_id, body.member)
+    return await rt.run_chain_op(ps.approve, rt, proposal_id, body.member)
