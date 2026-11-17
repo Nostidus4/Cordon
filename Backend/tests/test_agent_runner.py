@@ -123,3 +123,42 @@ def test_process_cycles_sigterm_and_single_instance(tmp_path: Path) -> None:
     finally:
         if p.poll() is None:
             p.kill()
+
+
+def test_agent_loop_default_is_off_on_the_l1_demo_only() -> None:
+    from guardian.core.config import Settings
+
+    assert Settings(chain_mode="sim").agent_loop_on is True
+    assert Settings(chain_mode="l1", demo_mode=True).agent_loop_on is False
+    assert Settings(chain_mode="l1", demo_mode=False).agent_loop_on is True
+    assert Settings(chain_mode="l1", demo_mode=True, agent_loop_enabled=True).agent_loop_on is True
+    assert Settings(chain_mode="sim", agent_loop_enabled=False).agent_loop_on is False
+
+
+def test_idle_agent_on_the_l1_demo_never_cycles_and_stops_on_sigterm(tmp_path: Path) -> None:
+    """#110: CHAIN_MODE=l1 + DEMO_MODE: the process holds its lock, builds no Runtime (no chain access, no
+    RPC configured here) and runs no round, so the 20.000/day agent-key cap stays untouched."""
+    env = {
+        **os.environ,
+        "GUARDIAN_AGENT_LOCK": str(tmp_path / "agent.lock"),
+        "CHAIN_MODE": "l1",
+        "DEMO_MODE": "true",
+    }
+    env.pop("AGENT_LOOP_ENABLED", None)
+    p = subprocess.Popen(
+        [sys.executable, "-m", "guardian.agent_rebalance.main", "--interval-seconds", "0.1"],
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    try:
+        time.sleep(3)
+        assert p.poll() is None  # alive: the container's lock healthcheck stays green
+        p.send_signal(signal.SIGTERM)
+        out, _ = p.communicate(timeout=10)
+        assert p.returncode == 0
+        assert "agent loop disabled" in out and "cycle outcome=" not in out
+    finally:
+        if p.poll() is None:
+            p.kill()

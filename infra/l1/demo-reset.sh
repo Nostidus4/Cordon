@@ -52,8 +52,19 @@ log() { printf '[demo-reset +%3ss] %s\n' "$((SECONDS - T0))" "$*"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 jget() { python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(eval('d'+sys.argv[2]))" "$1" "$2"; }
 
-api_mode() { curl -fsS -m 5 "$API_URL/api/health" 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin)["chainMode"])' 2>/dev/null || true; }
-notify_api() { curl -fsS -X POST "$API_URL/api/demo/reset"; echo; }
+# A slow or just-restarting API is waited for (API_WAIT_S, default 60 s, probes of 5 s): a single 5 s probe used to
+# skip the API reload step on a busy API and leave its attempts / the open tabs on the old deployment (#111).
+api_mode_once() { curl -fsS -m 5 "$API_URL/api/health" 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin)["chainMode"])' 2>/dev/null || true; }
+api_mode() {
+  local deadline=$((SECONDS + ${API_WAIT_S:-60})) m
+  while :; do
+    m="$(api_mode_once)"
+    [[ -n "$m" ]] && { echo "$m"; return; }
+    ((SECONDS < deadline)) || return 0
+    sleep 2
+  done
+}
+notify_api() { curl -fsS -m "${API_RESET_TIMEOUT_S:-120}" -X POST "$API_URL/api/demo/reset"; echo; }
 
 MODE="$(api_mode)"
 if [[ "$MODE" == "sim" ]]; then

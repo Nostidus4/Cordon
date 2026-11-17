@@ -43,8 +43,19 @@ def main(argv: list[str] | None = None) -> int:
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stop.set())
 
+    settings = get_settings()
+    if not settings.agent_loop_on:
+        # Idle demo stack (#110): hold the lock (the container stays healthy) but never touch the chain, so the
+        # scene preconditions (agent-key cap, district limits) are not consumed. AGENT_LOOP_ENABLED=true opts in.
+        log.info(
+            "agent loop disabled (CHAIN_MODE=%s, DEMO_MODE on): set AGENT_LOOP_ENABLED=true to run it",
+            settings.chain_mode,
+        )
+        stop.wait()
+        return 0
+
     # On CHAIN_MODE=sim this process has its own in-memory chain (not shared with the API process); on l1 both hit the same chain.
-    rt = Runtime(get_settings())
+    rt = Runtime(settings)
     asyncio.run(
         demo_reset(rt, startup=True)
     )  # seed like the API, so the first sim round swaps 5.000
