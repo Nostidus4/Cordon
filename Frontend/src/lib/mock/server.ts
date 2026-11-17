@@ -71,10 +71,11 @@ function graphUpdated() {
 const COUNCIL_ADDRESS = fakeAddress("guardian_council");
 const addrOf = (m: MemberId): string => S.members.find((x) => x.id === m)?.address ?? m;
 function pushEvent(name: string, payload: Record<string, unknown>, txHash?: string): ChainEvent {
-  const hash = txHash ?? fakeTxHash(`ev${counter}`);
-  // (txHash, logIndex) is the event identity (eventKey): several events of one tx must not share logIndex 0
-  const logIndex = events.reduce((n, x) => (x.txHash === hash ? n + 1 : n), 0);
-  const e: ChainEvent = { block: currentBlock(), txHash: hash, simulated: true, logIndex, name, payload, ts: nowSec() };
+  const block = currentBlock();
+  // logIndex counts within the block, as on a real chain: keeps emission order under the (block, logIndex) sort
+  // and makes (txHash, logIndex), the event identity (eventKey), unique
+  const logIndex = events.reduce((n, x) => (x.block === block ? n + 1 : n), 0);
+  const e: ChainEvent = { block, txHash: txHash ?? fakeTxHash(`ev${counter}`), simulated: true, logIndex, name, payload, ts: nowSec() };
   events.push(e); emit({ type: "event", data: e });
   return e;
 }
