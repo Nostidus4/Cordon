@@ -53,5 +53,6 @@ repos:
         entry: uv run --directory Backend pytest -q
         language: system
         pass_filenames: false
-        always_run: true
+        # only when the backend, the shared contracts/tables or the Solidity it deploys change
+        files: ^(Backend/|contracts/|Frontend/src/(shared|types)/)
         stages: [pre-push]

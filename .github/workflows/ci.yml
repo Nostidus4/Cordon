@@ -1,7 +1,17 @@
 name: CI
+# Docs-only changes skip CI. Branch pushes run through their PR; main runs on push (one run per PR, not two).
 on:
   push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "LICENSE"
   pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "LICENSE"
 
 permissions:
   contents: read
