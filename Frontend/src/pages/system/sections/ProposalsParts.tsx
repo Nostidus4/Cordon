@@ -1,6 +1,6 @@
 // Building blocks of one proposal on the Hội đồng tab: before/after, plain-words calls, risk report, approvals, timelock, execution seal, composer.
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useActions } from "../../../hooks/useActions";
 import { useGraph } from "../../../hooks/useGraph";
@@ -12,10 +12,30 @@ import { FaceAvatar, Stamp, ToyButton } from "../../../stage/ui";
 import { secondsToEta } from "../../../stage/TimelockBanner";
 import { WalletApproveButton } from "../../../stage/WalletApproveButton";
 import type { Call, CouncilMember, DraftProposalRequest, Finding, MemberId, Proposal } from "../../../types";
-import { executorOf, timelockView } from "../proposals.logic";
+import { toast } from "../../../store/uiStore";
+import { apiErrorVi, executorOf, isBenignApiError, timelockTotal, timelockView } from "../proposals.logic";
 import { ACCENT, Empty, Hash } from "../ui";
 
 export const PROPOSER: MemberId = "lan";
+
+/** Council actions with one in flight at a time (a fast double click sends once) and errors in plain Vietnamese, no raw codes. */
+function useCouncilAct() {
+  const qc = useQueryClient();
+  const inflight = useRef(false);
+  const m = useMutation({
+    mutationFn: (v: { kind: "approve" | "execute" | "veto"; id: number; member: MemberId }) =>
+      v.kind === "approve" ? api.approveProposal(v.id, v.member) : v.kind === "execute" ? api.executeProposal(v.id, v.member) : api.vetoProposal(v.id, v.member),
+    onSuccess: (_d, v) => { void qc.invalidateQueries(); if (v.kind === "veto") toast.warning("Đã phủ quyết đề xuất"); },
+    onError: (e) => {
+      const code = e instanceof ApiError ? e.code : null;
+      if (isBenignApiError(code)) toast.info(apiErrorVi(code)); else toast.error(apiErrorVi(code));
+      void qc.invalidateQueries();
+    },
+    onSettled: () => { inflight.current = false; },
+  });
+  const run = (v: { kind: "approve" | "execute" | "veto"; id: number; member: MemberId }) => { if (inflight.current) return; inflight.current = true; m.mutate(v); };
+  return { run, pending: m.isPending, member: m.isPending ? m.variables?.member ?? null : null };
+}
 
 const GLYPH = { ok: "▼ ", bad: "▲ ", muted: "" } as const;
 function metricTile(m: MetricBA, k: string) {
@@ -109,16 +129,15 @@ const hasWallet = () => typeof window !== "undefined" && !!(window as unknown as
 
 /** 3 council seats, demo-mode approve buttons, the wallet button and the conflict-of-interest block. */
 export function Approvals({ proposal: p, members, demoMode }: { proposal: Proposal; members: Pick<CouncilMember, "id" | "label">[]; demoMode: boolean }) {
-  const actions = useActions();
+  const act = useCouncilAct();
   const slots = approvalSlots(p, members);
   const have = p.approvals.length, need = p.threshold;
-  const pending = actions.approve.isPending ? actions.approve.variables?.member ?? null : null;
   const [bypass, setBypass] = useState<{ code: string; message: string } | null>(null);
   const conflicted = slots.find((s) => s.state === "conflict");
   const open = p.status === "open";
   const tryDirect = async (m: MemberId) => {
     try { await api.approveProposal(p.id, m); setBypass(null); }
-    catch (e) { setBypass({ code: e instanceof ApiError ? e.code : "ERROR", message: e instanceof Error ? e.message : String(e) }); }
+    catch (e) { const code = e instanceof ApiError ? e.code : "ERROR"; setBypass({ code, message: apiErrorVi(code) }); }
   };
   const walletOn = open && !p.queued && isWalletApproveEnabled(walletEnv, hasWallet());
   return (
@@ -143,8 +162,8 @@ export function Approvals({ proposal: p, members, demoMode }: { proposal: Propos
             </div>
             {demoMode ? (
               <span data-tour={`sys-approve-${s.member}`}>
-                <ToyButton size="xs" color={s.state === "conflict" ? "cream" : "green"} disabled={!s.canApprove || pending === s.member} title={s.disabledReason} done={s.state === "approved"}
-                  onClick={() => actions.approve.mutate({ id: p.id, member: s.member })}>
+                <ToyButton size="xs" color={s.state === "conflict" ? "cream" : "green"} disabled={!s.canApprove || act.pending} title={s.disabledReason} done={s.state === "approved"}
+                  onClick={() => act.run({ kind: "approve", id: p.id, member: s.member })}>
                   {s.state === "approved" ? "✓ Đã duyệt" : `Duyệt: ${s.label.replace(/^(Chị|Anh) /, "")}`}
                 </ToyButton>
               </span>
@@ -180,14 +199,14 @@ function useNowSec(): number {
 
 /** Timelock (#77): 2/3 reached -> wait until eta; anyone on the Council may veto meanwhile, anyone may execute after eta. */
 export function Timelock({ proposal: p, members, demoMode }: { proposal: Proposal; members: Pick<CouncilMember, "id" | "label">[]; demoMode: boolean }) {
-  const actions = useActions();
+  const act = useCouncilAct();
   const nowSec = useNowSec();
   const seen = useRef(0);
   const view = timelockView(p, nowSec);
   if (!view || p.eta == null) return null;
   const left = secondsToEta(p.eta, nowSec * 1000);
   seen.current = Math.max(seen.current, left);
-  const total = Math.max(1, seen.current);
+  const total = timelockTotal(p, seen.current); // real delay (eta minus the approval that queued it), so opening late still shows true progress
   const exec = executorOf(p, members);
   return (
     <div className="px-timelock" data-tour="sys-timelock" data-timelock={p.id} role="status" aria-live="polite">
@@ -203,9 +222,9 @@ export function Timelock({ proposal: p, members, demoMode }: { proposal: Proposa
       </div>
       {demoMode ? (
         <div className="flex flex-wrap items-center gap-2">
-          {view.ready && exec ? <ToyButton size="xs" color="green" disabled={actions.execute.isPending} onClick={() => actions.execute.mutate({ id: p.id, member: exec })}>Thực thi</ToyButton> : null}
+          {view.ready && exec ? <ToyButton size="xs" color="green" disabled={act.pending} onClick={() => act.run({ kind: "execute", id: p.id, member: exec })}>Thực thi</ToyButton> : null}
           {members.map((m) => (
-            <ToyButton key={m.id} size="xs" color="red" disabled={actions.veto.isPending} icon={<FaceAvatar member={m.id} size={20} />} onClick={() => actions.veto.mutate({ id: p.id, member: m.id })}>
+            <ToyButton key={m.id} size="xs" color="red" disabled={act.pending} icon={<FaceAvatar member={m.id} size={20} />} onClick={() => act.run({ kind: "veto", id: p.id, member: m.id })}>
               {m.label.replace(/^(Chị|Anh) /, "")} phủ quyết
             </ToyButton>
           ))}

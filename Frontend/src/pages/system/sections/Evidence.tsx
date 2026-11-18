@@ -32,9 +32,10 @@ const Name = ({ n }: { n: NamedAddress }) => (
   <div><div style={{ fontWeight: 700 }}>{n.label}</div><div className="ev-small ev-mono">{n.code}</div></div>
 );
 
-function ReadCell<T>({ r, ok }: { r: Read<T> | undefined; ok: (v: T) => ReactNode }) {
+/** `compact`: in a big-number slot an error shows a short dash (the message stays in the tooltip and the banner), not a whole sentence. */
+function ReadCell<T>({ r, ok, compact }: { r: Read<T> | undefined; ok: (v: T) => ReactNode; compact?: boolean }) {
   if (!r || r.state === "loading") return <span className="ev-dim">Đang đọc…</span>;
-  if (r.state === "error") return <span className="ev-warn" title={r.message}>Không đọc được: {r.message}</span>;
+  if (r.state === "error") return compact ? <span className="ev-dim" title={`Không đọc được: ${r.message}`}>—</span> : <span className="ev-warn" title={r.message}>Không đọc được: {r.message}</span>;
   return <>{ok(r.value)}</>;
 }
 
@@ -72,11 +73,11 @@ function Network({ ev, rpc }: { ev: ChainEvidence | null; rpc: string }) {
         <div><dt>Mã chuỗi</dt><dd className="ev-big">{L1_CHAIN_ID} <span className="ev-small">(0x{L1_CHAIN_ID.toString(16)})</span></dd>
           {ev ? <dd className="ev-small"><ReadCell r={ev.chainId} ok={(v) => <span className={v === L1_CHAIN_ID ? "ev-ok" : "ev-bad"}>{v === L1_CHAIN_ID ? "Nút trả lời đúng mã này" : `Nút trả mã khác: ${v}`}</span>} /></dd> : null}</div>
         <div><dt>Khối mới nhất</dt>
-          <dd className="ev-big">{ev ? <ReadCell r={ev.block} ok={(v) => v.toLocaleString("vi-VN")} /> : <span className="ev-dim">chưa nối RPC</span>}</dd>
+          <dd className="ev-big">{ev ? <ReadCell r={ev.block} compact ok={(v) => v.toLocaleString("vi-VN")} /> : <span className="ev-dim">chưa nối RPC</span>}</dd>
           <dd className="ev-small">Hợp đồng được đăng từ khối {L1_DEPLOY_BLOCK}.</dd></div>
         <div><dt>Địa chỉ RPC</dt>
           <dd className="ev-mono" style={{ fontSize: 12, wordBreak: "break-all" }}>{rpc || "Chưa cấu hình"}</dd>
-          <dd className="ev-small">{rpc ? "Cổng chỉ đọc: gửi giao dịch bị từ chối." : "Đặt VITE_L1_RPC_URL khi dựng trang để đọc trực tiếp."}</dd></div>
+          <dd className="ev-small">{rpc ? "Cổng chỉ đọc: gửi giao dịch bị từ chối." : <>Bản dựng này chưa nối RPC nên chưa đọc trực tiếp được. <span className="ev-mono">(cấu hình: VITE_L1_RPC_URL)</span></>}</dd></div>
       </dl>
     </Section>
   );
@@ -162,7 +163,7 @@ function SampleTxs({ rpc }: { rpc: string }) {
         ))}
       </Table>
       <div style={{ marginTop: 16 }}>
-        <div className="flex items-center justify-between gap-2" style={{ marginBottom: 6 }}><span style={{ fontWeight: 700 }}>Đọc biên nhận bằng Foundry (ví dụ giao dịch đầu)</span><CopyButton value={cmd} label="Chép lệnh" /></div>
+        <div className="ev-cmdhead"><span style={{ fontWeight: 700 }}>Đọc biên nhận bằng Foundry (ví dụ giao dịch đầu)</span><CopyButton value={cmd} label="Chép lệnh" /></div>
         <pre className="ev-pre">{cmd}</pre>
       </div>
       <p className="ev-small" style={{ marginTop: 12 }}>Giao dịch của khoá đã bị khoá bị nút từ chối ngay từ cửa nên không có mã băm; chỉ chứng minh được qua vai trò đọc ra 0 ở bảng khoá phía trên. Chi tiết: docs/EVIDENCE_TXS.md.</p>
@@ -195,10 +196,10 @@ function SelfCheck({ rpc }: { rpc: string }) {
   return (
     <Section id="ev-tu-kiem" accent={A} title="Tự kiểm bằng lệnh" sub="Dán vào terminal, không cần cài gì thêm ngoài curl.">
       {rpc ? null : <p className="ev-note" style={{ marginTop: 0, marginBottom: 12 }}>Chưa có địa chỉ RPC cấu hình. Đặt <code className="ev-mono">RPC=địa-chỉ-RPC-của-Guardian-L1</code> trước khi chạy các lệnh dưới đây.</p>}
-      <div className="grid gap-4">
+      <div className="grid gap-4" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
         {cmds.map(([title, cmd]) => (
-          <div key={title}>
-            <div className="flex items-center justify-between gap-2" style={{ marginBottom: 6 }}><span style={{ fontWeight: 700 }}>{title}</span><CopyButton value={cmd} label="Chép lệnh" /></div>
+          <div key={title} style={{ minWidth: 0 }}>
+            <div className="ev-cmdhead"><span style={{ fontWeight: 700 }}>{title}</span><CopyButton value={cmd} label="Chép lệnh" /></div>
             <pre className="ev-pre">{cmd}</pre>
           </div>
         ))}
@@ -210,11 +211,12 @@ function SelfCheck({ rpc }: { rpc: string }) {
 export function Evidence() {
   const rpc = configuredL1Rpc();
   const ev = useChainEvidence(rpc);
-  const failing = ev && ev.chainId.state === "error" && ev.block.state === "error";
+  const failing = !!ev && (ev.chainId.state === "error" || ev.block.state === "error");
+  const failMsg = ev ? (ev.chainId.state === "error" ? ev.chainId.message : ev.block.state === "error" ? ev.block.message : "") : "";
   return (
     <div className="ev-wrap">
       {!rpc ? <div role="status" className="ev-note" style={{ margin: 0 }}>{NO_RPC_BANNER}. Các địa chỉ dưới đây là bản đã chốt khi triển khai.</div> : null}
-      {failing ? <div role="alert" className="ev-note" data-t="bad" style={{ margin: 0 }}>Không đọc được từ RPC ({ev.chainId.state === "error" ? ev.chainId.message : ""}). Các ô bên dưới giữ nguyên trạng thái lỗi, không có số giả.</div> : null}
+      {failing ? <div role="alert" className="ev-note" data-t="bad" style={{ margin: 0 }}>Không đọc được từ RPC: {failMsg}. Các ô bên dưới giữ nguyên trạng thái lỗi, không có số giả; trang sẽ tự thử lại.</div> : null}
       <Network ev={ev} rpc={rpc} />
       <Contracts ev={ev} />
       <Keys ev={ev} />

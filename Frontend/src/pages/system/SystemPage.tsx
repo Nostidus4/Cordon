@@ -1,5 +1,5 @@
 // /he-thong/:tab: technical dashboard for engineers. One focused view per tab, toy pill tab bar like the stage stepper.
-import { type ComponentType, type ReactNode } from "react";
+import { Component, type ComponentType, type ErrorInfo, type ReactNode } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
@@ -52,6 +52,23 @@ export const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
+/** One broken section must not blank the whole dashboard: show a short notice with a retry, keep the tab bar. */
+export class TabBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(e: Error, info: ErrorInfo) { console.error("[system] tab render failed", e, info.componentStack); }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="sx-card" role="alert" data-testid="tab-error" style={{ ["--ac" as string]: "#e0364a" }}>
+        <h2 className="sx-title">Mục này gặp lỗi khi hiển thị</h2>
+        <p className="sx-sub">Các mục khác vẫn dùng được. Thử tải lại mục này, hoặc chuyển sang mục khác.</p>
+        <button type="button" className="toy-btn" data-c="cream" data-size="sm" onClick={() => this.setState({ failed: false })}>Thử lại</button>
+      </div>
+    );
+  }
+}
+
 function Body({ tab }: { tab: TabId }): ReactNode {
   switch (tab) {
     case "tong-quan": return <div className="grid gap-4"><Overview /><NowStrip /><Controls /><Architecture /></div>;
@@ -66,6 +83,13 @@ function Body({ tab }: { tab: TabId }): ReactNode {
   }
 }
 
+/** Where an unknown / legacy tab goes. The query string (?tour=1, ?pane=…, ?id=…) always travels along. */
+export function tabRedirect(tab: string | undefined, search: string): string | null {
+  if (tab === "tro-ly") return `/he-thong/agent${search}`;
+  if (!TABS.some((t) => t.id === tab)) return `/he-thong/tong-quan${search}`;
+  return null;
+}
+
 export default function SystemPage() {
   const qc = useQueryClient();
   const reduced = useReduced();
@@ -78,8 +102,8 @@ export default function SystemPage() {
   useSystemDevHooks();
   const cur = TABS.find((t) => t.id === tab);
   useTitle("Kỹ thuật", cur?.label);
-  if (tab === "tro-ly") return <Navigate to="/he-thong/agent" replace />;
-  if (!cur) return <Navigate to={`/he-thong/tong-quan${search}`} replace />;
+  const to = tabRedirect(tab, search);
+  if (to || !cur) return <Navigate to={to ?? `/he-thong/tong-quan${search}`} replace />;
 
   return (
     <>
@@ -109,8 +133,8 @@ export default function SystemPage() {
           </div>
         </header>
         <AnimatePresence mode="wait" initial={false}>
-          <motion.main key={cur.id} id={cur.id} initial={reduced ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={reduced ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.16 }}>
-            <Body tab={cur.id} />
+          <motion.main key={cur.id} id={`tab-${cur.id}`} initial={reduced ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={reduced ? undefined : { opacity: 0, y: -6 }} transition={{ duration: 0.16 }}>
+            <TabBoundary key={cur.id}><Body tab={cur.id} /></TabBoundary>
           </motion.main>
         </AnimatePresence>
       </div>

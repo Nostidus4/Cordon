@@ -15,7 +15,7 @@ export function usePayrollState() {
 }
 
 /** Past runs of the payroll agent (empty list in the browser demo). */
-export const usePayrollRuns = () => useQuery({ queryKey: [...payrollKeys.state, "runs"] as const, queryFn: payrollApi.getRuns, retry: false, refetchInterval: 10_000 });
+export const usePayrollRuns = () => useQuery({ queryKey: [...payrollKeys.state, "runs"] as const, queryFn: payrollApi.getRuns, retry: false, refetchInterval: (q) => (q.state.status === "error" ? false : 10_000) }); // a 404 (backend without payroll) stays a 404: stop polling
 
 export const usePayrollReport = () => useQuery({ queryKey: payrollKeys.report, queryFn: payrollApi.getReport });
 

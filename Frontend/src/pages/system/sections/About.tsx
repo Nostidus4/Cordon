@@ -39,7 +39,7 @@ export function About() {
     { name: "Khu Hội đồng", l1: "tuỳ chọn", l2: "cảnh 5", tone: "dashed" },
   ];
   return (
-    <Section id="gioi-thieu" accent={ACCENT.edu} title="Quỹ chính ở xa tầm tay, kho chi tiêu có rào chắn" sub="Chỉ phần tiền cần chi mỗi ngày nằm trong kho. Quỹ chính vẫn ở Safe đa chữ ký.">
+    <Section id="gioi-thieu-muc" accent={ACCENT.edu} title="Quỹ chính ở xa tầm tay, kho chi tiêu có rào chắn" sub="Chỉ phần tiền cần chi mỗi ngày nằm trong kho. Quỹ chính vẫn ở Safe đa chữ ký.">
       <div className="px-fig" data-tour="sys-about-vault">
         <AboutVault tiles={tiles} policyVersion={policyLabel(graph)} main={org?.mainTreasury.balance.display ?? "2.000.000"} vault={org ? org.vault.balance.display : "200.000"} />
       </div>

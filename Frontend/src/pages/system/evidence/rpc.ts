@@ -28,6 +28,15 @@ export async function rpcCall<T = string>(url: string, method: string, params: u
   }
 }
 
+/** Static reads are fetched once, so a rate-limited proxy (429 / timeout) gets a few more tries with a growing pause. */
+export async function withRetry<T>(fn: () => Promise<T>, tries = 4, baseMs = 700, sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))): Promise<T> {
+  let last: unknown;
+  for (let i = 0; i < tries; i++) {
+    try { return await fn(); } catch (e) { last = e; if (i < tries - 1) await sleep(baseMs * 2 ** i); }
+  }
+  throw last;
+}
+
 /** "0xce62d" -> 845357 */
 export const hexToNumber = (h: string): number => Number.parseInt(h, 16);
 

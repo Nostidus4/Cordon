@@ -33,6 +33,35 @@ export function timelockView(p: Pick<Proposal, "queued" | "eta" | "status">, now
   return { left, ready: left === 0 };
 }
 
+/**
+ * Real length of the timelock in seconds: from the approval that reached 2/3 (the newest `approvedAt`) to `eta`.
+ * Falls back to the largest countdown seen on screen when the approval times are unknown, never below 1.
+ */
+export function timelockTotal(p: Pick<Proposal, "eta" | "members">, seenMax: number): number {
+  const times = p.members.map((m) => m.approvedAt).filter((t): t is number => typeof t === "number");
+  const queuedAt = times.length ? Math.max(...times) : null;
+  if (p.eta != null && queuedAt != null && p.eta > queuedAt) return Math.ceil(p.eta - queuedAt);
+  return Math.max(1, seenMax);
+}
+
+/** Plain Vietnamese for the API error codes of the Council actions; never shows a raw code. */
+const API_ERROR_VI: Record<string, string> = {
+  ALREADY_APPROVED: "Thành viên này đã duyệt đề xuất rồi.",
+  CONFLICT_OF_INTEREST: "Xung đột lợi ích: chủ khu bị ảnh hưởng không được tự duyệt.",
+  NOT_COUNCIL_MEMBER: "Chỉ thành viên Hội đồng mới làm được việc này.",
+  PROPOSAL_NOT_OPEN: "Đề xuất này không còn ở trạng thái chờ duyệt.",
+  PROPOSAL_NOT_FOUND: "Không tìm thấy đề xuất này.",
+  TIMELOCK_NOT_READY: "Chưa hết giờ chờ nên chưa áp dụng được.",
+  NEEDS_THRESHOLD: "Chưa đủ phiếu 2/3.",
+  ALREADY_LOCKED: "Khu này đã bị khoá rồi.",
+  ALREADY_PAUSED: "Kho đã dừng rồi.",
+  DISTRICT_NOT_FOUND: "Không tìm thấy khu này.",
+  BAD_REQUEST: "Yêu cầu chưa hợp lệ.",
+};
+export const apiErrorVi = (code: string | null | undefined): string => (code && API_ERROR_VI[code]) || "Có lỗi xảy ra, thử lại sau ít giây.";
+/** Codes that only mean "someone already did it": shown as a calm notice, not a red error. */
+export const isBenignApiError = (code: string | null | undefined): boolean => code === "ALREADY_APPROVED" || code === "ALREADY_LOCKED" || code === "ALREADY_PAUSED";
+
 /** Member who signs the execute call in demo mode: someone who approved (any member may call it), else the first member. */
 export const executorOf = (p: Pick<Proposal, "approvals">, members: { id: MemberId }[]): MemberId | null => p.approvals[0] ?? members[0]?.id ?? null;
 

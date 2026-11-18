@@ -2,7 +2,7 @@
 import { attemptLabel, stepOf, timeOf } from "../../../lib/dto";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { REASONS } from "../../../shared/reasonCodes";
+import { reasonTextVi } from "../../../lib/ops";
 import { useAttempts } from "../../../hooks/useAttempts";
 import { useGraph } from "../../../hooks/useGraph";
 import { useReduced } from "../../../stage/ui";
@@ -49,7 +49,7 @@ function Flow({ a }: { a: Attempt }) {
 
 function Row({ a, label, selected, onOpen }: { a: Attempt; label: string; selected: boolean; onOpen: () => void }) {
   const reduced = useReduced();
-  const reason = a.reasonCode ? REASONS[a.reasonCode] : null;
+  const reason = a.reasonCode ? reasonTextVi(a.reasonCode) : null;
   const gated = a.outcome === "blocked_at_protocol";
   return (
     <motion.li layout={reduced ? false : "position"} initial={reduced ? false : { opacity: 0, y: -16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }}
@@ -57,7 +57,7 @@ function Row({ a, label, selected, onOpen }: { a: Attempt; label: string; select
       <div role="button" tabIndex={0} className="sx-row" data-o={a.outcome} data-sel={selected} onClick={onOpen} aria-label={`Mở chi tiết: ${attemptLabel(a)}`}
         onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(); } }}>
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <Chip t={a.outcome === "ok" ? "ok" : a.outcome === "reverted" ? "bad" : "warn"} mono>{a.outcome === "ok" ? "✓ OK" : a.outcome === "reverted" ? "✕ REVERTED" : "✕ BLOCKED_AT_PROTOCOL"}</Chip>
+          <Chip t={a.outcome === "ok" ? "ok" : a.outcome === "reverted" ? "bad" : "warn"} mono>{a.outcome === "ok" ? "✓ Đã qua" : a.outcome === "reverted" ? "✕ Bị từ chối" : "✕ Chặn từ cổng node"}</Chip>
           <span style={{ color: "var(--ink-2)", fontSize: 12 }}>bước {stepOf(a)} · {timeOf(a)}</span>
           <code className="mono" style={{ fontWeight: 600, color: "var(--ink)", minWidth: 0, overflowWrap: "anywhere" }}>{callSignature(a)}</code>
           <span style={{ flex: 1 }} />
@@ -67,8 +67,8 @@ function Row({ a, label, selected, onOpen }: { a: Attempt; label: string; select
         {reason ? (
           <div className="sx-callout" data-t={gated ? "amber" : undefined}>
             <span className="mono">{a.reasonCode}</span>
-            <span>{reason.vi}</span>
-            {errorName(a.reasonCode) ? <span className="mono" style={{ marginLeft: "auto" }}>{errorName(a.reasonCode)}</span> : <span className="mono" style={{ marginLeft: "auto" }}>RPC rejected · not in Tx AllowList</span>}
+            <span>{reason}</span>
+            {errorName(a.reasonCode) ? <span className="mono" style={{ marginLeft: "auto" }}>{errorName(a.reasonCode)}</span> : <span className="mono" style={{ marginLeft: "auto" }} title="Node từ chối: thẻ không có trong danh sách cho phép">RPC rejected · not in Tx AllowList</span>}
           </div>
         ) : null}
         <div className="sx-meta">

@@ -1,7 +1,7 @@
 // Live reads for /he-thong/bang-chung. Every value is a real RPC answer or an error message; nothing is faked.
 import { useEffect, useState } from "react";
 import { COUNCIL_MEMBERS, DEPLOYER, L1_CONTRACTS, L1_PRECOMPILES, MINH_KEYS, TX_ALLOWLIST } from "./deployment";
-import { hexToNumber, readCodeSize, readRole, rpcCall, RpcError } from "./rpc";
+import { hexToNumber, readCodeSize, readRole, rpcCall, RpcError, withRetry } from "./rpc";
 
 export type Read<T> = { state: "loading" } | { state: "ok"; value: T } | { state: "error"; message: string };
 const loading = { state: "loading" } as const;
@@ -30,9 +30,9 @@ export function useChainEvidence(url: string, pollMs = 8000): Evidence | null {
     const set = (f: (e: Evidence) => Evidence) => { if (alive) setEv((e) => (e ? f(e) : e)); };
     const loadStatic = async () => {
       const jobs: Promise<void>[] = [
-        toRead(rpcCall(url, "eth_chainId").then(hexToNumber)).then((r) => set((e) => ({ ...e, chainId: r }))),
-        ...L1_CONTRACTS.map((c) => toRead(readCodeSize(url, c.address)).then((r) => set((e) => ({ ...e, code: { ...e.code, [c.id]: r } })))),
-        ...L1_PRECOMPILES.map((c) => toRead(readRole(url, c.address, DEPLOYER.address).then(() => 1)).then((r) => set((e) => ({ ...e, code: { ...e.code, [c.id]: r } })))),
+        toRead(withRetry(() => rpcCall(url, "eth_chainId").then(hexToNumber))).then((r) => set((e) => ({ ...e, chainId: r }))),
+        ...L1_CONTRACTS.map((c) => toRead(withRetry(() => readCodeSize(url, c.address))).then((r) => set((e) => ({ ...e, code: { ...e.code, [c.id]: r } })))),
+        ...L1_PRECOMPILES.map((c) => toRead(withRetry(() => readRole(url, c.address, DEPLOYER.address).then(() => 1))).then((r) => set((e) => ({ ...e, code: { ...e.code, [c.id]: r } })))),
       ];
       await Promise.all(jobs);
     };
