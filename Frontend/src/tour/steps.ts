@@ -4,7 +4,7 @@
 // Every name below is asserted to exist under src/pages/system/** by steps.test.ts.
 //   tong-quan  sys-now · sys-controls
 //   chinh-sach sys-districts
-//   rui-ro     sys-you-think · sys-sim-picker · sys-sim-exposure · sys-findings · sys-create-proposal
+//   rui-ro     sys-you-think · sys-sim-picker · sys-sim-graph · sys-sim-exposure · sys-findings · sys-create-proposal
 //   giao-dich  sys-pipeline
 //   hoi-dong   sys-proposals · sys-suggestion · sys-before-after · sys-changes · sys-risk-report · sys-approvals · sys-approve-lan|trang|huy (demo mode)
 //              sys-conflict (a conflicted member) · sys-timelock · sys-executed · sys-composer · sys-assistant + sys-alternative (#12/#13) · sys-history
@@ -47,10 +47,10 @@ export const TOUR_STEPS: TourStep[] = [
   { id: "map-you-think", scene: 1, title: "Cờ vàng ở khu anh Minh", route: "/he-thong/rui-ro", target: ["sys-you-think"], placement: "auto", dwell: 6000,
     caption: "“Bạn nghĩ: 20.000/ngày”, nhưng anh Minh còn điều khiển 3 trợ lý AI và một phần mềm thanh toán." },
 
-  { id: "sim-minh", scene: 2, title: "Thử: nếu anh Minh bị chiếm", route: "/he-thong/rui-ro", target: ["sys-sim-exposure", "sys-sim-picker"], placement: "auto", dwell: 7000,
+  { id: "sim-minh", scene: 2, title: "Thử: nếu anh Minh bị chiếm", route: "/he-thong/rui-ro", target: ["sys-sim-graph", "sys-sim-exposure", "sys-sim-picker"], placement: "auto", dwell: 7000,
     run: { label: "Chọn anh Minh", fn: selectPrincipals(["minh"]) },
-    caption: "Chain chỉ chặn 20.000 (Enforced), nhưng nếu quan hệ tự khai là thật thì tới 100.000/ngày (Estimated)." },
-  { id: "sim-minh-huy", scene: 2, title: "Thêm anh Huy", route: "/he-thong/rui-ro", target: ["sys-sim-exposure", "sys-sim-picker"], placement: "auto", dwell: 6500,
+    caption: "Hình đỏ dần theo các thẻ anh Minh với tới. Chain chỉ chặn 20.000 (Enforced), nhưng nếu quan hệ tự khai là thật thì tới 100.000/ngày (Estimated)." },
+  { id: "sim-minh-huy", scene: 2, title: "Thêm anh Huy", route: "/he-thong/rui-ro", target: ["sys-sim-graph", "sys-sim-exposure", "sys-sim-picker"], placement: "auto", dwell: 6500,
     run: { label: "Chọn Minh + Huy", fn: selectPrincipals(["minh", "huy"]) },
     caption: "Hai khu cộng lại khoảng 140.000/ngày, tức 7% quỹ chính. Lý do lớn nhất: khu anh Minh chưa có cổng chung." },
   { id: "sim-ask", scene: 2, title: "Hỏi trợ lý một câu cố định", route: "/he-thong/agent?pane=hoi-dap", target: ["sys-assistant-q"], placement: "auto", dwell: 7000,

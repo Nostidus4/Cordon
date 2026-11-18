@@ -5,6 +5,9 @@ import { Play } from "lucide-react";
 import "../ports.css";
 import { useActions } from "../../../hooks/useActions";
 import { useFindings } from "../../../hooks/useFindings";
+import { SpreadGraph, SpreadLegend } from "../../../components/graph/SpreadGraph";
+import { buildSpreadPlan } from "../../../graph/spread";
+import { useSpreadAnimation } from "../../../graph/useSpreadAnimation";
 import { useGraph } from "../../../hooks/useGraph";
 import { useProposals } from "../../../hooks/useProposals";
 import { useSimulate } from "../../../hooks/useSimulate";
@@ -57,8 +60,10 @@ export function Simulation() {
     <RunnerCtx.Provider value={runner}>
       <Section id="mo-phong" accent={ACCENT.growth} title="Nếu thẻ bị chiếm thì mất bao nhiêu?" sub="Ba con số: bạn nghĩ, chain thật sự chặn, và ước tính gồm cả quan hệ tự khai.">
         <YouThink />
-        <div className="grid gap-x-8 gap-y-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))" }}>
-          <Runner />
+        <RunnerForm />
+        <SpreadCard />
+        <div className="mt-6 grid gap-x-8 gap-y-6" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 500px), 1fr))" }}>
+          <RunnerResults />
           <Rules />
         </div>
         <Reference />
@@ -120,14 +125,17 @@ function Totals({ r, dim }: { r: SimResult; dim?: boolean }) {
   );
 }
 
-function Runner() {
+function RunnerForm() {
   const rn = useRunnerCtx();
-  const { graph, presets, pick, setPick, preset, setPreset, run, setRun, setSelected, data, isFetching, error } = rn;
+  const { graph, presets, pick, setPick, preset, setPreset, run, setRun, setSelected, isFetching, error } = rn;
   const ids = (graph?.districts ?? []).map((d) => ({ id: d.principalId, label: d.label }));
-  const [json, setJson] = useState(false);
   const dirty = [...pick].sort().join() !== [...run.ids].sort().join() || preset !== run.changeId;
-  const toggle = (id: string) => setPick((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  const hasBA = !!data?.before && !!data?.after;
+  // a chip applies at once (same as clicking the graph); the run button is for the policy preset
+  const toggle = (id: string) => {
+    const next = pick.includes(id) ? pick.filter((x) => x !== id) : [...pick, id];
+    setPick(next);
+    if (next.length) setSelected(next);
+  };
   return (
     <div style={{ minWidth: 0 }}>
       <form onSubmit={(e) => { e.preventDefault(); if (pick.length) { setSelected(pick); setRun({ ids: pick, changeId: preset }); } }}>
@@ -145,6 +153,44 @@ function Runner() {
         </div>
       </form>
       {error ? <div className="sx-callout mt-3">Không chạy được: {(error as Error).message}</div> : null}
+    </div>
+  );
+}
+
+/** The 2D permission graph: the picked people turn red, then red runs along keys / districts the simulation says they can reach. */
+function SpreadCard() {
+  const { graph, run, data, isPlaceholderData, setSelected } = useRunnerCtx();
+  const selected = useUiStore((s) => s.selectedPrincipals);
+  const toggle = (pid: string) => setSelected(selected.includes(pid) ? selected.filter((x) => x !== pid) : [...selected, pid]);
+  const fresh = !!data && !isPlaceholderData;
+  const idsKey = run.ids.join();
+  const plan = useMemo(() => (fresh && graph ? buildSpreadPlan(data, graph, run.ids) : null), [fresh, data, graph, idsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const spread = useSpreadAnimation(plan, run.ids);
+  const picked = useMemo(() => new Set(run.ids), [idsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const names = run.ids.map((id) => graph?.districts.find((d) => d.principalId === id)?.label ?? id);
+  return (
+    <div className="mt-5" style={{ minWidth: 0 }} data-tour="sys-sim-graph">
+      <h3 style={h}>Ai bị chiếm thì lan tới đâu</h3>
+      <p style={{ margin: "-4px 0 8px", fontSize: 12.5, color: "var(--ink-2)" }}>Bấm vào một khu hoặc một thẻ trong hình để thêm hay bỏ người đó. Màu đỏ là những gì họ với tới được.</p>
+      <div className="sg-frame">
+        {graph ? <SpreadGraph snapshot={graph} redNodes={spread.redNodes} redEdges={spread.redEdges} origins={spread.origins} picked={picked} onToggle={toggle} /> : null}
+        {graph && run.ids.length ? (
+          <div className="sg-note" role="status" aria-live="polite">
+            <b>{names.join(" + ")} bị chiếm</b>{plan ? <> · {spread.keysReached}/{spread.keysTotal} thẻ bị lộ</> : <> · đang tính…</>}
+          </div>
+        ) : null}
+      </div>
+      <SpreadLegend />
+    </div>
+  );
+}
+
+function RunnerResults() {
+  const { data } = useRunnerCtx();
+  const [json, setJson] = useState(false);
+  const hasBA = !!data?.before && !!data?.after;
+  return (
+    <div style={{ minWidth: 0 }}>
       {!data ? <div className="mt-4"><Empty>Chọn khu rồi bấm “Chạy mô phỏng”.</Empty></div> : (
         <div className="mt-5">
           {hasBA ? (
