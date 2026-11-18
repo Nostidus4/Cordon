@@ -55,7 +55,7 @@ export function CommandPalette() {
   const go = (p: string) => () => nav(p);
   const cmds: Cmd[] = useMemo(() => [
     { id: "sys", group: "Chuyển màn", label: "Bảng kỹ thuật", icon: <ShieldAlert className="size-4" />, run: go("/he-thong"), keywords: "he thong ky thuat ban do de xuat hoi dong gia lap su co phap ly" },
-    { id: "evi", group: "Chuyển màn", label: "Bằng chứng trên chain", icon: <ShieldCheck className="size-4" />, run: go("/bang-chung"), keywords: "bang chung evidence" },
+    { id: "evi", group: "Chuyển màn", label: "Bằng chứng trên chain", icon: <ShieldCheck className="size-4" />, run: go("/he-thong/bang-chung"), keywords: "bang chung evidence" },
     { id: "city", group: "Chuyển màn", label: "Thành phố 3D", icon: <Building2 className="size-4" />, run: go("/city"), keywords: "city 3d" },
     { id: "kit", group: "Chuyển màn", label: "UI kit (dev)", icon: <Boxes className="size-4" />, run: go("/_kit") },
     { id: "mode", group: "Thao tác demo", label: mode === "live" ? "Chuyển sang Replay" : "Chuyển sang Live", icon: <Radio className="size-4" />, run: () => setMode(mode === "live" ? "replay" : "live") },
