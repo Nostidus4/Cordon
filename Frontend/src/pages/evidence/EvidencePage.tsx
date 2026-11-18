@@ -10,6 +10,8 @@ import {
 } from "./deployment";
 import { configuredL1Rpc, curlCmd, readAllowListData, roleLabel } from "./rpc";
 import { useChainEvidence, type Evidence, type Read } from "./useChainEvidence";
+import { castReceiptCmd, SAMPLE_TXS, type SampleTx, type SampleView } from "./sampleTxs";
+import { useSampleTxs } from "./useSampleTxs";
 
 export const NO_RPC_BANNER = "Bản demo này chạy chain mô phỏng; số đọc trực tiếp chỉ có khi nối RPC của Guardian L1";
 
@@ -131,6 +133,47 @@ function Keys({ ev }: { ev: Evidence | null }) {
   );
 }
 
+function SampleResult({ tx, view }: { tx: SampleTx; view: SampleView | undefined }) {
+  const expected = tx.expect === "ok" ? "Thành công" : "Bị chặn";
+  if (!view || view.state === "static") return <div><div className="text-sm text-muted">{expected} <span className="text-faint">(theo bản ghi, chưa đọc trực tiếp)</span></div><div className="mt-0.5 text-xs text-faint">{tx.outcome}</div></div>;
+  if (view.state === "loading") return <span className="text-faint">Đang đọc…</span>;
+  if (view.state === "error") return <span className="text-warn" title={view.message}>Không đọc được: {view.message}</span>;
+  if (view.state === "missing") return <span className="text-bad">Nút không thấy giao dịch này</span>;
+  const good = view.expectMatches && view.blockMatches;
+  return (
+    <div>
+      <div className={cn("text-sm font-semibold", view.status === "success" ? "text-ok" : "text-bad")}>{view.statusLabel} <span className="font-normal text-faint">· khối {view.block.toLocaleString("vi-VN")}</span></div>
+      <div className="mt-0.5 text-xs text-muted">{tx.outcome}</div>
+      {good ? null : <div className="mt-0.5 text-xs text-warn">Kết quả đọc được khác với bản ghi ({expected} ở khối {tx.block.toLocaleString("vi-VN")}).</div>}
+      {tx.inferred ? <div className="mt-0.5 text-xs text-faint">Lý do cụ thể suy ra từ chuỗi giao dịch trước đó (nút không còn giữ trạng thái cũ để chạy lại).</div> : null}
+    </div>
+  );
+}
+
+function SampleTxs({ rpc }: { rpc: string }) {
+  const views = useSampleTxs(rpc);
+  return (
+    <Section title="Giao dịch mẫu trên chain" hint="Những giao dịch thật đã chạy trên Guardian L1: cho phép, bị chặn, khoá khẩn cấp, Hội đồng nới luật. Tra từng mã băm bằng lệnh bên dưới.">
+      {rpc ? null : <p className="mb-3 text-sm text-muted">Chưa nối RPC nên danh sách này là bản ghi tĩnh, chưa đọc trực tiếp từ chain.</p>}
+      <Table head={["Chứng minh điều gì", "Kết quả", "Mã băm giao dịch", "Hợp đồng"]}>
+        {SAMPLE_TXS.map((t) => (
+          <tr key={t.id}>
+            <td className="max-w-[320px]"><div className="text-sm text-text">{t.label}</div><div className="mt-0.5 break-words font-mono text-[11px] text-faint">{t.detail}</div></td>
+            <td><SampleResult tx={t} view={views[t.id]} /></td>
+            <td><Addr a={t.hash} /><div className="mt-1 text-[11px] text-faint">Khối {t.block.toLocaleString("vi-VN")}</div></td>
+            <td><div className="text-sm text-text">{t.contract}</div><div className="font-mono text-[11px] text-faint">{t.contractAddress.slice(0, 10)}…{t.contractAddress.slice(-4)}</div><div className="mt-0.5 text-[11px] text-faint">{t.set}</div></td>
+          </tr>
+        ))}
+      </Table>
+      <div className="mt-4">
+        <div className="mb-1 flex items-center justify-between gap-2"><span className="text-sm text-text">Đọc biên nhận bằng Foundry (ví dụ giao dịch đầu)</span><CopyButton value={castReceiptCmd(SAMPLE_TXS[0]!.hash, rpc)} label="Chép lệnh" /></div>
+        <pre className="overflow-x-auto rounded-[var(--radius-md)] border border-line bg-black/30 p-3 font-mono text-xs text-muted">{castReceiptCmd(SAMPLE_TXS[0]!.hash, rpc)}</pre>
+      </div>
+      <p className="mt-3 text-xs text-faint">Giao dịch của khoá đã bị khoá bị nút từ chối ngay từ cửa nên không có mã băm; chỉ chứng minh được qua vai trò đọc ra 0 ở bảng khoá phía trên. Chi tiết: docs/EVIDENCE_TXS.md.</p>
+    </Section>
+  );
+}
+
 function Funds() {
   return (
     <Section title="Quỹ trên C-Chain" hint={`Mạng thử Fuji (mã ${CCHAIN_ID}). Bấm để mở Snowtrace và kiểm chứng.`}>
@@ -184,6 +227,7 @@ export default function EvidencePage() {
       <Network ev={ev} rpc={rpc} />
       <Contracts ev={ev} />
       <Keys ev={ev} />
+      <SampleTxs rpc={rpc} />
       <Funds />
       <SelfCheck rpc={rpc} />
       {ev?.checkedAt ? <p className="text-xs text-faint">Đọc lần cuối lúc {new Date(ev.checkedAt).toLocaleTimeString("vi-VN")}, tự làm mới mỗi 8 giây.</p> : null}

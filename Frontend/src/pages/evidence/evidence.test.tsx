@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CCHAIN_FUNDS, COUNCIL_MEMBERS, L1_CHAIN_ID, L1_CONTRACTS, MINH_KEYS, TX_ALLOWLIST } from "./deployment";
 import EvidencePage, { NO_RPC_BANNER, rolesSentence } from "./EvidencePage";
+import { castReceiptCmd, receiptStatus, SAMPLE_TXS, sampleView } from "./sampleTxs";
 import { codeSizeBytes, hexToNumber, parseRole, readAllowListData, readRole, roleLabel, rpcCall, RpcError } from "./rpc";
 
 const fakeFetch = (body: unknown, status = 200) => (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
@@ -62,5 +63,47 @@ describe("EvidencePage without RPC", () => {
     expect(html).toContain("testnet.snowtrace.io/address/");
     expect(html).toContain("chưa nối RPC");
     expect(html).not.toContain("Đang đọc");
+  });
+});
+
+describe("sample txs", () => {
+  const swap = SAMPLE_TXS.find((t) => t.id === "swap-ok")!;
+  const cap = SAMPLE_TXS.find((t) => t.id === "district-cap")!;
+  it("curated data is well formed and unique", () => {
+    expect(SAMPLE_TXS.length).toBeGreaterThanOrEqual(8);
+    expect(new Set(SAMPLE_TXS.map((t) => t.hash)).size).toBe(SAMPLE_TXS.length);
+    for (const t of SAMPLE_TXS) {
+      expect(t.hash).toMatch(/^0x[0-9a-f]{64}$/);
+      expect(t.contractAddress).toMatch(/^0x[0-9a-fA-F]{40}$/);
+      expect(t.label.length).toBeGreaterThan(10);
+    }
+    expect(SAMPLE_TXS.some((t) => t.expect === "revert")).toBe(true);
+  });
+  it("maps receipt status to success / blocked", () => {
+    expect(receiptStatus({ status: "0x1" })).toBe("success");
+    expect(receiptStatus({ status: "0x0" })).toBe("blocked");
+    expect(receiptStatus({})).toBeNull();
+  });
+  it("a matching receipt is read and agrees with the data file", () => {
+    const v = sampleView(swap, { status: "0x1", blockNumber: "0x413" });
+    expect(v).toMatchObject({ state: "read", block: 1043, status: "success", statusLabel: "Thành công", blockMatches: true, expectMatches: true });
+    const b = sampleView(cap, { status: "0x0", blockNumber: "0x418" });
+    expect(b).toMatchObject({ state: "read", block: 1048, status: "blocked", statusLabel: "Bị chặn", expectMatches: true });
+  });
+  it("flags a receipt that disagrees, a missing hash and a malformed receipt", () => {
+    expect(sampleView(cap, { status: "0x1", blockNumber: "0x418" })).toMatchObject({ state: "read", expectMatches: false });
+    expect(sampleView(swap, { status: "0x1", blockNumber: "0x1" })).toMatchObject({ blockMatches: false });
+    expect(sampleView(swap, null)).toEqual({ state: "missing" });
+    expect(sampleView(swap, { blockNumber: "0x1" }).state).toBe("error");
+  });
+  it("builds a cast command", () => {
+    expect(castReceiptCmd("0xabc", "https://rpc")).toBe("cast receipt 0xabc --rpc-url https://rpc");
+    expect(castReceiptCmd("0xabc", "")).toContain("$RPC");
+  });
+  it("page without RPC marks the list as not read live", () => {
+    const html = renderToStaticMarkup(<EvidencePage />);
+    expect(html).toContain("Giao dịch mẫu trên chain");
+    expect(html).toContain("chưa đọc trực tiếp");
+    for (const t of SAMPLE_TXS) expect(html).toContain(t.hash);
   });
 });
