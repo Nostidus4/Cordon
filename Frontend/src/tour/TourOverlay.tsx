@@ -14,6 +14,9 @@ import { SCENES, TOUR_STEPS, type TourStep } from "./steps";
 import { START_TOUR_EVENT, startTour, useTourStore } from "./tourStore";
 import { useTargetRect, type Rect } from "./useTargetRect";
 
+/** Navigate whenever the target differs from where we are, query included (leaving ?pane=hoi-dap for the bare path must navigate). */
+export const needsNav = (to: string | undefined, current: string): boolean => !!to && to !== current;
+
 const CARD_W = 420;
 const PAD = 10;
 
@@ -88,7 +91,9 @@ export function TourOverlay() {
   const doRun = useCallback(async (s: TourStep) => {
     if (!s.run) return;
     setRunning(true);
-    try { await s.run.fn({ nav: (to) => goRef.current(to) }); } catch { /* errors already surface as toasts via api layer */ }
+    const my = seq.current; // the run is abandoned once the step changes, auto-play pauses or the tour stops
+    const alive = () => seq.current === my && useTourStore.getState().active;
+    try { await s.run.fn({ nav: (to) => goRef.current(to), alive }); } catch { /* errors already surface as toasts via api layer */ }
     setRunning(false);
   }, []);
 
@@ -102,7 +107,7 @@ export function TourOverlay() {
       let to: string | undefined;
       try { to = typeof step.route === "function" ? await step.route() : step.route; } catch { to = undefined; }
       if (!alive()) return;
-      if (to && to !== loc.pathname + loc.search && !(to === loc.pathname)) nav(to);
+      if (needsNav(to, window.location.pathname + window.location.search)) nav(to!);
       if (!auto) return;
       await sleep(900); if (!alive()) return;
       if (step.run) { await doRun(step); if (!alive()) return; }

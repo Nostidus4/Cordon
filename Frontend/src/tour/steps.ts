@@ -49,7 +49,7 @@ export const TOUR_STEPS: TourStep[] = [
 
   { id: "sim-minh", scene: 2, title: "Thử: nếu anh Minh bị chiếm", route: "/he-thong/rui-ro", target: ["sys-sim-graph", "sys-sim-exposure", "sys-sim-picker"], placement: "auto", dwell: 7000,
     run: { label: "Chọn anh Minh", fn: selectPrincipals(["minh"]) },
-    caption: "Hình đỏ dần theo các thẻ anh Minh với tới. Chain chỉ chặn 20.000 (Enforced), nhưng nếu quan hệ tự khai là thật thì tới 100.000/ngày (Estimated)." },
+    caption: "Hình đỏ dần theo các thẻ anh Minh với tới. Chain chỉ chặn 20.000 (chain chặn), nhưng nếu quan hệ tự khai là thật thì tới 100.000/ngày (ước tính)." },
   { id: "sim-minh-huy", scene: 2, title: "Thêm anh Huy", route: "/he-thong/rui-ro", target: ["sys-sim-graph", "sys-sim-exposure", "sys-sim-picker"], placement: "auto", dwell: 6500,
     run: { label: "Chọn Minh + Huy", fn: selectPrincipals(["minh", "huy"]) },
     caption: "Hai khu cộng lại khoảng 140.000/ngày, tức 7% quỹ chính. Lý do lớn nhất: khu anh Minh chưa có cổng chung." },
@@ -82,7 +82,7 @@ export const TOUR_STEPS: TourStep[] = [
     caption: "Giao dịch bị node từ chối ngay ở tầng giao thức: không có tx hash, không có phí, không vào block." },
 
   { id: "req-12", scene: 5, title: "Xin thêm quyền: đơn #12", route: resolveScene5Route(12), target: ["sys-before-after"], placement: "auto", dwell: 7000,
-    caption: "Nâng hạn mức khu Minh từ 30.000 lên 130.000: Enforced tăng 1,5% → 6,5% quỹ chính. Cordon hiện rõ trước khi duyệt." },
+    caption: "Nâng hạn mức khu Minh từ 30.000 lên 130.000: mức chain chặn tăng 1,5% → 6,5% quỹ chính. Cordon hiện rõ trước khi duyệt." },
   { id: "req-huy", scene: 5, title: "Hỏi trợ lý về anh Huy", route: resolveScene5Route(12), target: ["sys-assistant"], placement: "auto", dwell: 8000,
     run: { label: "Hỏi về anh Huy", fn: async () => { clickInTarget("sys-assistant"); await sleep(900); } },
     caption: "“Có nên giao trợ lý Cân đối cho anh Huy?” Trợ lý cảnh báo R4: anh Huy đang giữ phiếu duyệt của Hội đồng." },

@@ -1,6 +1,6 @@
 // Reads each curated receipt once (eth_getTransactionReceipt, read-only). With no RPC the page keeps the static list.
 import { useEffect, useState } from "react";
-import { RpcError, rpcCall } from "./rpc";
+import { RpcError, rpcCall, withRetry } from "./rpc";
 import { SAMPLE_TXS, sampleView, type RpcReceipt, type SampleView } from "./sampleTxs";
 
 export function useSampleTxs(url: string): Record<string, SampleView> {
@@ -15,7 +15,7 @@ export function useSampleTxs(url: string): Record<string, SampleView> {
       for (const tx of SAMPLE_TXS) {
         let view: SampleView;
         try {
-          view = sampleView(tx, await rpcCall<RpcReceipt | null>(url, "eth_getTransactionReceipt", [tx.hash]));
+          view = sampleView(tx, await withRetry(() => rpcCall<RpcReceipt | null>(url, "eth_getTransactionReceipt", [tx.hash])));
         } catch (e) {
           view = { state: "error", message: e instanceof RpcError ? e.message : "Lỗi không rõ" };
         }

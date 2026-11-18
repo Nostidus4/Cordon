@@ -1,5 +1,5 @@
 // Trợ lý Cân đối (spec §7.1): timeline of runs. The rule engine computes amountIn; the language model only writes the reason.
-import { REASONS } from "../../../shared/reasonCodes";
+import { reasonTextVi } from "../../../lib/ops";
 import { fmtPercent } from "../../../lib/format";
 import { RobotIcon } from "../../../stage/ui";
 import type { AgentRun } from "../../../types";
@@ -18,9 +18,9 @@ const INK2 = "var(--ink-2)";
 
 /** Static diagram of the rule engine, one calm line. */
 function RuleDiagram() {
-  const steps: [string, string][] = [["Đầu vào", "số dư vault, hạn mức còn lại"], ["Lệch quá 5%?", "tTKB so với mục tiêu 20%"], ["amountIn = min(…)", "thiếu · thẻ · khu · 5.000"], ["Chạy thử", "hỏi chain trước, chưa gửi"]];
+  const steps: [string, string][] = [["Đầu vào", "số dư vault, hạn mức còn lại"], ["Lệch quá 5%?", "tTKB so với mục tiêu 20%"], ["Số tiền = mức nhỏ nhất", "thiếu · thẻ · khu · 5.000"], ["Chạy thử", "hỏi chain trước, chưa gửi"]];
   return (
-    <div className="flex flex-wrap items-stretch gap-y-2" role="img" aria-label="Rule engine: đầu vào, kiểm tra lệch, tính amountIn, chạy thử, rồi swap hoặc bị chặn">
+    <div className="flex flex-wrap items-stretch gap-y-2" role="img" aria-label="Luật tính: đầu vào, kiểm tra lệch, tính số tiền, chạy thử, rồi đổi hoặc bị chặn">
       {steps.map(([t, s]) => (
         <div key={t} className="flex items-center">
           <div style={{ background: "#fff", borderRadius: 16, padding: "7px 14px", boxShadow: "0 2px 0 var(--line)" }}>
@@ -31,7 +31,7 @@ function RuleDiagram() {
         </div>
       ))}
       <div className="flex flex-col justify-center gap-1">
-        <span style={{ background: "var(--ok-soft)", color: "var(--ok-ink)", borderRadius: 999, padding: "2px 12px", fontWeight: 700, fontSize: 12.5 }}>✓ swap, có tx</span>
+        <span style={{ background: "var(--ok-soft)", color: "var(--ok-ink)", borderRadius: 999, padding: "2px 12px", fontWeight: 700, fontSize: 12.5 }}>✓ đã đổi, có giao dịch</span>
         <span style={{ background: "var(--red-soft)", color: "var(--red-ink)", borderRadius: 999, padding: "2px 12px", fontWeight: 700, fontSize: 12.5 }}>✕ bị chặn, có mã lỗi</span>
       </div>
     </div>
@@ -87,15 +87,15 @@ function RunRow({ r, first, simulated, onAttempt }: { r: AgentRun; first: boolea
 
         {calc ? (
           <div className="mt-2 flex flex-wrap items-center gap-1.5" style={{ fontSize: 12.5, color: INK2 }}>
-            <code className="mono">amountIn = min(</code>
+            <span style={{ fontWeight: 700 }} title="amountIn = min(…)">Số tiền đổi = nhỏ nhất của (</span>
             {calc.terms.map((t) => (
               <span key={t.id} className="tnum" style={{ background: calc.winner.id === t.id ? "var(--ok-soft)" : "#f6ecd9", color: calc.winner.id === t.id ? "var(--ok-ink)" : INK2, fontWeight: calc.winner.id === t.id ? 800 : 600, borderRadius: 999, padding: "1px 10px" }}>{t.label} {t.value.display}</span>
             ))}
-            <code className="mono">)</code>
-            {consistent === false ? <Chip t="warn">gửi {d?.amountIn.display}, khác min</Chip> : null}
+            <span style={{ fontWeight: 700 }}>)</span>
+            {consistent === false ? <Chip t="warn">gửi {d?.amountIn.display}, khác mức nhỏ nhất</Chip> : null}
           </div>
         ) : null}
-        {r.reasonCode ? <div className="mt-2" style={{ color: "var(--red-ink)", fontWeight: 700, fontSize: 13 }}>{REASONS[r.reasonCode].vi} <code className="mono" style={{ fontWeight: 600, marginLeft: 6 }}>{r.reasonCode}</code></div> : null}
+        {r.reasonCode ? <div className="mt-2" style={{ color: "var(--red-ink)", fontWeight: 700, fontSize: 13 }}>{reasonTextVi(r.reasonCode)} <code className="mono" style={{ fontWeight: 600, marginLeft: 6 }}>{r.reasonCode}</code></div> : null}
 
         {r.reasonText ? <p style={{ margin: "10px 0 0", padding: "8px 14px", background: "#f3ecff", borderRadius: 14, fontWeight: 600, fontSize: 13.5 }}>
           “{r.reasonText}” <span style={{ fontSize: 11.5, color: INK2, fontWeight: 600, marginLeft: 6 }}>{reasonSourceVi(r.reasonSource)}</span>

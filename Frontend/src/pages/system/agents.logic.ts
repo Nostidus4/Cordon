@@ -182,6 +182,21 @@ export function countBySource(list: Violation[] | undefined): Record<SourceFilte
 }
 
 // ---------- overview strip ----------
+/** What is stopped right now: the whole vault (pauseAll) and/or districts locked by the Council. Read from the graph snapshot. */
+export interface HoldState { paused: boolean; lockedLabels: string[] }
+export function holdState(graph: Pick<GraphSnapshot, "nodes" | "districts"> | undefined): HoldState {
+  return {
+    paused: graph?.nodes.find((n) => n.id === "vault")?.data.paused === true,
+    lockedLabels: (graph?.districts ?? []).filter((d) => d.locked).map((d) => d.label),
+  };
+}
+/** The "Sự cố" cell of the "Đang chạy gì" strip: an open incident wins, then a pause/lock, else the calm text. */
+export function incidentCellText(n: Pick<NowStrip, "openIncident">, h: HoldState): { text: string; tone: "bad" | "calm" } {
+  if (n.openIncident) return { text: n.openIncident.titleVi, tone: "bad" };
+  const parts = [h.paused ? "kho đang dừng" : "", h.lockedLabels.length ? `đã khoá ${h.lockedLabels.join(", ")}` : ""].filter(Boolean);
+  return parts.length ? { text: parts.join(" · "), tone: "bad" } : { text: "không có sự cố mở", tone: "calm" };
+}
+
 export interface NowStrip { lastRun: AgentRun | null; openIncident: Incident | null; lastAttacker: Violation | null }
 export function nowStrip(x: { runs?: AgentRun[]; incidents?: Incident[]; violations?: Violation[] }): NowStrip {
   return {

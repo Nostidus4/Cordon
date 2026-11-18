@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactN
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Boxes, Bot, Building2, CornerDownLeft, Lock, PauseCircle, Play, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, Swords } from "lucide-react";
+import { Boxes, Bot, Building2, CornerDownLeft, FileCheck2, Info, LayoutDashboard, Lock, PauseCircle, Play, Radar, Radio, RotateCcw, Scale, ScrollText, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles, Swords } from "lucide-react";
 import { useUiStore } from "../../store/uiStore";
 import { useActions } from "../../hooks/useActions";
 import { Kbd } from "./Kbd";
@@ -27,6 +27,19 @@ export function useRegisterCommands(cmds: Cmd[]) {
 const subscribe = (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; };
 const getSnapshot = () => snapshot;
 const strip = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").toLowerCase();
+
+/** The 9 tabs of the technical dashboard (/he-thong/:tab), with unaccented-friendly Vietnamese keywords. */
+const SYS_TABS: { id: string; label: string; icon: ReactNode; keywords: string }[] = [
+  { id: "tong-quan", label: "Tổng quan", icon: <LayoutDashboard className="size-4" />, keywords: "tong quan so lieu kich ban dieu khien trang chu bang ky thuat" },
+  { id: "giao-dich", label: "Giao dịch", icon: <ShieldCheck className="size-4" />, keywords: "giao dich 8 cong kiem tra lan thu bi chan cho phep" },
+  { id: "su-kien", label: "Sự kiện", icon: <ScrollText className="size-4" />, keywords: "su kien nhat ky log chain event" },
+  { id: "chinh-sach", label: "Chính sách", icon: <SlidersHorizontal className="size-4" />, keywords: "chinh sach han muc khu the danh sach cho phep vault" },
+  { id: "hoi-dong", label: "Hội đồng", icon: <Scale className="size-4" />, keywords: "hoi dong de xuat duyet 2/3 khoa gio phu quyet" },
+  { id: "rui-ro", label: "Rủi ro", icon: <Radar className="size-4" />, keywords: "rui ro mo phong the bi chiem mat bao nhieu thiet hai" },
+  { id: "bang-chung", label: "Bằng chứng", icon: <FileCheck2 className="size-4" />, keywords: "bang chung chain hop dong giao dich mau tu kiem" },
+  { id: "agent", label: "Agent AI", icon: <Sparkles className="size-4" />, keywords: "agent ai tro ly can doi hoi dap copilot ung cuu su co" },
+  { id: "gioi-thieu", label: "Giới thiệu", icon: <Info className="size-4" />, keywords: "gioi thieu mo hinh kho gioi han phap ly" },
+];
 
 /** ⌘K / Ctrl+K: jump to screens, run demo actions. Mount once (Root). */
 export function CommandPalette() {
@@ -55,9 +68,9 @@ export function CommandPalette() {
   const go = (p: string) => () => nav(p);
   const cmds: Cmd[] = useMemo(() => [
     { id: "sys", group: "Chuyển màn", label: "Bảng kỹ thuật", icon: <ShieldAlert className="size-4" />, run: go("/he-thong"), keywords: "he thong ky thuat ban do de xuat hoi dong gia lap su co phap ly" },
-    { id: "evi", group: "Chuyển màn", label: "Bằng chứng trên chain", icon: <ShieldCheck className="size-4" />, run: go("/he-thong/bang-chung"), keywords: "bang chung evidence" },
+    ...SYS_TABS.map((t): Cmd => ({ id: `tab-${t.id}`, group: "Chuyển màn", label: `Bảng kỹ thuật: ${t.label}`, icon: t.icon, run: go(`/he-thong/${t.id}`), keywords: t.keywords })),
     { id: "city", group: "Chuyển màn", label: "Thành phố 3D", icon: <Building2 className="size-4" />, run: go("/city"), keywords: "city 3d" },
-    { id: "kit", group: "Chuyển màn", label: "UI kit (dev)", icon: <Boxes className="size-4" />, run: go("/_kit") },
+    ...(import.meta.env.DEV ? [{ id: "kit", group: "Chuyển màn", label: "UI kit (dev)", icon: <Boxes className="size-4" />, run: go("/_kit") } as Cmd] : []),
     { id: "mode", group: "Thao tác demo", label: mode === "live" ? "Chuyển sang Replay" : "Chuyển sang Live", icon: <Radio className="size-4" />, run: () => setMode(mode === "live" ? "replay" : "live") },
     { id: "agent", group: "Thao tác demo", label: "Chạy agent buổi sáng", hint: "swap 5.000 tUSDC → tTKB", icon: <Bot className="size-4" />, run: () => a.runAgent.mutate(), demoOnly: true, keywords: "agent rebalance" },
     { id: "v2", group: "Thao tác demo", label: "Áp dụng policy v2 (gom khu, 2/3 duyệt)", hint: "Lan + Trang duyệt", icon: <ShieldCheck className="size-4" />, run: () => a.policyV2.mutate(), demoOnly: true, keywords: "policy v2 gom khu" },
