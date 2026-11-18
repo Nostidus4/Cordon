@@ -14,7 +14,7 @@ import { useIncidents } from "../../../hooks/useBuildings";
 import { useViolations } from "../../../hooks/useViolations";
 import { isoOfSec } from "../../../lib/dto";
 import { reasonTextVi } from "../../../lib/ops";
-import { nowStrip } from "../agents.logic";
+import { holdState, incidentCellText, nowStrip } from "../agents.logic";
 import { useAgentRuns, useNow } from "../data";
 import { useFeed } from "../feed";
 import { playFullScenario, STEP_LABEL, type ScenarioStep } from "../scenario";
@@ -54,14 +54,16 @@ export function NowStrip() {
   const { data: runs } = useAgentRuns();
   const { data: incidents } = useIncidents("all");
   const { data: violations } = useViolations(50);
+  const { data: graph } = useGraph();
   const n = nowStrip({ runs, incidents, violations });
+  const inc = incidentCellText(n, holdState(graph));
   const clk = (ts: number) => fmtClock(isoOfSec(ts));
   const run = n.lastRun;
   return (
     <Link to="/he-thong/agent" data-tour="sys-now" aria-label="Đang chạy gì: mở mục Agent AI" className="flex flex-wrap items-center gap-x-5 gap-y-2" style={{ background: "#fff", borderRadius: 20, padding: "10px 16px", boxShadow: "0 2px 0 var(--line)", color: "inherit", textDecoration: "none" }}>
       <span className="font-toy" style={{ fontWeight: 800, fontSize: 17 }}>Đang chạy gì</span>
       <span style={{ fontSize: 13 }}>Agent Cân đối: {run ? <b>{run.outcome === "swapped" ? "đã đổi" : run.outcome === "no_action" ? "không cần làm gì" : "bị chặn"} lúc {clk(run.ts)}</b> : <span style={{ color: "var(--ink-2)" }}>chưa chạy</span>}</span>
-      <span style={{ fontSize: 13 }}>Sự cố: {n.openIncident ? <b style={{ color: "var(--red-ink)" }}>{n.openIncident.titleVi}</b> : <span style={{ color: "var(--ink-2)" }}>không có sự cố mở</span>}</span>
+      <span style={{ fontSize: 13 }}>Sự cố: {inc.tone === "bad" ? <b style={{ color: "var(--red-ink)" }}>{inc.text}</b> : <span style={{ color: "var(--ink-2)" }}>{inc.text}</span>}</span>
       <span style={{ fontSize: 13 }}>Kẻ tấn công: {n.lastAttacker ? <b>bị chặn lúc {clk(n.lastAttacker.ts)}, {reasonTextVi(n.lastAttacker.reasonCode)}</b> : <span style={{ color: "var(--ink-2)" }}>chưa thử</span>}</span>
       <span style={{ marginLeft: "auto", fontWeight: 700, fontSize: 13 }}>Xem Agent AI →</span>
     </Link>
@@ -93,7 +95,7 @@ export function Controls() {
       <ToyButton size="xs" color="red" disabled={off} onClick={() => act(a.runScene4, undefined)}>③ Kẻ gian 1–5</ToyButton>
       <ToyButton size="xs" color="teal" disabled={off || minhLocked} done={minhLocked} onClick={() => act(a.lock, { principalId: "minh", member: "lan" })}>④ Khoá khu Minh</ToyButton>
       <ToyButton size="xs" color="blue" disabled={off || !minhLocked} onClick={() => act(a.step7, undefined)}>⑤ Bước 7</ToyButton>
-      <ToyButton size="xs" color="cream" disabled={off || paused} done={paused} onClick={() => act(a.pause, { member: "lan" })}><code className="mono">pauseAll()</code></ToyButton>
+      <ToyButton size="xs" color="cream" disabled={off || paused} done={paused} onClick={() => act(a.pause, { member: "lan" })}>Dừng cả kho</ToyButton>
       <ToyButton size="xs" color="green" disabled={off} icon={<Play size={13} aria-hidden />} onClick={() => void full()}>Chạy cả kịch bản</ToyButton>
       {busy ? <Chip t="info">{STEP_LABEL[busy]}…</Chip> : null}
     </div>

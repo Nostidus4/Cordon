@@ -55,7 +55,7 @@ function History() {
 
 export function Council() {
   return (
-    <Section id="hoi-dong" accent={ACCENT.council} title="Hội đồng và đề xuất" sub="Siết thì một người là đủ, nới thì cần 2/3; trợ lý AI không có phiếu nào.">
+    <Section id="hoi-dong-muc" accent={ACCENT.council} title="Hội đồng và đề xuất" sub="Siết thì một người là đủ, nới thì cần 2/3; trợ lý AI không có phiếu nào.">
       <div className="mb-5 flex flex-wrap gap-x-14 gap-y-3" aria-label="Nguyên tắc cốt lõi">
         <Principle big="1" k="Siết" d="khoá khu, dừng kho, hạ hạn mức" c="#e0364a" />
         <Principle big="2/3" k="Nới" d="mở khoá, tăng hạn mức, thêm thẻ" c={ACCENT.council} />

@@ -1,6 +1,7 @@
 // Per-attempt check trace: replays the PolicyVault check order (spec §6.3) against an attempt and marks which check failed.
 // Computed from the attempt's own outcome + reasonCode, so it is consistent with what the chain reported by construction.
 import { REASONS, type ReasonCode } from "../../shared/reasonCodes";
+import { reasonTextVi } from "../../lib/ops";
 import type { Attempt } from "../../types";
 
 export type CheckId = "paused" | "registered" | "unlocked" | "token" | "target" | "keycap" | "districtcap" | "transfer";
@@ -32,7 +33,7 @@ export interface AttemptTrace {
   summary: string;
 }
 
-const stageForReason = (code: ReasonCode): CheckId | null => CHECKS.find((c) => c.reasons.includes(code))?.id ?? null;
+const stageForReason = (code: string): CheckId | null => CHECKS.find((c) => (c.reasons as readonly string[]).includes(code))?.id ?? null;
 
 export function traceAttempt(a: Pick<Attempt, "action" | "outcome" | "reasonCode">): AttemptTrace {
   const blank = (status: StageStatus): CheckStage[] => CHECKS.map((c) => ({ ...c, status }));
@@ -51,7 +52,7 @@ export function traceAttempt(a: Pick<Attempt, "action" | "outcome" | "reasonCode
   const failId = a.reasonCode ? stageForReason(a.reasonCode) : null;
   const failIdx = failId ? CHECKS.findIndex((c) => c.id === failId) : -1;
   const stages = CHECKS.map<CheckStage>((c, i) => ({ ...c, status: failIdx < 0 ? "skip" : i < failIdx ? "pass" : i === failIdx ? "fail" : "skip" }));
-  return { route: "vault", gate: "pass", stages, failId, summary: a.reasonCode ? `Dừng ở kiểm tra ${failIdx + 1}: ${REASONS[a.reasonCode].vi}` : "Bị revert" };
+  return { route: "vault", gate: "pass", stages, failId, summary: a.reasonCode ? `Dừng ở kiểm tra ${failIdx + 1}: ${reasonTextVi(a.reasonCode)}` : "Bị revert" };
 }
 
 /** Human-readable call, e.g. PolicyVault.pay(tUSDC, vendor_cloud, 10.000) */
@@ -65,4 +66,7 @@ export function callSignature(a: Pick<Attempt, "action" | "signer" | "token" | "
 }
 
 /** The custom error name shown next to a reason code, e.g. PrincipalDailyCapExceeded() */
-export const errorName = (c: ReasonCode | null): string | null => (c && REASONS[c].error ? `${REASONS[c].error}()` : null);
+export const errorName = (c: string | null): string | null => {
+  const e = c ? (REASONS as Record<string, { error?: string } | undefined>)[c]?.error : undefined; // the code is an open string on the wire: unknown codes have no custom error
+  return e ? `${e}()` : null;
+};

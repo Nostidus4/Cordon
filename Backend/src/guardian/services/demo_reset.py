@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -28,8 +29,13 @@ async def reset(rt: Runtime, *, startup: bool = False) -> dict[str, Any]:
     FRESH contract set and written it to the deployments file (`infra/l1/demo-reset.sh`). This call reloads that
     deployment without a restart, clears the stores, keeps the event log and seeds request #12 on the new Council
     (its counter was left at 11 by the script, so the id is 12)."""
-    for t in list(rt.scenario_tasks.values()):
+    # Cancel AND wait: the CancelledError lands at the task's next await and its `finally` re-saves the run, so
+    # the stores may only be cleared once the tasks are really done (else a ghost "cancelled" run survives).
+    tasks = [t for t in rt.scenario_tasks.values() if t is not asyncio.current_task()]
+    for t in tasks:
         t.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
     rt.scenario_tasks.clear()
     if rt.is_l1 and not startup:
         try:

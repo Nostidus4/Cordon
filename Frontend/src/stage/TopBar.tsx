@@ -78,6 +78,7 @@ export function TopBar({ scene, night, onGo, onNight, onReset, resetting }: {
               <button type="button" aria-pressed={mode === "live"} onClick={() => setMode("live")}>{liveLabel}</button>
               <button type="button" aria-pressed={mode === "replay"} onClick={() => { setMode("replay"); onGo("incident"); setMore(false); }}>Xem lại</button>
             </div>
+            <Link to="/he-thong?tour=1" className="font-toy text-[15px] font-bold no-underline" style={{ color: "var(--ink)" }}>Tour 3 phút</Link>
             <Link to="/he-thong" className="font-toy text-[15px] font-bold no-underline" style={{ color: "var(--ink)" }}>Bảng kỹ thuật</Link>
             <button type="button" onClick={() => { setMore(false); onReset(); }} disabled={resetting} className="toy-btn self-start" data-c="cream" data-size="sm"><RotateCcw size={16} strokeWidth={2.6} aria-hidden />Chơi lại từ đầu</button>
           </div>

@@ -84,7 +84,7 @@ export function PolicyState() {
                       return (
                         <tr key={kid}>
                           <td style={{ paddingLeft: 24 }}><KindTag kind={n?.kind} /> <code className="mono">{kid}</code> <span className="mono" style={{ color: "var(--ink-2)", fontSize: 11 }}>{n?.address ? shortHash(n.address, 6, 4) : ""}</span></td>
-                                                    <td className={f(`k:${kid}:role`)}><Chip t={enabled ? "ok" : "bad"} mono>{enabled ? "Enabled" : "None"}</Chip></td>
+                                                    <td className={f(`k:${kid}:role`)}><Chip t={enabled ? "ok" : "bad"} title={enabled ? "Enabled" : "None"}>{enabled ? "Được gửi" : "Bị chặn"}</Chip></td>
                           <td className={`r tnum ${f(`k:${kid}:cap`)}`}>{n?.keyDailyCap?.display ?? "…"}</td>
                           <td className="r" style={{ color: "var(--ink-2)" }}>·</td>
                           <td className={f(`k:${kid}:spent`)}>
@@ -104,11 +104,11 @@ export function PolicyState() {
 
       </div>
       <div className="grid gap-3.5">
-        <AllowList title="Tiền đã duyệt" code="tokenAllowed[token]" flash={f("allow:count")}
+        <AllowList title="Tiền đã duyệt" code="chi tiết kỹ thuật: tokenAllowed[token]" flash={f("allow:count")}
           rows={[...tokens.map((n) => ({ id: n.id, name: n.label, ok: true, sub: decimalsOf(n.label) !== null ? `${decimalsOf(n.label)} decimals` : undefined })), ...NOT_ALLOWED.filter((x) => x.kind === "token").map((x) => ({ id: x.name, name: x.name, ok: false, sub: `${decimalsOf(x.name) ?? "?"} decimals` }))]} />
-        <AllowList title="Chợ đổi tiền đã duyệt" code="protocolAllowed[target][selector]" flash={f("allow:count")}
+        <AllowList title="Chợ đổi tiền đã duyệt" code="chi tiết kỹ thuật: protocolAllowed[target][selector]" flash={f("allow:count")}
           rows={[...protocols.map((n) => ({ id: n.id, ...parseProtocol(n.label), ok: true })), ...NOT_ALLOWED.filter((x) => x.kind === "protocol").map((x) => ({ id: x.name, ...parseProtocol(x.name), ok: false }))].map((r) => ({ id: r.id, name: r.target, fn: r.fn, ok: r.ok }))} />
-        <AllowList title="Người nhận đã duyệt" code="recipientAllowed[addr]" flash={f("allow:count")}
+        <AllowList title="Người nhận đã duyệt" code="chi tiết kỹ thuật: recipientAllowed[addr]" flash={f("allow:count")}
           rows={[...recipients.map((n) => ({ id: n.id, name: n.label, ok: true, sub: n.data.address ? shortHash(n.data.address, 6, 4) : undefined })), ...NOT_ALLOWED.filter((x) => x.kind === "recipient").map((x) => ({ id: x.name, name: x.name, ok: false }))]} />
       </div>
       </div>
@@ -129,7 +129,7 @@ function AllowList({ title, code, rows, flash }: { title: string; code: string; 
           <li key={r.id} className="flex items-center gap-2" style={{ background: "#fff", border: `1.5px ${r.ok ? "solid" : "dashed"} ${r.ok ? "var(--ok-line)" : "#e3b3b3"}`, borderRadius: 12, padding: "3px 9px", minWidth: 0 }}
             title={r.ok ? "Có trong danh sách" : "Không có trong danh sách: dùng trong kịch bản kẻ gian"}>
             <span aria-label={r.ok ? "được phép" : "không được phép"} style={{ fontWeight: 800, color: r.ok ? "var(--ok-ink)" : "var(--red-ink)", width: 14 }}>{r.ok ? "✓" : "✕"}</span>
-            <span className="mono" style={{ fontWeight: 600, fontSize: 12, textDecoration: r.ok ? "none" : "line-through", color: r.ok ? "var(--ink)" : "#a05a5a" }}>{r.name}{r.fn ? <span style={{ color: "var(--ink-2)" }}>.{r.fn}</span> : null}</span>
+            <span className="mono" style={{ fontWeight: 600, fontSize: 12, textDecoration: r.ok ? "none" : "line-through", color: r.ok ? "var(--ink)" : "#a05a5a" }}>{r.name}</span>{r.fn ? <span style={{ color: "var(--ink-2)", fontSize: 11.5 }}>lệnh đổi tiền <code className="mono" style={{ fontSize: 10.5 }} title="tên hàm trong hợp đồng">{r.fn}</code></span> : null}
             {r.sub ? <span className="mono" style={{ marginLeft: "auto", color: "var(--ink-2)", fontSize: 11 }}>{r.sub}</span> : null}
           </li>
         ))}

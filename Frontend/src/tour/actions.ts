@@ -3,7 +3,8 @@ import { api } from "../lib/api";
 import { useUiStore } from "../store/uiStore";
 import type { MemberId, Proposal } from "../types";
 
-export interface TourCtx { nav: (to: string) => void }
+/** `alive` goes false when the tour stops, the step changes or auto-play is paused: long waits must bail out then. */
+export interface TourCtx { nav: (to: string) => void; alive?: () => boolean }
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Click the first <button> inside `[data-tour="name"]` (e.g. an assistant question). Returns false if absent. */
@@ -37,22 +38,26 @@ const findProposal = async (id: number) => (await api.getProposals()).find((x) =
  * -> policy v2. The step anchors on the timelock card while we wait. If the timelock is 0 / a keeper already executed, we just observe it.
  */
 export async function approveMerge(ctx: TourCtx): Promise<void> {
+  const alive = ctx.alive ?? (() => true);
   let p = await findMergeProposal();
+  if (!alive()) return;
   if (!p) { await createMerge(ctx); p = await findMergeProposal(); }
-  if (!p || p.status !== "open") return;
+  if (!p || p.status !== "open" || !alive()) return;
   ctx.nav(reqRoute(p.id));
   await sleep(600);
   for (const m of ["lan", "trang"] as MemberId[]) {
+    if (!alive()) return;
     const cur = await findProposal(p.id);
     if (!cur || cur.status !== "open" || cur.approvals.includes(m) || cur.queued) continue;
-    await api.approveProposal(p.id, m);
+    try { await api.approveProposal(p.id, m); } catch { /* already approved by a double click or a keeper: the loop below re-reads the state */ }
     await sleep(1300);
   }
   // wait for eta, then execute (same call as the dashboard's "Thực thi": an approver executes; a keeper may beat us to it)
   const deadline = Date.now() + 120_000;
-  while (Date.now() < deadline) {
+  while (alive() && Date.now() < deadline) {
     const cur = await findProposal(p.id);
-    if (!cur || cur.status !== "open" || cur.vetoedBy) return;
+    if (!alive() || !cur || cur.status !== "open" || cur.vetoedBy) return;
+    if (!cur.queued && cur.eta == null) return; // not waiting on a timelock (not enough votes, or nothing to wait for): nothing to poll
     if (cur.queued && cur.eta != null && Date.now() / 1000 >= cur.eta) {
       try { await api.executeProposal(p.id, cur.approvals[0] ?? "lan"); } catch { /* keeper executed it first, or not ready yet: re-check */ }
     }

@@ -252,3 +252,20 @@ async def test_sse_smoke(app: FastAPI, client: httpx.AsyncClient) -> None:
     assert swapped["payload"]["principalSpentAfter"]["display"] == "5.000"
     ga = json.loads(got["graph_updated"][-1])
     assert ga["policyVersion"] == 2
+
+
+async def test_reset_during_running_scene4_leaves_no_ghost_run(client: httpx.AsyncClient) -> None:
+    """Reset cancels a running scene-4 attack; the cancelled task must not re-save its run after the stores clear."""
+    import asyncio
+
+    await client.post("/api/demo/reset")
+    await client.post("/api/demo/policy-v2")
+    r = await client.post("/api/scenario/scene4/run?delay=1")
+    assert r.status_code == 200 and r.json()["id"] == "run-1"
+    await asyncio.sleep(0.1)  # the task is parked in its inter-step sleep
+    assert (await client.post("/api/demo/reset")).status_code == 200
+    await asyncio.sleep(0.3)  # a late `finally` would re-save the run by now
+    assert (await client.get("/api/scenario/runs")).json() == []
+    await client.post("/api/demo/policy-v2")
+    r2 = await client.post("/api/scenario/scene4/run?delay=0&wait=true")
+    assert r2.json()["id"] == "run-1"

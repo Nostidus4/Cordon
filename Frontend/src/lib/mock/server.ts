@@ -51,6 +51,8 @@ const BLOCK_BASE = 1_284_310;
 const nowIso = () => new Date().toISOString();
 const currentBlock = () => BLOCK_BASE + Math.floor((Date.now() - bootAt) / 2000);
 const nextId = (p: string) => `${p}-${++counter}`;
+let txSeq = 0; // every attempt / tx gets its own hash: never derive one from `counter`, which only moves with run ids
+const freshTx = (kind: string) => fakeTxHash(`${kind}:${++txSeq}`);
 let seq = 0; // numeric row ids (attempts, agent runs, assistant logs), like the backend tables
 const nextSeq = () => ++seq;
 const nowSec = () => Math.floor(Date.now() / 1000);
@@ -75,7 +77,7 @@ function pushEvent(name: string, payload: Record<string, unknown>, txHash?: stri
   // logIndex counts within the block, as on a real chain: keeps emission order under the (block, logIndex) sort
   // and makes (txHash, logIndex), the event identity (eventKey), unique
   const logIndex = events.reduce((n, x) => (x.block === block ? n + 1 : n), 0);
-  const e: ChainEvent = { block, txHash: txHash ?? fakeTxHash(`ev${counter}`), simulated: true, logIndex, name, payload, ts: nowSec() };
+  const e: ChainEvent = { block, txHash: txHash ?? freshTx("ev"), simulated: true, logIndex, name, payload, ts: nowSec() };
   events.push(e); emit({ type: "event", data: e });
   return e;
 }
@@ -115,7 +117,7 @@ function ensureRun(): string {
   runs.push({ id, status: "running", delay: mockConfig.stepDelayMs / 1000, startedAt: nowSec(), finishedAt: null, policyVersion: S.policyVersion, error: null, attempts: [] });
   return id;
 }
-function recordAttempt(step: number, a: Action, _label: string, scenarioTime: string): Attempt {
+function recordAttempt(step: number, a: Action, _label: string, scenarioTime: string, source: string = step === 0 ? "agent" : "server"): Attempt {
   const runId = ensureRun();
   const res = evaluate(S, a);
   if (res.outcome === "ok") applySpend(S, a);
@@ -126,12 +128,12 @@ function recordAttempt(step: number, a: Action, _label: string, scenarioTime: st
     id: nextSeq(), scenarioRunId: runId, step: step === 0 ? null : step, ts: nowSec(), displayTime: scenarioTime, signer: a.signer, signerLabel: signerLabel(a.signer), principalId: pid,
     action: a.kind === "approve" ? "raw_call" : a.kind, outcome: res.outcome, reasonCode: res.reason,
     reasonTextVi: res.reason ? REASONS[res.reason].vi : null, reasonTextEn: res.reason ? REASONS[res.reason].en : null,
-    txHash: blockedAtProtocol ? null : fakeTxHash(`at${counter}`), simulated: true,
+    txHash: blockedAtProtocol ? null : freshTx("at"), simulated: true,
     errorRaw: blockedAtProtocol ? rpcError(a.signer) : reverted && res.reason ? `execution reverted: ${REASONS[res.reason].error}()` : null,
     block: currentBlock(), token: a.token ?? null, to: a.dex ? (/evil/i.test(a.dex) ? "evil_dex" : "mock_dex") : (a.to ?? null), toLabel: null, amount: a.amount ? money(a.amount) : null,
     keySpentAfter: S.keys[a.signer] ? money(S.keys[a.signer].spent) : null,
     principalSpentAfter: pid && a.kind !== "approve" ? money(spentOf(S, pid)) : null,
-    source: step === 0 ? "agent" : "server", badge: blockedAtProtocol ? "rejected_by_chain" : "tx",
+    source, badge: blockedAtProtocol ? "rejected_by_chain" : "tx",
   };
   attempts.push(at);
   const run = runs.find((r) => r.id === runId); if (run) run.attempts.push(at);
@@ -175,7 +177,7 @@ function agentRunOnceSync(): AgentRun {
     if (res.outcome === "ok") {
       const hasStep0 = attempts.some((x) => x.scenarioRunId === currentRunId && stepOf(x) === 0 && x.source === "agent");
       if (!hasStep0) { const at = recordAttempt(0, a, "", "09:00"); txHash = at.txHash; attemptId = at.id; }
-      else { applySpend(S, a); txHash = fakeTxHash(`ag${counter}`); pushEvent("Swapped", { key: a.signer, principalId: res.principalId, amount: money(amount), principalSpentAfter: money(spentOf(S, res.principalId!)) }, txHash); }
+      else { applySpend(S, a); txHash = freshTx("ag"); pushEvent("Swapped", { key: a.signer, principalId: res.principalId, amount: money(amount), principalSpentAfter: money(spentOf(S, res.principalId!)) }, txHash); }
     }
     lastAgentBlocked = res.outcome !== "ok";
     run = { ...common, outcome: res.outcome === "ok" ? "swapped" : "blocked", reasonSource: "template", steps: null, reasonHashOnChain: null, reasonHashVerified: null, rejectedReasonText: null, reasonText, txHash, attemptId, reasonCode: res.reason,
@@ -274,16 +276,16 @@ function executeProposal(p: Proposal) {
   const firstConsolidate = p.change?.kind === "merge_district";
   applyCalls(S, calls);
   p.queued = false;
-  p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = fakeTxHash(`exec${p.id}`);
+  p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = freshTx("exec");
   p.resultingPolicyVersion = S.policyVersion;
   for (const c of calls) {
     const a = c.args as Record<string, any>;
-    if (c.fn === "moveKey") pushEvent("KeyMoved", { key: a.key, toId: a.toId });
-    if (c.fn === "setPrincipalDailyCap") pushEvent("CapChanged", { kind: "principal", subject: a.principalId, newCap: a.cap });
-    if (c.fn === "createPrincipal") pushEvent("PrincipalCreated", { id: a.principalId });
+    if (c.fn === "moveKey") pushEvent("KeyMoved", { key: a.key, toId: a.toId }, p.executedTxHash!);
+    if (c.fn === "setPrincipalDailyCap") pushEvent("CapChanged", { kind: "principal", subject: a.principalId, newCap: a.cap }, p.executedTxHash!);
+    if (c.fn === "createPrincipal") pushEvent("PrincipalCreated", { id: a.principalId }, p.executedTxHash!);
   }
-  pushEvent("PolicyVersionBumped", { version: S.policyVersion });
-  pushEvent("Executed", { id: p.id });
+  pushEvent("PolicyVersionBumped", { version: S.policyVersion }, p.executedTxHash!);
+  pushEvent("Executed", { id: p.id }, p.executedTxHash!);
   emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
   graphUpdated();
   if (firstConsolidate && !S.requestsSeeded) seedRequests();
@@ -402,9 +404,20 @@ function activeNear(): { id: string; pct: number } | null {
 // ---------- assistant (§9.5) ----------
 /** An answer before the verifier ran: questionId and numbersVerified are added by logAssistant. */
 type RawAnswer = Omit<AssistantAnswer, "questionId" | "numbersVerified">;
+/** Backend `_find_r1` / `_how_fix`: the R1 finding of Minh, else the first HIGH finding that carries a proposal. */
+function fixFinding(): Finding | undefined {
+  const all = computeFindings(S);
+  return all.find((f) => f.ruleId.startsWith("R1") && f.principalId === "minh") ?? all.find((f) => f.severity === "HIGH" && f.proposal);
+}
+/** Figures of the Huy question: the frozen risk report of request #13 (what its card shows), else a live draft, like the backend before #13 exists. */
+function huyAgentDraft(): { before: SimResult["totals"]; after: SimResult["totals"]; conflicted: boolean; concentration: boolean; riskReport: RiskReport } {
+  const p13 = S.proposals.find((p) => p.id === 13 && p.change?.kind === "move_key");
+  const d = p13 ?? buildDraft({ kind: "move_key", key: S.keys.key_agent_rebalance.address, to: "huy" });
+  return { before: d.riskReport.before, after: d.riskReport.after, riskReport: d.riskReport, conflicted: d.conflictedMembers.length > 0, concentration: d.warnings.some((w) => w.code === "CONCENTRATION") };
+}
 function answerFor(req: AskRequest): RawAnswer {
   const q = req.question.trim();
-  const v2 = computeFindings(S).length === 0;
+  const v2 = !computeFindings(S).some((f) => f.ruleId.startsWith("R1") && f.principalId === "minh");
   if (q === "Nếu anh Huy cũng bị chiếm thì sao?") {
     const sim = simulate(S, ["minh", "huy"]);
     const est = sim.totals.estimated.display, pct = fmtPercent(sim.totals.percentOfMainTreasury);
@@ -420,11 +433,7 @@ function answerFor(req: AskRequest): RawAnswer {
   }
   if (q === "Vì sao khu anh Minh có cờ vàng?") {
     const sim = simulate(S, ["minh"]);
-    if (v2) return { answer: `Khu anh Minh hiện không còn cờ vàng: ${keysOf(S, "minh").length} thẻ dùng chung trần ${S.principals.minh.dailyCap ? fmtDisplay(S.principals.minh.dailyCap) : "?"}/ngày.`,
-      numbers: [
-        { label: "Số thẻ trong khu", value: String(keysOf(S, "minh").length), source: "district", path: "keys.length" },
-        ...(S.principals.minh.dailyCap ? [{ label: "Trần chung khu", value: fmtDisplay(S.principals.minh.dailyCap), source: "district" as const, path: "dailyCap.display" }] : []),
-      ], highlight: sim.highlights };
+    if (v2) return { answer: "Khu anh Minh hiện không có cờ vàng mức cao.", numbers: [], highlight: sim.highlights };
     return {
       answer: `Anh Minh điều khiển ${sim.reachedKeys.length} thẻ: thẻ của anh, các trợ lý AI và phần mềm thanh toán. Mỗi thẻ có trần riêng ${fmtDisplay(S.keys.key_minh.dailyCap)} nhưng không có trần chung.`,
       numbers: [
@@ -436,8 +445,8 @@ function answerFor(req: AskRequest): RawAnswer {
     };
   }
   if (q === "Sửa thế nào?") {
-    const f = computeFindings(S)[0];
-    if (!f?.proposal) return { answer: "Hiện không có phát hiện rủi ro nào đang mở để sửa.", numbers: [], highlight: { nodeIds: [], edgeIds: [] } };
+    const f = fixFinding();
+    if (!f?.proposal) return { answer: "Hiện chưa có cờ vàng nào cần sửa.", numbers: [], highlight: { nodeIds: [], edgeIds: [] } };
     const d = buildDraft(f.proposal!);
     return {
       answer: `Gom các thẻ về một khu và đặt trần chung ${fmtDisplay(BigInt((f.proposal as { districtCap: Money }).districtCap.raw))}/ngày. Mức mất tối đa mỗi ngày giảm từ ${d.riskReport.before.estimated.display} xuống ${d.riskReport.after.estimated.display}.`,
@@ -452,12 +461,12 @@ function answerFor(req: AskRequest): RawAnswer {
   }
   if (q === "Có nên giao trợ lý Cân đối cho anh Huy?") {
     // same figures as the backend (assistant/fixed_questions.py `_huy_agent`): what the district could LOSE (estimated), not the cap that binds
-    const d = buildDraft({ kind: "move_key", key: S.keys.key_agent_rebalance.address, to: "huy" });
-    const b = d.riskReport.before.estimated.display, a = d.riskReport.after.estimated.display;
+    const d = huyAgentDraft();
+    const b = d.before.estimated.display, a = d.after.estimated.display;
     const cap = fmtDisplay(U(100000));
     const warnings: AssistantAnswer["warnings"] = [];
-    if (d.conflictedMembers.length) warnings.push({ code: "CONFLICT_OF_INTEREST", text: "Anh Huy đang ngồi Hội đồng và sẽ giữ một phiếu duyệt cho chính khu của mình." });
-    if (d.warnings.some((w) => w.code === "CONCENTRATION")) warnings.push({ code: "CONCENTRATION", text: "Quyền chi tập trung vào khu của một thành viên Hội đồng." });
+    if (d.conflicted) warnings.push({ code: "CONFLICT_OF_INTEREST", text: "Anh Huy đang ngồi Hội đồng và sẽ giữ một phiếu duyệt cho chính khu của mình." });
+    if (d.concentration) warnings.push({ code: "CONCENTRATION", text: "Quyền chi tập trung vào khu của một thành viên Hội đồng." });
     return {
       answer: `Anh Huy đang ngồi Hội đồng. Nếu nhận thêm trợ lý Cân đối, khu của anh ấy có thể chi tới ${a} USDC/ngày (hiện ${b}) và vẫn giữ một phiếu duyệt: xung đột lợi ích. Nên giao cho khu do Hội đồng sở hữu, hạn mức ${cap} USDC/ngày, chỉ qua chợ đã duyệt.`,
       numbers: [
@@ -484,14 +493,14 @@ function assistantTools(q: string, answer: RawAnswer): { toolCalls: AssistantToo
     return { toolCalls: [call("simulate_compromise", { principals: ["minh"] }, simSummary(r)), call("get_district", { principalId: "minh" }, `${d?.keys.length ?? 0} thẻ · cap ${d?.dailyCap?.display ?? "không có"}`)], roots: { simulate: r, district: d } };
   }
   if (q === "Sửa thế nào?") {
-    const f = computeFindings(S)[0];
+    const f = fixFinding();
     if (!f?.proposal) return { toolCalls: [call("list_findings", {}, "0 phát hiện đang mở")], roots: {} };
     const d = buildDraft(f.proposal!);
     return { toolCalls: [call("list_findings", {}, `${computeFindings(S).length} phát hiện · ${f.ruleId}`), call("simulate_compromise", { principals: [f.principalId], change: f.proposal! }, `trước ${d.riskReport.before.estimated.display} → sau ${d.riskReport.after.estimated.display}`)], roots: { proposal: { ...d, suggestions: answer.suggestions } } };
   }
   if (q === "Có nên giao trợ lý Cân đối cho anh Huy?") {
-    const d = buildDraft({ kind: "move_key", key: S.keys.key_agent_rebalance.address, to: "huy" });
-    return { toolCalls: [call("get_proposal", { id: 13 }, `conflictedMembers ${d.conflictedMembers.join(",") || "không"} · sau ${d.riskReport.after.estimated.display}`)], roots: { proposal: { ...d, suggestions: answer.suggestions } } };
+    const d = huyAgentDraft();
+    return { toolCalls: [call("get_proposal", { id: 13 }, `xung đột ${d.conflicted ? "có" : "không"} · sau ${d.after.estimated.display}`)], roots: { proposal: { riskReport: d.riskReport, suggestions: answer.suggestions } } };
   }
   return { toolCalls: [], roots: {} };
 }
@@ -602,8 +611,8 @@ function executeIncidentProposal(p: Proposal) {
   const iid = proposalIncident.get(p.id)!;
   const i = incidents.find((x) => x.id === iid)!;
   incidentRecovery.get(iid)?.recover();
-  p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = fakeTxHash(`exec${p.id}`); p.resultingPolicyVersion = S.policyVersion;
-  pushEvent("Executed", { id: p.id });
+  p.status = "executed"; p.executedAt = nowSec(); p.executedTxHash = freshTx("exec"); p.resultingPolicyVersion = S.policyVersion;
+  pushEvent("Executed", { id: p.id }, p.executedTxHash!);
   emit({ type: "proposal_updated", data: { proposalId: p.id, status: p.status, approvals: p.approvals.length } });
   graphUpdated();
   patchStep(i, "propose", "done", `Hội đồng đã duyệt đề xuất #${p.id}`);
@@ -671,7 +680,7 @@ function injectFault(id: string): FaultResult {
         proposal: { title: "Tắt thẻ bị lộ và mở lại khu anh Minh", detailVi: "tắt thẻ bị lộ, mở lại khu", calls: [
           { target: "PolicyVault", fn: "deactivateKey", args: { key: leakedKey }, describe: "Tắt thẻ bị lộ" },
           { target: "PolicyVault", fn: "unlockPrincipal", args: { id: "minh" }, describe: "Mở lại khu anh Minh" }],
-          recover: () => { const m = S.principals.minh; m.locked = false; for (const k of keysOf(S, "minh")) k.active = k.id !== leakedKey; S.graphVersion++; const tx = fakeTxHash(`unlock${++counter}`); pushEvent("PrincipalUnlocked", { principalId: "minh" }, tx);
+          recover: () => { const m = S.principals.minh; m.locked = false; for (const k of keysOf(S, "minh")) k.active = k.id !== leakedKey; S.graphVersion++; const tx = freshTx("unlock"); pushEvent("PrincipalUnlocked", { principalId: "minh" }, tx);
             for (const k of keysOf(S, "minh")) if (k.active) pushEvent("AllowListRoleSet", { key: k.address, role: 1, by: COUNCIL_ADDRESS }, tx); } },
         closeVi: "" }).id;
       break;
@@ -686,7 +695,7 @@ function injectFault(id: string): FaultResult {
       const oldCap = agentKey?.dailyCap ?? 0n;
       incidentId = startIncident({ building: "B06", faultId: def.id, titleVi: "Agent bị nhét lệnh lạ", detectVi: "Có văn bản lạ được nạp vào agent và một lệnh chuyển thẳng bị chặn", subject: { principalId: agentKey?.principalId ?? null, key: "key_agent_rebalance" },
         trigger: { reasonCode: at.reasonCode, attemptIds: [Number(at.id)] },
-        contain: () => { if (agentKey) agentKey.dailyCap = 0n; return { detailVi: "Hạ hạn mức thẻ agent về 0", txHash: fakeTxHash(`cap${++counter}`) }; },
+        contain: () => { if (agentKey) agentKey.dailyCap = 0n; return { detailVi: "Hạ hạn mức thẻ agent về 0", txHash: freshTx("cap") }; },
         proposal: { title: "Trả lại hạn mức cho thẻ agent", detailVi: "trả hạn mức cũ cho thẻ agent", calls: [{ target: "PolicyVault", fn: "restoreKeyCap", args: { key: "key_agent_rebalance", cap: oldCap.toString() }, describe: "Trả hạn mức cũ cho thẻ agent" }],
           recover: () => { if (agentKey) agentKey.dailyCap = oldCap; } }, closeVi: "" }).id;
       break;
@@ -740,14 +749,16 @@ function recentOf(id: BuildingId): BuildingRecent[] {
   }
   if (id === "B06") for (const a of agentRuns.slice(-10)) r(a.ts, "agent_run", a.reasonText ?? "", { txHash: a.txHash, simulated: true, reasonCode: a.reasonCode, ref: `agent_run:${a.id}` });
   if (id === "B02") for (const l of assistantLogs.slice(-10)) r(l.ts, "assistant", `${l.question}${l.numbersVerified ? "" : " · số liệu chưa kiểm chứng"}`, { ref: `assistant:${l.id}` });
-  if (id === "B07") for (const f of computeFindings(S).slice(0, 10)) r(0, "event", f.title, { ref: `finding:${f.id}` });
+  if (id === "B07") for (const f of computeFindings(S).slice(0, 10)) r(nowSec(), "event", f.title, { ref: `finding:${f.id}` });
+  // B08 mirrors the others: a coloured tile must say why in its drawer (the backend lists only incidents here, the mock also names the tiles behind the colour)
+  if (id === "B08") { const c = cityMap(); for (const b of BUILDING_REGISTRY) if (b.id !== "B08" && c[b.id].state !== "normal") r(nowSec(), "event", `${b.name}: ${c[b.id].reasonVi}`, { ref: `building:${b.id}` }); }
   for (const i of incidents) if (i.building === id || id === "B08") r(i.openedAt, "incident", `${i.titleVi} · ${INCIDENT_STATUS_VI[i.status]}`, { ref: `incident:${i.id}` });
   return out.sort((a, b) => b.ts - a.ts).slice(0, 10);
 }
 const INCIDENT_STATUS_VI: Record<IncidentStatus, string> = { detected: "vừa phát hiện", contained: "đã khoanh vùng", awaiting_council: "chờ Hội đồng", recovering: "đang hồi phục", resolved: "đã xong" };
 
 /** B05 Tx Guardian (CITY-003): the pure mock in ./txguard against the mock world, errors as the usual ApiError. */
-function txGuardWorld(): MockWorld {
+export function txGuardWorld(): MockWorld {
   return {
     keys: Object.fromEntries(Object.values(S.keys).map((k) => [k.id, { address: k.address, label: k.label, principalId: k.principalId }])),
     recipients: S.recipients, protocols: S.protocols, vaultUsdc: S.vaultUsdc,
@@ -792,7 +803,7 @@ function lockPrincipal(req: LockRequest): ActionResult {
     if (p.locked) throw new ApiError("ALREADY_LOCKED", "Khu đã bị khoá", 409);
     p.locked = true; for (const k of keysOf(S, p.id)) k.active = false;
     S.graphVersion++;
-    const tx = fakeTxHash(`lock${++counter}`);
+    const tx = freshTx("lock");
     pushEvent("PrincipalLocked", { principalId: p.id, by: addrOf(req.member) }, tx);
     for (const k of keysOf(S, p.id)) pushEvent("AllowListRoleSet", { key: k.address, role: 0, by: COUNCIL_ADDRESS }, tx);
     pushEvent("EmergencyAction", { member: addrOf(req.member), action: "lockPrincipal", subject: p.id }, tx);
@@ -875,7 +886,7 @@ export const mockApi = {
   async pauseAll(req: PauseRequest): Promise<ActionResult> {
     await lat(); memberOf(req.member);
     if (S.paused) throw new ApiError("ALREADY_PAUSED", "Kho đã dừng", 409);
-    S.paused = true; const tx = fakeTxHash(`pause${++counter}`);
+    S.paused = true; const tx = freshTx("pause");
     pushEvent("Paused", { by: addrOf(req.member) }, tx); pushEvent("EmergencyAction", { member: addrOf(req.member), action: "pauseAll" }, tx); // same order as chain/sim (QA-001)
     graphUpdated(); emitCity(); return ok(tx, req.member);
   },
@@ -906,7 +917,7 @@ export const mockApi = {
   async getScenarioRuns(): Promise<ScenarioRun[]> { await lat(); return [recordedRun(), ...runs.map((r) => structuredClone(r))]; },
   async resetDemo(): Promise<ActionResult> {
     await lat();
-    epoch++; if (keeperTimer) { clearInterval(keeperTimer); keeperTimer = null; } runActive = false; S = seedState(); events = []; attempts = []; runs = []; agentRuns = []; assistantLogs = []; currentRunId = null; lastAgentBlocked = false; lastCityJson = ""; incidents = []; incidentRecovery.clear(); proposalIncident.clear(); approvedAt.clear(); resetTxGuardMock();
+    epoch++; if (keeperTimer) { clearInterval(keeperTimer); keeperTimer = null; } runActive = false; S = seedState(); events = []; attempts = []; runs = []; agentRuns = []; assistantLogs = []; currentRunId = null; lastAgentBlocked = false; lastCityJson = ""; incidents = []; incidentRecovery.clear(); proposalIncident.clear(); approvedAt.clear(); resetTxGuardMock(); resetHooks.forEach((f) => f());
     emit({ type: "reset", data: { at: nowIso() } }); graphUpdated(); emitCity(true);
     return ok(null);
   },
@@ -914,4 +925,10 @@ export const mockApi = {
   subscribe,
 };
 export type MockApi = typeof mockApi;
+// ---------- hooks for the in-browser Copilot (./copilot.ts) ----------
+const resetHooks = new Set<() => void>();
+/** Lets a sibling mock module (the Copilot drafts) drop its own state when the demo resets. */
+export const onMockReset = (f: () => void): void => { resetHooks.add(f); };
+/** The Copilot's confirm path: one spend through the same rules as every other attempt (source "copilot"). */
+export const copilotSpend = (a: Action): Attempt => recordAttempt(40, a, "", "—", "copilot");
 export const _debug = { state: () => S, remaining: remainingOf, keyRemaining, buildDistricts };

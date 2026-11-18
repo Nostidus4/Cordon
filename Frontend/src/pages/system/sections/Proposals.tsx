@@ -81,7 +81,8 @@ export function Proposals() {
   useEffect(() => { if (findingParam) setDraft({ findingId: findingParam }); }, [findingParam]);
 
   const idParam = Number(sp.get("id")) || null;
-  const selId = pickProposalId(list, idParam);
+  const missingId = !isLoading && idParam != null && !list.some((p) => p.id === idParam) ? idParam : null; // deep link to a proposal that does not exist (yet): say so, do not open another one
+  const selId = missingId != null ? null : pickProposalId(list, idParam);
   const selected = list.find((p) => p.id === selId) ?? null;
   const suggestions = suggestionsFrom(findings, list);
 
@@ -121,9 +122,10 @@ export function Proposals() {
         {!isLoading && !list.length && !suggestions.length ? <Empty>Chưa có đề xuất nào. Áp dụng chính sách v2 ở tab Tổng quan sẽ tạo đề xuất đầu tiên.</Empty> : null}
       </aside>
       <div ref={detailRef} style={{ minWidth: 0, scrollMarginTop: 12 }} aria-live="polite">
+        {missingId != null && !draft ? <div role="status" className="sx-callout" data-testid="missing-proposal" style={{ marginBottom: 12 }}><b>Chưa có đề xuất #{missingId}</b><span style={{ fontWeight: 500 }}>Chạy kịch bản hoặc chọn một đề xuất ở bên trái.</span></div> : null}
         {draft ? <Composer key={JSON.stringify(draft)} req={draft} treasury={treasury} onSent={sent} onCancel={closeDraft} />
           : selected ? <Detail key={selected.id} p={selected} all={list} treasury={treasury} onOpen={select} onDraft={setDraft} />
-          : !isLoading ? <Empty>Chọn một đề xuất ở bên trái, hoặc bắt đầu từ một gợi ý sửa.</Empty> : null}
+          : !isLoading && missingId == null ? <Empty>Chọn một đề xuất ở bên trái, hoặc bắt đầu từ một gợi ý sửa.</Empty> : null}
       </div>
     </div>
   );

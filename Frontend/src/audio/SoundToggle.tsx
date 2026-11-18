@@ -47,10 +47,16 @@ export function SoundToggle({ className = "" }: { className?: string }) {
               onChange={(e) => { engine.unlock(); const v = Number(e.target.value) / 100; useAudioStore.getState().setVolume(v); if (!enabled && v > 0) useAudioStore.getState().setEnabled(true); }}
               onPointerUp={() => sfx.pop()} style={{ accentColor: "var(--violet)" }} />
           </label>
-          <label className="flex items-center justify-between gap-2 font-toy text-[15px] font-bold" style={{ color: "var(--ink)", opacity: calm ? 0.5 : 1 }}>
-            <span>Nhạc nền nhẹ{calm ? <span className="block text-[12px] font-semibold">đang tắt do giảm chuyển động</span> : null}</span>
-            <input type="checkbox" checked={ambient && !calm} disabled={calm} onChange={(e) => { engine.unlock(); useAudioStore.getState().setAmbient(e.target.checked); }} style={{ accentColor: "var(--violet)", width: 20, height: 20 }} />
-          </label>
+          <div className="flex items-center justify-between gap-2 font-toy text-[15px] font-bold" style={{ color: "var(--ink)", opacity: calm ? 0.5 : 1 }}>
+            <span id="ambient-label">Nhạc nền nhẹ{calm ? <span className="block text-[12px] font-semibold">đang tắt do giảm chuyển động</span> : null}</span>
+            <button type="button" role="switch" aria-checked={ambient && !calm} aria-labelledby="ambient-label" disabled={calm}
+              onClick={() => { engine.unlock(); useAudioStore.getState().setAmbient(!ambient); }}
+              className="relative shrink-0 cursor-pointer rounded-full p-0" data-sfx="off"
+              style={{ width: 46, height: 26, border: "3px solid var(--ink)", background: ambient && !calm ? "var(--teal)" : "#e6d6b6", transition: "background .15s" }}>
+              <span aria-hidden className="absolute rounded-full" style={{ top: 1, left: ambient && !calm ? 21 : 1, width: 16, height: 16, background: "#fff", border: "2px solid var(--ink)", transition: "left .15s" }} />
+              <span className="sr-only">{ambient && !calm ? "bật" : "tắt"}</span>
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

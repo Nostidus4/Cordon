@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { REASONS } from "../../../shared/reasonCodes";
+import { reasonTextVi } from "../../../lib/ops";
 import { useEvents } from "../../../hooks/useEvents";
 import type { Attempt } from "../../../types";
 import { callSignature, errorName, traceAttempt } from "../trace";
@@ -44,7 +44,7 @@ function DrawerBody({ attempt: a, onClose }: { attempt: Attempt; onClose: () => 
       <div className="flex items-start gap-3 p-5 pb-3">
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <Chip t={tone} mono>{a.outcome === "ok" ? "OK" : a.outcome === "reverted" ? "REVERTED" : "BLOCKED_AT_PROTOCOL"}</Chip>
+            <Chip t={tone} mono>{a.outcome === "ok" ? "Đã qua" : a.outcome === "reverted" ? "Bị từ chối" : "Chặn từ cổng node"}</Chip>
             <Chip>bước {stepOf(a)} · {timeOf(a)}</Chip>
             <span className="sx-ref">{fmtClock(isoOfSec(a.ts))}</span>
           </div>
@@ -73,7 +73,7 @@ function DrawerBody({ attempt: a, onClose }: { attempt: Attempt; onClose: () => 
 
         {a.reasonCode ? (
           <div className="sx-callout" data-t={a.outcome === "blocked_at_protocol" ? "amber" : undefined}>
-            <span className="mono">{a.reasonCode}</span><span>{REASONS[a.reasonCode].vi}</span>
+            <span className="mono">{a.reasonCode}</span><span>{reasonTextVi(a.reasonCode)}</span>
             <span className="mono" style={{ marginLeft: "auto" }}>{errorName(a.reasonCode) ?? "RPC -32000"}</span>
           </div>
         ) : null}
@@ -81,7 +81,7 @@ function DrawerBody({ attempt: a, onClose }: { attempt: Attempt; onClose: () => 
 
         <div>
           <h3 className="sx-h3">Giao dịch</h3>
-          {a.txHash ? <Hash value={a.txHash} simulated={a.simulated} head={14} tail={10} /> : <Chip t="warn">RPC rejected · not in Tx AllowList (không có tx hash)</Chip>}
+          {a.txHash ? <Hash value={a.txHash} simulated={a.simulated} head={14} tail={10} /> : <span className="inline-flex flex-wrap items-center gap-2"><Chip t="warn">Node từ chối, thẻ không có trong danh sách cho phép (không có tx hash)</Chip><code className="mono" style={{ fontSize: 11, color: "var(--ink-2)" }}>RPC rejected · not in Tx AllowList</code></span>}
         </div>
 
         <div>

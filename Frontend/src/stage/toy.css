@@ -221,3 +221,13 @@
 .stage-drawer > .toy-card { height: auto; max-height: 100%; }
 
 @media (max-width: 639px) { [data-slot="top-bar"] nav { padding: 4px; gap: 0; } [data-slot="top-bar"] nav button[aria-current] { padding-right: 12px; } }
+
+/* phones (<640px): scene cards that are secondary become a sheet the visitor opens with a chip (data-m-sheet), so nothing stacks over the city or the step buttons */
+@media (max-width: 639px) {
+  .stage [data-slot][data-m-sheet="closed"] { display: none !important; }
+  .stage [data-slot][data-m-sheet="open"] {
+    display: flex; flex-direction: column; position: absolute; left: 12px !important; right: 12px !important; top: 64px !important; bottom: auto !important; width: auto !important;
+    max-height: calc(100dvh - 290px); overflow-y: auto; padding-top: 18px; pointer-events: auto;
+  }
+  .stage [data-slot][data-m-sheet="open"] > .toy-card { width: 100% !important; max-height: none !important; }
+}

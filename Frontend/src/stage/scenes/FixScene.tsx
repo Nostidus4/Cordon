@@ -105,17 +105,18 @@ export function FixScene() {
                   <MemberButton key={m.id} member={m.id} name={m.name}
                     state={approved.has(m.id) ? "approved" : status === "done" || status === "queued" ? "waiting" : "ready"} busy={busy} onClick={() => void approve(m.id)} />
                 ))}
-                <div className="flex min-w-0 flex-1 items-center justify-end pl-2">
-                  {status === "done" ? <Stamp sub="policy v2">Đã thực thi</Stamp>
-                    : <div className="text-right"><div className="num" style={{ fontSize: 34 }}>{approvedCount}/3</div><div className="toy-body">{status === "queued" ? "đủ phiếu, đang chờ" : "đã duyệt, cần 2"}</div></div>}
-                </div>
+                {status === "done" ? null : (
+                  <div className="flex min-w-0 flex-1 items-center justify-end pl-2">
+                    <div className="text-right"><div className="num" style={{ fontSize: 34 }}>{approvedCount}/3</div><div className="toy-body">{status === "queued" ? "đủ phiếu, đang chờ" : "đã duyệt, cần 2"}</div></div>
+                  </div>
+                )}
               </div>
               {status === "queued" && merge ? <TimelockBanner proposal={merge} vetoBy={{ id: "huy", name: "Huy" }} /> : null}
               {status === "open" && nextApprover ? <p className="toy-body mb-0 mt-3">{merge?.proposer === "lan" ? "Lan đã gửi đề xuất. " : ""}Bấm vào mặt người duyệt để duyệt.</p> : null}
               {status === "open" && merge && nextApprover ? <WalletApproveButton proposalId={merge.id} /> : null}
             </>
           ) : null}
-          {status === "done" ? <div className="mt-4"><ToyButton size="lg" pulse onClick={() => nav("/s/incident")}>Xem sự cố →</ToyButton></div> : null}
+          {status === "done" ? <div className="mt-4 flex items-center justify-between gap-3"><ToyButton size="lg" pulse onClick={() => nav("/s/incident")}>Xem sự cố →</ToyButton><Stamp sub="chính sách mới">Đã thực thi</Stamp></div> : null}
         </div>
       </ToyCard>
     </div>
