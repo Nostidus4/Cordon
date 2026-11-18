@@ -6,6 +6,19 @@
 
 **Demo trực tuyến:** https://nostidus4.github.io/Cordon/ (chạy hoàn toàn trong trình duyệt với **chain giả lập**, không cần server; chain thật xem phần [Avalanche](#avalanche)).
 
+## Cho giám khảo: xem gì trước
+
+1. **Cảnh 4 "Sự cố"** trên [demo trực tuyến](https://nostidus4.github.io/Cordon/s/4): kẻ gian cầm 5 chìa của một khu, bị chặn bởi danh sách trắng và hạn mức chung, rồi một thành viên Hội đồng khoá cả khu.
+2. **Trang [Bằng chứng](https://nostidus4.github.io/Cordon/he-thong/bang-chung)**: đọc thẳng từ Guardian L1 (chain id 845357) qua RPC chỉ-đọc công khai, gồm mã contract và biên nhận các giao dịch mẫu.
+3. **Tự kiểm trong 1 phút** (chỉ đọc, không tốn gas, chạy ở máy nào cũng được):
+
+       export RPC=https://cordon-guardian-l1.eastasia.cloudapp.azure.com
+       cast chain-id --rpc-url $RPC                       # 845357
+       cast receipt 0xbfce471d5e5ae90f19a6e273d826b7fefdaba6a73e28fd1b0ca7543f04c2a7ee status --rpc-url $RPC
+       # false: khoản trả bị chặn vì khu đã tiêu 25.000/30.000 (khối 1048)
+
+   Thêm giao dịch mẫu và cách đọc: [docs/EVIDENCE_TXS.md](docs/EVIDENCE_TXS.md). Phần nào thật, phần nào giả lập: bảng [Thật hay giả lập](#thật-hay-giả-lập).
+
 ## English summary
 
 Cordon is a spending-control layer for companies whose money is moved by people, cards and AI agents. Every spending
@@ -52,13 +65,13 @@ Năm 2025 trộm cắp tiền mã hoá vượt 3,4 tỷ USD ([Chainalysis](https
 
 | Thử | Sự cố | Sửa |
 |---|---|---|
-| ![Thử](docs/images/stage-ui-try-minhhuy.jpg) | ![Sự cố](docs/images/stage-ui-incident-step5.jpg) | ![Sửa](docs/images/stage-ui-fix-approved.jpg) |
+| ![Thử](docs/images/web004-w2-s2-try-minh.jpg) | ![Sự cố](docs/images/web004-w2-s4-step6-lock.jpg) | ![Sửa](docs/images/web004-w2-s3-executed.jpg) |
 
 Bảng điều khiển kỹ thuật (`/he-thong/*`) dành cho kỹ sư:
 
-| Tổng quan | Hội đồng |
+| Tổng quan | Bằng chứng (đọc từ Guardian L1) |
 |---|---|
-| ![Tổng quan](docs/images/system-tab-tong-quan.jpg) | ![Hội đồng](docs/images/system-tab-hoi-dong.jpg) |
+| ![Tổng quan](docs/images/system-cordon-tong-quan.jpg) | ![Bằng chứng](docs/images/system-cordon-bang-chung.jpg) |
 
 ## Kiến trúc
 
@@ -184,7 +197,7 @@ Fuji C-Chain (43113), xem trên Snowtrace:
 |---|---|
 | Contract (`cd contracts && FOUNDRY_PROFILE=ci forge test`) | **312 passed**, 0 failed (chạy lại 2026-11-16); line coverage 98.49%, branch 89.68% (đo trước đó) |
 | Backend (`pytest`) | 960 passed, 0 failed (128 skipped: thiếu DB test hoặc khoá LLM) |
-| Frontend (`vitest`) | 233 passed |
+| Frontend (`vitest`) | 306 passed, 14 skipped (chạy lại 2026-11-18) |
 | CI (GitHub Actions) | xanh trên `main` |
 | e2e cảnh 1-5 trên L1 thật | 65/65 kiểm tra, xem [docs/qa/D1-D10.md](docs/qa/D1-D10.md) |
 
