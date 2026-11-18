@@ -2,6 +2,10 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # only rebuild the site when the web app (or this workflow) changes
+    paths:
+      - "Frontend/**"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:
