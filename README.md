@@ -25,6 +25,17 @@ Công ty đưa chìa khoá chi tiền cho nhiều người, thẻ và AI agent, 
 giao thức: hạn mức ngày của từng thẻ, hạn mức chung của cả **khu**, danh sách trắng đích đến, và công tắc khoá khẩn cấp
 trên một Avalanche L1. Một thẻ bị lộ chỉ thiệt trong khu của nó. Trợ lý AI chỉ đọc dữ liệu, không bao giờ ký hay chuyển tiền.
 
+## Cho ai, khác gì
+
+Minh hoạ (không phải người dùng thật; chưa phỏng vấn ai): một studio Web3 ở TP.HCM có thẻ chi tiêu và AI agent cùng chi từ ví công ty trên Avalanche.
+
+- **Khu:** hạn mức chung của cả nhóm khoá, nên lộ một chìa chỉ thiệt trong khu của nó.
+- **Siết/nới bất đối xứng:** siết ngay bởi một người; nới cần 2/3, timelock và chặn xung đột lợi ích.
+- **Khoá khẩn cấp ở tầng node** (Tx AllowList), không chỉ do contract từ chối.
+- **Một bộ luật cho mọi nơi tiêu tiền:** thẻ, agent Cân đối, Copilot, quỹ lương (đề #12, #13, #14, #21).
+
+Năm 2025 trộm cắp tiền mã hoá vượt 3,4 tỷ USD ([Chainalysis](https://www.chainalysis.com/blog/crypto-hacking-stolen-funds-2026/)). Chi tiết, so sánh, mô hình và giả định chưa kiểm chứng: [docs/PRODUCT.md](docs/PRODUCT.md).
+
 ## Ba luật cốt lõi
 
 1. **Siết thì làm ngay:** hạ hạn mức, thu hồi quyền, tạm dừng hay khoá khẩn cấp do **một** thành viên Hội đồng làm, không cần bỏ phiếu.
