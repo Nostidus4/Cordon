@@ -15,13 +15,12 @@ async function render(apiMode: "mock" | "live") {
 afterEach(() => vi.doUnmock("../config/env"));
 
 describe("TopBar / Footer by API mode", () => {
-  it("mock: no live wording or dot, shows the simulated-chain pill linking to /bang-chung", async () => {
+  it("mock: no live wording or dot, no simulated-chain pill (the disclosure is the stage footnote)", async () => {
     const { bar, foot } = await render("mock");
     expect(bar).not.toContain("Trực tiếp");
     expect(bar).not.toContain("toy-live");
     expect(bar).toContain("Chạy thử hay xem lại");
-    expect(bar).toContain("Chain mô phỏng");
-    expect(bar).toContain('href="/bang-chung"');
+    expect(bar).not.toContain("Chain mô phỏng");
     expect(foot).toContain("chain mô phỏng trong trình duyệt");
     expect(foot).not.toContain("chạy trên Avalanche Fuji testnet");
   });

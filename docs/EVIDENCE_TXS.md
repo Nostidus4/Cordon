@@ -6,7 +6,7 @@ Guardian L1 (Avalanche Subnet-EVM trên Fuji, chain id 845357) có RPC công kha
 RPC=https://cordon-guardian-l1.eastasia.cloudapp.azure.com
 ```
 
-Mọi giao dịch dưới đây là giao dịch thật đã nằm trong block. Ai cũng kiểm lại được bằng Foundry, không cần tin vào demo. Danh sách này cũng hiện ở trang `/bang-chung` (mục "Giao dịch mẫu trên chain"), nơi trang tự đọc biên nhận từng mã băm.
+Mọi giao dịch dưới đây là giao dịch thật đã nằm trong block. Ai cũng kiểm lại được bằng Foundry, không cần tin vào demo. Danh sách này cũng hiện ở trang `/he-thong/bang-chung` (mục "Giao dịch mẫu trên chain"), nơi trang tự đọc biên nhận từng mã băm.
 
 ## Cách kiểm
 
@@ -97,7 +97,7 @@ cast call 0x0200000000000000000000000000000000000002 "readAllowList(address)(uin
 # 2   (Council hiện tại là quản trị, hàng 10)
 ```
 
-Khi quay cảnh 4 trên bộ hiện tại, đọc lại `readAllowList` của năm khoá sẽ ra 0 (trang `/bang-chung`, mục "Khoá ở tầng giao thức", đọc trực tiếp việc này).
+Khi quay cảnh 4 trên bộ hiện tại, đọc lại `readAllowList` của năm khoá sẽ ra 0 (trang `/he-thong/bang-chung`, mục "Khoá ở tầng giao thức", đọc trực tiếp việc này).
 
 ## Chưa tìm thấy trên chain
 

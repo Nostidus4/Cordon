@@ -31,6 +31,12 @@ import { IncidentScene } from "./scenes/IncidentScene";
 import { RequestScene } from "./scenes/RequestScene";
 import "./toy.css";
 import { policyLabel } from "../lib/policy";
+import { env } from "../config/env";
+
+// The disclosure that replaced the "Chain mô phỏng" pill: the browser demo runs a simulated chain, the live build runs on Fuji.
+const STAGE_FOOTNOTE = env.apiMode === "live"
+  ? "Mây Labs là giả định · chạy trên Guardian L1 (Avalanche Fuji, mạng thử nghiệm) · tiền thử, không có giá trị"
+  : "Mây Labs là giả định · chain mô phỏng trong trình duyệt, chain thật xem ở Bảng kỹ thuật › Bằng chứng · tiền thử, không có giá trị";
 
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
 
@@ -136,7 +142,7 @@ export default function StagePage() {
         </> : null}
       </main>
       <p className="pointer-events-none absolute bottom-1.5 right-3 z-10 text-[11px] font-semibold" style={{ color: "#fff", textShadow: "0 1px 3px rgba(30,20,80,.8)" }}>
-        Mây Labs là giả định · chạy trên mạng thử nghiệm · tiền thử, không có giá trị
+        {STAGE_FOOTNOTE}
       </p>
     </div>
   );

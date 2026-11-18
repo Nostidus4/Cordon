@@ -6,7 +6,7 @@
 Only an allowlist of read methods is forwarded (eth_chainId, eth_blockNumber, eth_getCode, eth_call, ...). Everything
 else (eth_sendRawTransaction, eth_sendTransaction, personal_*, debug_*, admin_*, ...) gets JSON-RPC error -32601 and
 never reaches the node. Batches are filtered item by item. eth_getLogs ranges are capped, bodies are size-limited,
-requests are rate-limited per client IP, and CORS is open (any origin) so the in-app page /bang-chung can call it.
+requests are rate-limited per client IP, and CORS is open (any origin) so the in-app page /he-thong/bang-chung can call it.
 
     L1_RPC_URL=http://127.0.0.1:9650/ext/bc/<id>/rpc python3 infra/l1/readonly_rpc_proxy.py [--host 127.0.0.1] [--port 9670]
 

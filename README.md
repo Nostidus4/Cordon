@@ -113,7 +113,7 @@ flowchart LR
 
 ## Avalanche
 
-- **Guardian L1:** Subnet-EVM trên Fuji, chain id **845357**, validator chạy 24/7 trên Azure với **RPC chỉ-đọc công khai** `https://cordon-guardian-l1.eastasia.cloudapp.azure.com` ([infra/l1/AZURE.md](infra/l1/AZURE.md)); trang [/bang-chung](https://nostidus4.github.io/Cordon/bang-chung) đọc trực tiếp qua đó. Không có explorer công khai nên bằng chứng là biên nhận RPC. Genesis và bàn giao: [contracts/genesis/](contracts/genesis/), [infra/l1/](infra/l1/).
+- **Guardian L1:** Subnet-EVM trên Fuji, chain id **845357**, validator chạy 24/7 trên Azure với **RPC chỉ-đọc công khai** `https://cordon-guardian-l1.eastasia.cloudapp.azure.com` ([infra/l1/AZURE.md](infra/l1/AZURE.md)); trang [/he-thong/bang-chung](https://nostidus4.github.io/Cordon/he-thong/bang-chung) đọc trực tiếp qua đó. Không có explorer công khai nên bằng chứng là biên nhận RPC. Genesis và bàn giao: [contracts/genesis/](contracts/genesis/), [infra/l1/](infra/l1/).
 - **Vì sao Avalanche:** Tx AllowList và Contract Deployer AllowList là precompile của Subnet-EVM. Khoá khẩn cấp chặn ở **tầng node**: khoá bị gỡ thì giao dịch bị từ chối trước khi vào chain, không dựa vào việc contract tự từ chối.
 - **Bản nộp đóng băng** (`deployBlock` 1057): các địa chỉ dưới đây khớp [fuji-l1.json](Backend/deployments/fuji-l1.json) và [fuji-c.json](Backend/deployments/fuji-c.json). Mỗi lần `demo-reset` deploy lại, nên địa chỉ cũ trong lịch sử chain thuộc bản trước.
 
@@ -142,7 +142,7 @@ Fuji C-Chain (43113), xem trên Snowtrace:
 
 `escrow` **không có mã contract, có chủ đích**: đó là địa chỉ không khoá (suy ra từ hash, không ai giữ khoá), là đích mà ví quỹ chuyển token tới khi nạp quỹ (backend đọc sự kiện `Transfer` từ ví quỹ tới địa chỉ này). Snowtrace hiện nó như tài khoản thường.
 
-**Tự kiểm chứng** (chỉ đọc, không tốn gas). Dùng RPC chỉ-đọc công khai ở dưới, ai cũng chạy được. Giao dịch mẫu có hash thật (thanh toán được phép, bị chặn vì hạn mức khu và whitelist, khoá khẩn cấp bởi một thành viên, nới hạn mức qua 2/3 + timelock, chặn xung đột lợi ích): [docs/EVIDENCE_TXS.md](docs/EVIDENCE_TXS.md), cũng hiện trực tiếp trên trang [/bang-chung](https://nostidus4.github.io/Cordon/bang-chung). Biên nhận deploy và kết quả đã chạy: [docs/qa/D1-D10.md](docs/qa/D1-D10.md).
+**Tự kiểm chứng** (chỉ đọc, không tốn gas). Dùng RPC chỉ-đọc công khai ở dưới, ai cũng chạy được. Giao dịch mẫu có hash thật (thanh toán được phép, bị chặn vì hạn mức khu và whitelist, khoá khẩn cấp bởi một thành viên, nới hạn mức qua 2/3 + timelock, chặn xung đột lợi ích): [docs/EVIDENCE_TXS.md](docs/EVIDENCE_TXS.md), cũng hiện trực tiếp trên trang [/he-thong/bang-chung](https://nostidus4.github.io/Cordon/he-thong/bang-chung). Biên nhận deploy và kết quả đã chạy: [docs/qa/D1-D10.md](docs/qa/D1-D10.md).
 
     export RPC=https://cordon-guardian-l1.eastasia.cloudapp.azure.com
     # chain id = 845357 (0xce62d)
@@ -207,7 +207,7 @@ Chạy stack trên Guardian L1 thật (`make l1-proxy`, `make stack-l1`, demo-re
 
 ## Bằng chứng và ký bằng ví
 
-- **Trang `/bang-chung`** (Bằng chứng trên chain): đọc trực tiếp từ nút Guardian L1 chain id, block mới nhất, mã của từng contract và quyền gửi giao dịch của từng khoá (0 bị chặn, 1 được gửi, 2 quản trị). Cần `VITE_L1_RPC_URL`; bản GitHub Pages chỉ hiện địa chỉ đã đóng băng, không bịa số đọc trực tiếp.
+- **Trang `/he-thong/bang-chung`** (Bằng chứng trên chain): đọc trực tiếp từ nút Guardian L1 chain id, block mới nhất, mã của từng contract và quyền gửi giao dịch của từng khoá (0 bị chặn, 1 được gửi, 2 quản trị). Cần `VITE_L1_RPC_URL`; bản GitHub Pages chỉ hiện địa chỉ đã đóng băng, không bịa số đọc trực tiếp.
 - **`make l1-readonly-rpc`**: proxy RPC chỉ-đọc (`infra/l1/readonly_rpc_proxy.py`, mặc định `127.0.0.1:9670`). Chỉ cho các lệnh đọc (`eth_call`, `eth_getCode`, `eth_getTransactionReceipt`, ...); mọi lệnh gửi giao dịch bị trả lỗi `-32601`. Muốn cho người chấm gọi từ ngoài thì chạy với `--host 0.0.0.0` trên máy có validator.
 - **Hội đồng ký bằng ví**: ở cảnh Sửa và Xin thêm quyền, nút "Ký bằng ví" cho thành viên Hội đồng tự ký `approve` bằng MetaMask/Core thẳng vào `GuardianCouncil`, backend không ký thay. Bật khi chạy live với `VITE_L1_RPC_URL` và `VITE_COUNCIL_ADDRESS` (xem [Frontend/README.md](Frontend/README.md)); người trình bày tự nhập khoá test của thành viên vào ví.
 - **Cảnh Sự cố**: sau khi khoá khu, thẻ "Node của Guardian L1 từ chối giao dịch" hiện nguyên văn lỗi của node, không có mã giao dịch, và 5 thẻ của anh Minh đều "bị chặn".

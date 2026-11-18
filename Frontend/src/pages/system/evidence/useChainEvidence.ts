@@ -1,4 +1,4 @@
-// Live reads for /bang-chung. Every value is a real RPC answer or an error message; nothing is faked.
+// Live reads for /he-thong/bang-chung. Every value is a real RPC answer or an error message; nothing is faked.
 import { useEffect, useState } from "react";
 import { COUNCIL_MEMBERS, DEPLOYER, L1_CONTRACTS, L1_PRECOMPILES, MINH_KEYS, TX_ALLOWLIST } from "./deployment";
 import { hexToNumber, readCodeSize, readRole, rpcCall, RpcError } from "./rpc";

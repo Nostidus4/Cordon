@@ -3,7 +3,7 @@ import { type ComponentType, type ReactNode } from "react";
 import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Building2, Info, LayoutDashboard, Play, Radar, Scale, ScrollText, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Building2, FileCheck2, Info, LayoutDashboard, Play, Radar, Scale, ScrollText, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import "../../stage/toy.css";
 import { useAudioUnlock } from "../../audio/director";
 import { SoundToggle } from "../../audio/SoundToggle";
@@ -16,6 +16,7 @@ import { useSysInvalidation } from "./data";
 import { useSystemDevHooks } from "./devHooks";
 import { useFeed, useSystemFeed } from "./feed";
 import { About } from "./sections/About";
+import { Evidence } from "./sections/Evidence";
 import { Architecture } from "./sections/Architecture";
 import * as AgentsMod from "./sections/Agents";
 import * as CouncilMod from "./sections/Council";
@@ -45,6 +46,7 @@ export const TABS = [
   { id: "chinh-sach", label: "Chính sách", color: ACCENT.spend, icon: SlidersHorizontal },
   { id: "hoi-dong", label: "Hội đồng", color: ACCENT.council, icon: Scale },
   { id: "rui-ro", label: "Rủi ro", color: ACCENT.growth, icon: Radar },
+  { id: "bang-chung", label: "Bằng chứng", color: ACCENT.edu, icon: FileCheck2 },
   { id: "agent", label: "Agent AI", color: ACCENT.resp, icon: Sparkles },
   { id: "gioi-thieu", label: "Giới thiệu", color: ACCENT.plaza, icon: Info },
 ] as const;
@@ -58,6 +60,7 @@ function Body({ tab }: { tab: TabId }): ReactNode {
     case "chinh-sach": return <PolicyState />;
     case "hoi-dong": return <Council />;
     case "rui-ro": return <Simulation />;
+    case "bang-chung": return <Evidence />;
     case "agent": return <Agents />;
     case "gioi-thieu": return <About />;
   }
