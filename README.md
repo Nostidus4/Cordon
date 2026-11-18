@@ -196,7 +196,7 @@ Fuji C-Chain (43113), xem trên Snowtrace:
 | Bộ | Kết quả |
 |---|---|
 | Contract (`cd contracts && FOUNDRY_PROFILE=ci forge test`) | **312 passed**, 0 failed (chạy lại 2026-11-16); line coverage 98.49%, branch 89.68% (đo trước đó) |
-| Backend (`pytest`) | 960 passed, 0 failed (128 skipped: thiếu DB test hoặc khoá LLM) |
+| Backend (`pytest`) | 975 passed, 0 failed, 130 skipped (thiếu DB test hoặc khoá LLM); chạy lại 2026-11-18 |
 | Frontend (`vitest`) | 306 passed, 14 skipped (chạy lại 2026-11-18) |
 | CI (GitHub Actions) | xanh trên `main` |
 | e2e cảnh 1-5 trên L1 thật | 65/65 kiểm tra, xem [docs/qa/D1-D10.md](docs/qa/D1-D10.md) |
