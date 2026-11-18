@@ -11,7 +11,6 @@ import { useDistrict } from "../../hooks/useDistrict";
 import { useGraph } from "../../hooks/useGraph";
 import { useScenarioRuns } from "../../hooks/useScenarioRuns";
 import { useStream } from "../../hooks/useStream";
-import { shortRpc } from "../../shared/incident/shortRpc";
 import { txUrl } from "../../lib/explorer";
 import { pickReplayRun, useReplayPlayer } from "../../shared/incident/replay";
 import { leftStateAtStep } from "../../shared/incident/leftSimulation";
@@ -52,7 +51,7 @@ export function attemptText(a: Attempt): string {
 }
 const shortHash = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
 function evidence(a: Attempt): string {
-  if (a.outcome === "blocked_at_protocol") return `bị chain từ chối · ${shortRpc(a.errorRaw)}`;
+  if (a.outcome === "blocked_at_protocol") return "chain từ chối nhận giao dịch, không có mã giao dịch";
   if (!a.txHash) return "";
   if (a.outcome === "reverted" && !a.simulated) return `bị chain từ chối (revert) · ${shortHash(a.txHash)}`;
   return `${a.simulated ? "mô phỏng" : "giao dịch thật"} · ${shortHash(a.txHash)}`;
@@ -91,6 +90,7 @@ export function IncidentScene() {
   const { data: minhDistrict } = useDistrict("minh");
   const [attacking, setAttacking] = useState(false);
   const [attackError, setAttackError] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<"live" | "without" | null>(null); // phones only: which side card is open (both are hidden below 640px by default)
   const preparing = useStageStore((s) => s.preparing);
 
   useEffect(() => { if (replay && !replayRunId) { const id = pickReplayRun(runs); if (id) setReplayRunId(id); } }, [replay, replayRunId, runs, setReplayRunId]);
@@ -138,7 +138,7 @@ export function IncidentScene() {
   return (
     <>
       {/* left: what would have happened without Cordon (simulated) */}
-      <div className="absolute bottom-24 left-6" data-slot="scene-left">
+      <div className="absolute bottom-24 left-6" data-slot="scene-left" data-m-sheet={sheet === "without" ? "open" : "closed"}>
         <ToyCard tone="red" className="w-[310px] px-5 pb-4 pt-4" label="Không có Cordon, mô phỏng">
           <div className="flex items-center justify-between gap-2">
             <div className="font-toy text-[17px] font-bold leading-tight" style={{ color: "var(--ink)" }}>Không có Cordon</div>
@@ -155,7 +155,7 @@ export function IncidentScene() {
       </div>
 
       {/* right: with Cordon (live) */}
-      <div className="absolute right-6 top-24 flex w-[min(350px,calc(100vw-48px))] flex-col gap-3" data-slot="scene-right">
+      <div className="absolute right-6 top-24 flex w-[min(350px,calc(100vw-48px))] flex-col gap-3" data-slot="scene-right" data-m-sheet={sheet === "live" ? "open" : "closed"}>
         {!policyV2 && !preparing ? (
           <ToyCard className="p-4" label="Cần policy v2">
             <div className="font-toy text-[20px] font-bold leading-tight" style={{ color: "var(--ink)" }}>Khu anh Minh chưa có cổng chung</div>
@@ -199,7 +199,7 @@ export function IncidentScene() {
       </div>
 
       {/* bottom: the toy action buttons in story order; the next one pulses */}
-      <div className="pointer-events-none absolute bottom-10 left-1/2 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 justify-center" data-slot="scene-bottom">
+      <div className="pointer-events-none absolute bottom-10 left-1/2 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 justify-center max-sm:bottom-11 max-sm:w-[calc(100vw-24px)]" data-slot="scene-bottom">
         {replay ? (
           <ToyCard className="pointer-events-auto flex items-center gap-4 px-5 py-3" label="Xem lại">
             <span className="font-toy text-[17px] font-bold" style={{ color: "var(--ink)" }}>Xem lại bản đã lưu · {player.shown}/{player.total}</span>
@@ -213,9 +213,13 @@ export function IncidentScene() {
             <ToyButton size="sm" color="cream" onClick={player.restart}>↻ Từ đầu</ToyButton>
           </ToyCard>
         ) : (
-          <div className="pointer-events-auto flex flex-col items-center gap-3">
+          <div className="pointer-events-auto flex flex-col items-center gap-3 max-sm:w-full">
+          <div className="flex gap-2 sm:hidden" role="group" aria-label="Xem số liệu">
+            <button type="button" className="toy-chip" aria-pressed={sheet === "live"} onClick={() => setSheet((v) => (v === "live" ? null : "live"))}>Cổng chung</button>
+            <button type="button" className="toy-chip" aria-pressed={sheet === "without"} onClick={() => setSheet((v) => (v === "without" ? null : "without"))}>Không có Cordon</button>
+          </div>
           {attackError ? <ToyCard tone="red" className="px-4 py-2" label="Lỗi"><p role="alert" className="toy-body m-0 flex items-center gap-1.5 font-bold" style={{ color: "var(--red-ink)" }}><WarnIcon size={14} />{attackError}</p></ToyCard> : null}
-          <div className="flex flex-wrap items-center justify-center gap-3" role="group" aria-label="Các bước của cảnh sự cố">
+          <div className="flex flex-wrap items-center justify-center gap-3 max-sm:grid max-sm:w-full max-sm:grid-cols-2 max-sm:gap-2 [&_.toy-btn]:max-sm:!whitespace-normal [&_.toy-btn]:max-sm:!px-2.5 [&_.toy-btn]:max-sm:!text-[13px] [&_.toy-btn]:max-sm:!leading-tight" role="group" aria-label="Các bước của cảnh sự cố">
             <ToyButton color="orange" size="sm" pulse={next === "agent" && policyV2} done={nums.agentDone} disabled={!policyV2 || next !== "agent" || actions.runAgent.isPending} onClick={act.agent}>{doneMark(nums.agentDone)}1 · Chạy trợ lý Cân đối buổi sáng</ToyButton>
             <ToyButton color="violet" size="sm" pulse={next === "attack" && !attacking} done={nums.attackDone} disabled={!policyV2 || nums.attackDone || attacking} onClick={act.attack}>{doneMark(nums.attackDone)}2 · Kẻ gian bắt đầu</ToyButton>
             <ToyButton color="red" size={next === "lock" ? "lg" : "sm"} pulse={next === "lock"} done={nums.locked} disabled={!policyV2 || nums.locked || !nums.attackDone || actions.lock.isPending} onClick={act.lock}>{doneMark(nums.locked)}3 · Khoá khu anh Minh</ToyButton>

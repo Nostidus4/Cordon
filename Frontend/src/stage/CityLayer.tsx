@@ -2,7 +2,7 @@
 // ready the blurred poster + progress card (StageLoader) cover the screen, then cross-fade to the live canvas. When 3D is unavailable
 // (no WebGL, weak device, lost context) the poster stays as a light placeholder that glides between "shots". The canvas never remounts
 // when the scene changes: only props change.
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { CameraShot, CityStageProps } from "./contract";
 import { probeLite, useLoadStore } from "./loadStore";
 import { StageLoader } from "./StageLoader";
@@ -32,13 +32,39 @@ function Placeholder({ shot, night }: Pick<CityStageProps, "shot" | "night">) {
   );
 }
 
+const CLICK_GUARD_MS = 700; // after the intro gate or a scene change, a stray second click must not reach the buildings
+
+/** Stops clicks that did not start on the city (the intro card, the gate button, a scene button that has just unmounted) and the ones right after
+ *  entering / changing scene, so "Bắt đầu" never opens a building drawer underneath. Capture phase: runs before the canvas sees the event. */
+function useClickShield(el: React.RefObject<HTMLDivElement | null>, scene: CityStageProps["scene"], gate: string) {
+  const guardUntil = useRef(0);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; guardUntil.current = performance.now() + CLICK_GUARD_MS; return; }
+    guardUntil.current = performance.now() + CLICK_GUARD_MS;
+  }, [scene, gate]);
+  useEffect(() => {
+    const node = el.current;
+    if (!node) return;
+    let downInside = true;
+    const down = (e: Event) => { downInside = e.target instanceof Node && node.contains(e.target); };
+    const stop = (e: Event) => { if (performance.now() < guardUntil.current || (e.type === "click" && !downInside)) e.stopPropagation(); };
+    window.addEventListener("pointerdown", down, true);
+    const types = ["pointerdown", "pointerup", "click"] as const;
+    types.forEach((t) => node.addEventListener(t, stop, true));
+    return () => { window.removeEventListener("pointerdown", down, true); types.forEach((t) => node.removeEventListener(t, stop, true)); };
+  });
+}
+
 export function CityLayer(props: CityStageProps) {
+  const layerRef = useRef<HTMLDivElement>(null);
   const phase = useLoadStore((s) => s.phase);
   const reduced = useReduced();
   // decided once per page load, before any 3D code is requested
   useState(() => { const r = probeLite(); if (r) useLoadStore.getState().setLite(r); });
   const lite = phase === "lite";
   const gate = useLoadStore((s) => s.gate);
+  useClickShield(layerRef, props.scene, gate);
   const [gatedAtStart] = useState(gate === "wait");
   const ready = phase === "revealed" && gate === "open"; // behind the "Bước vào thành phố" gate the poster stays up
   const [mountedReady] = useState(ready); // already revealed earlier in this session (came back to the stage): no fade
@@ -58,7 +84,7 @@ export function CityLayer(props: CityStageProps) {
   const show = ready || mountedReady;
   return (
     <>
-      <div className="absolute inset-0 bg-[#6f8ff3]" data-city-layer data-ready={show ? "1" : "0"}
+      <div ref={layerRef} className="absolute inset-0 bg-[#6f8ff3]" data-city-layer data-ready={show ? "1" : "0"}
         style={{ opacity: show ? 1 : 0, transform: show || reduced ? "none" : "scale(1.07)", transition: reduced || mountedReady ? "none" : (gatedAtStart ? "opacity 450ms ease-out, transform" : "opacity 900ms ease-out, transform 1500ms cubic-bezier(.22,1,.36,1)") }}>
         <Suspense fallback={null}><CityRuntime {...props} /></Suspense>
       </div>

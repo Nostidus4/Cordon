@@ -5,7 +5,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useStageAudio } from "../audio/director";
 import { sfx } from "../audio/sounds";
 import { useTitle } from "../hooks/useTitle";
-import { useDemoReset } from "../hooks/useDemoReset";
+import { useStageReset } from "./useStageReset";
 import { useCityStates } from "../hooks/useCityStates";
 import { useGraph } from "../hooks/useGraph";
 import { useIncidents } from "../hooks/useBuildings";
@@ -19,7 +19,7 @@ import { useStageStore } from "./stageStore";
 import { useLoadStore } from "./loadStore";
 import { TopBar } from "./TopBar";
 import { useEnsureScene } from "./useEnsureScene";
-import { forgetRequestNumbers, useRememberRequestNumbers } from "./requestMemory";
+import { useRememberRequestNumbers } from "./requestMemory";
 import { ToyCard } from "./ui";
 import { BuildingDrawer } from "./BuildingDrawer";
 import { StatusStrip } from "./StatusStrip";
@@ -58,13 +58,13 @@ export default function StagePage() {
   const nightPref = useStageStore((s) => s.nightPref);
   const autoNight = useStageStore((s) => s.autoNight);
   const cardsReady = useLoadStore((s) => s.assembled); // stepper + overlay cards pop in once the city has assembled (or 3D is off)
-  const reset = useDemoReset();
   useEffect(() => { if (import.meta.env.DEV) void import("./devHooks").then((m) => m.runStageDevHooks()); }, []);
   useRememberRequestNumbers();
   const { preparing } = useEnsureScene(scene);
   useEffect(() => { useStageStore.getState().setPreparing(preparing); }, [preparing]);
 
   const go = useCallback((s: SceneId) => navigate(scenePath(s)), [navigate]);
+  const stageReset = useStageReset(go);
 
   useEffect(() => {
     if (scene && scene !== "intro") useStageStore.getState().markReached(scene as StageScene);
@@ -104,24 +104,13 @@ export default function StagePage() {
     ...(scene === "intro" ? { showDomain: false } : null),
   }), [scene, graph, night, onPick, onHover, city, liveStates, shotOverride]);
 
-  const onReset = () => reset.mutate(undefined, {
-    onSuccess: () => {
-      useUiStore.getState().setSelectedPrincipals(["minh"]);
-      useUiStore.getState().clearHighlight();
-      useUiStore.getState().setMode("live");
-      useUiStore.getState().setReplayRunId(null);
-      forgetRequestNumbers();
-      useStageStore.getState().clearReached();
-      useStageStore.getState().setNightPref(null);
-      go("intro");
-    },
-  });
+  const onReset = stageReset.run;
 
   if (!scene) return <Navigate to="/" replace />;
   return (
     <div className="stage fixed inset-0 overflow-hidden bg-[#6f8ff3]" data-scene={scene} data-drawer={drawerOpen ? "open" : undefined} data-strip={hasIncident || preparing || ((scene === "look" || scene === "try") && (policyLabel(graph) ?? 1) >= 2) ? "on" : undefined}>
       <CityLayer {...props} />
-      {cardsReady ? <TopBar scene={scene} night={night} onGo={go} onNight={(n) => useStageStore.getState().setNightPref(n)} onReset={onReset} resetting={reset.isPending} /> : null}
+      {cardsReady ? <TopBar scene={scene} night={night} onGo={go} onNight={(n) => useStageStore.getState().setNightPref(n)} onReset={onReset} resetting={stageReset.pending} /> : null}
       <main className="pointer-events-none absolute inset-0 z-20" id="stage-overlay">
         {cardsReady ? <>
         {preparing ? (
