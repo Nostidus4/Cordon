@@ -1,4 +1,4 @@
-// Routes: "/" and "/s/:scene" = the 3D stage (main experience); /he-thong/:tab = technical dashboard; /bang-chung = on-chain proof; /city = raw 3D explorer.
+// Routes: "/" and "/s/:scene" = the 3D stage (main experience); /he-thong/:tab = technical dashboard; /bang-chung redirects to /he-thong/bang-chung (on-chain proof tab); /city = raw 3D explorer.
 // The old 2D screens (/chi-tiet/*, /map, /simulate, ...) were removed; their paths redirect into /he-thong so old links never 404.
 import { lazy, Suspense } from "react";
 import { RouteSkeleton } from "./components/layout/RouteSkeleton";
@@ -9,7 +9,6 @@ const Root = lazy(() => import("./components/layout/Root").then((m) => ({ defaul
 const StagePage = lazy(() => import("./stage/StagePage"));
 const CityPage = lazy(() => import("./pages/city/CityPage"));
 const KitPage = lazy(() => import("./pages/kit/KitPage"));
-const EvidencePage = lazy(() => import("./pages/evidence/EvidencePage"));
 const SystemPage = lazy(() => import("./pages/system/SystemPage"));
 const SoundPage = import.meta.env.DEV ? lazy(() => import("./pages/sound/SoundPage")) : null;
 
@@ -55,7 +54,7 @@ export const router = createBrowserRouter([
       // one element for /he-thong and /he-thong/:tab so the live feed never remounts between tabs
       { path: "he-thong", element: <Suspense fallback={<RouteSkeleton kind="full" />}><SystemPage /></Suspense>, children: [{ index: true, element: null }, { path: ":tab", element: null }] },
       // read-only proof page for judges: 2D shell, own path
-      { path: "bang-chung", element: <Suspense fallback={<RouteSkeleton kind="full" />}><AppShell /></Suspense>, children: [{ index: true, element: <Suspense fallback={<RouteSkeleton />}><EvidencePage /></Suspense> }] },
+      { path: "bang-chung", element: <Redirect to="/he-thong/bang-chung" /> },
       // legacy 2D screens: redirect only
       { path: "chi-tiet", element: <Redirect to="/he-thong/tong-quan" /> },
       ...oldRedirects("chi-tiet/"),

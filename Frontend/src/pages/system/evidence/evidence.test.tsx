@@ -1,8 +1,8 @@
-// /bang-chung: RPC helpers (fake fetch), role sentence, and the no-RPC render (server render, no DOM needed).
+// /he-thong/bang-chung: RPC helpers (fake fetch), role sentence, and the no-RPC render (server render, no DOM needed).
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CCHAIN_FUNDS, COUNCIL_MEMBERS, L1_CHAIN_ID, L1_CONTRACTS, MINH_KEYS, TX_ALLOWLIST } from "./deployment";
-import EvidencePage, { NO_RPC_BANNER, rolesSentence } from "./EvidencePage";
+import { Evidence, NO_RPC_BANNER, rolesSentence } from "../sections/Evidence";
 import { castReceiptCmd, receiptStatus, SAMPLE_TXS, sampleView } from "./sampleTxs";
 import { codeSizeBytes, hexToNumber, parseRole, readAllowListData, readRole, roleLabel, rpcCall, RpcError } from "./rpc";
 
@@ -55,9 +55,9 @@ describe("static data", () => {
   });
 });
 
-describe("EvidencePage without RPC", () => {
+describe("Evidence tab without RPC", () => {
   it("shows the banner, frozen addresses and no live values", () => {
-    const html = renderToStaticMarkup(<EvidencePage />);
+    const html = renderToStaticMarkup(<Evidence />);
     expect(html).toContain(NO_RPC_BANNER);
     for (const c of L1_CONTRACTS) expect(html).toContain(c.address);
     expect(html).toContain("testnet.snowtrace.io/address/");
@@ -101,7 +101,7 @@ describe("sample txs", () => {
     expect(castReceiptCmd("0xabc", "")).toContain("$RPC");
   });
   it("page without RPC marks the list as not read live", () => {
-    const html = renderToStaticMarkup(<EvidencePage />);
+    const html = renderToStaticMarkup(<Evidence />);
     expect(html).toContain("Giao dịch mẫu trên chain");
     expect(html).toContain("chưa đọc trực tiếp");
     for (const t of SAMPLE_TXS) expect(html).toContain(t.hash);

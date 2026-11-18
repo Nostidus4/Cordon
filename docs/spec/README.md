@@ -154,7 +154,7 @@ Nửa trái màn Incident ("không có Cordon") **không chạy on-chain**: fron
 
 ```text
 ┌──────────────────── Frontend · React + Vite + TypeScript ────────────────────┐
-│ Stage (thành phố 3D, / và /s/:scene)  ·  /he-thong/*  ·  /bang-chung  │
+│ Stage (thành phố 3D, / và /s/:scene)  ·  /he-thong/*  ·  /he-thong/bang-chung │
 │ transport: mock (trong trình duyệt) | live (REST + SSE)                      │
 └───────────────▲──────────────────────────────▲───────────────────────────────┘
                 │ REST + SSE (API_CONTRACT.md)  │

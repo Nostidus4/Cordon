@@ -8,7 +8,7 @@ import { Footer } from "./Footer";
 import { useTitle } from "../../hooks/useTitle";
 import { TopBar } from "./TopBar";
 
-/** Shell for the remaining 2D screens (/bang-chung, /_kit). Page area height = `calc(100vh - var(--chrome-h))`; content is max 1440 wide and scrolls with the page. */
+/** Shell for the remaining 2D screens (only /_kit now). Page area height = `calc(100vh - var(--chrome-h))`; content is max 1440 wide and scrolls with the page. */
 export function AppShell() {
   const outlet = useOutlet();
   const { pathname } = useLocation();

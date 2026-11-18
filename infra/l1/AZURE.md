@@ -10,7 +10,7 @@ Azure để giám khảo đọc được chain 24/7 (#96). Chain giữ nguyên: 
   Hai node cùng danh tính chạy song song có thể làm hỏng L1. `make l1-local-up` (L1 cục bộ để phát triển) không bị ảnh hưởng.
 - **Đọc chain (ai cũng dùng được, kể cả giám khảo):** `https://cordon-guardian-l1.eastasia.cloudapp.azure.com`.
   Đây là proxy chỉ-đọc (`readonly_rpc_proxy.py`): chỉ cho các lệnh đọc, giới hạn tần suất, gửi giao dịch bị từ chối.
-  Trang `/bang-chung` trên GitHub Pages đọc qua địa chỉ này.
+  Trang `/he-thong/bang-chung` trên GitHub Pages đọc qua địa chỉ này.
 - **Ghi lên chain (backend `CHAIN_MODE=l1`, `make demo-reset`, `make e2e-l1`):** mở SSH tunnel rồi dùng y như trước,
   `127.0.0.1:9650` trên máy bạn sẽ trỏ tới node trên Azure, không phải sửa `.env` hay script:
 
