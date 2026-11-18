@@ -15,6 +15,10 @@ The frontend defaults to `VITE_API_MODE=mock` (in-browser backend, fully static)
 ## Run against the chain adapter (`CHAIN_MODE=l1`)
 Default is `CHAIN_MODE=sim` (in-memory chain, no setup). To run the API on a Guardian L1:
 
+> **Fuji Guardian L1:** its only validator now runs on Azure (`infra/l1/AZURE.md`). Never start the Fuji node locally.
+> For writes, open the SSH tunnel from that file so `127.0.0.1:9650` reaches the Azure node; reads can use the public
+> read-only RPC `https://cordon-guardian-l1.eastasia.cloudapp.azure.com`.
+
     make contracts-deps && (cd contracts && forge build)   # Foundry: ~/.foundry/bin
     make l1-local-bootstrap                                # fresh local Guardian L1 + deploy + seed policy v1 + hand over + verify (~2.5 min)
     cd Backend && uv run --env-file .env.l1-local uvicorn guardian.main:app --port 8100

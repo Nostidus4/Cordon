@@ -28,6 +28,8 @@ jobs:
         env:
           VITE_API_MODE: mock
           VITE_BASE: /Cordon/
+          # /bang-chung reads the real Guardian L1 through the public read-only proxy (infra/l1/AZURE.md)
+          VITE_L1_RPC_URL: https://cordon-guardian-l1.eastasia.cloudapp.azure.com
         run: |
           npm ci
           npm run build

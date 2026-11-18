@@ -102,7 +102,7 @@ flowchart LR
 
 ## Avalanche
 
-- **Guardian L1:** Subnet-EVM trên Fuji, chain id **845357**, validator chạy cục bộ. Không có explorer công khai nên bằng chứng là biên nhận RPC. Genesis và bàn giao: [contracts/genesis/](contracts/genesis/), [infra/l1/](infra/l1/).
+- **Guardian L1:** Subnet-EVM trên Fuji, chain id **845357**, validator chạy 24/7 trên Azure với **RPC chỉ-đọc công khai** `https://cordon-guardian-l1.eastasia.cloudapp.azure.com` ([infra/l1/AZURE.md](infra/l1/AZURE.md)); trang [/bang-chung](https://nostidus4.github.io/Cordon/bang-chung) đọc trực tiếp qua đó. Không có explorer công khai nên bằng chứng là biên nhận RPC. Genesis và bàn giao: [contracts/genesis/](contracts/genesis/), [infra/l1/](infra/l1/).
 - **Vì sao Avalanche:** Tx AllowList và Contract Deployer AllowList là precompile của Subnet-EVM. Khoá khẩn cấp chặn ở **tầng node**: khoá bị gỡ thì giao dịch bị từ chối trước khi vào chain, không dựa vào việc contract tự từ chối.
 - **Bản nộp đóng băng** (`deployBlock` 1057): các địa chỉ dưới đây khớp [fuji-l1.json](Backend/deployments/fuji-l1.json) và [fuji-c.json](Backend/deployments/fuji-c.json). Mỗi lần `demo-reset` deploy lại, nên địa chỉ cũ trong lịch sử chain thuộc bản trước.
 
@@ -131,9 +131,9 @@ Fuji C-Chain (43113), xem trên Snowtrace:
 
 `escrow` **không có mã contract, có chủ đích**: đó là địa chỉ không khoá (suy ra từ hash, không ai giữ khoá), là đích mà ví quỹ chuyển token tới khi nạp quỹ (backend đọc sự kiện `Transfer` từ ví quỹ tới địa chỉ này). Snowtrace hiện nó như tài khoản thường.
 
-**Tự kiểm chứng** (chỉ đọc, không tốn gas). RPC của L1 là của validator cục bộ (cần chạy validator, hoặc dùng proxy chỉ-đọc `make l1-readonly-rpc`). Biên nhận deploy và kết quả đã chạy: [docs/qa/D1-D10.md](docs/qa/D1-D10.md).
+**Tự kiểm chứng** (chỉ đọc, không tốn gas). Dùng RPC chỉ-đọc công khai ở dưới, ai cũng chạy được. Biên nhận deploy và kết quả đã chạy: [docs/qa/D1-D10.md](docs/qa/D1-D10.md).
 
-    export RPC=http://127.0.0.1:9650/ext/bc/4hnXBqtkcq2uj8e3rcfGKh3NDBn3CgrWPe4tk71WQFfP4rTTb/rpc
+    export RPC=https://cordon-guardian-l1.eastasia.cloudapp.azure.com
     # chain id = 845357 (0xce62d)
     curl -s -X POST -H 'content-type: application/json' $RPC \
       --data '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}'
