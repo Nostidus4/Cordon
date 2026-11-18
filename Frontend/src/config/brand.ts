@@ -3,4 +3,3 @@ export const BRAND = { name: "Cordon", tagline: "Khoanh vùng quyền chi tiền
 export const FOOTER_TEXT = "Cordon · Mây Labs là giả định · chạy trên Avalanche Fuji testnet · token test, không có giá trị";
 /** Pages demo (VITE_API_MODE != live) runs the chain in the browser; the Fuji wording is only honest in live mode. */
 export const FOOTER_TEXT_MOCK = "Cordon · Mây Labs là giả định · chain mô phỏng trong trình duyệt · contract thật trên Guardian L1 (Fuji), xem Bằng chứng · token test, không có giá trị";
-export const SIM_PILL = { label: "Chain mô phỏng", title: "Bản demo chạy chain mô phỏng ngay trong trình duyệt. Bằng chứng chain thật: trang Bằng chứng" } as const;
