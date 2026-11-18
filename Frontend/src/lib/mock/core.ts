@@ -94,6 +94,10 @@ export function seedState(): State {
 export const keysOf = (s: State, pid: string) => Object.values(s.keys).filter((k) => k.principalId === pid);
 export const spentOf = (s: State, pid: string) => keysOf(s, pid).reduce((a, k) => a + k.spent, 0n);
 export const activePrincipals = (s: State) => Object.values(s.principals).filter((p) => keysOf(s, p.id).length > 0);
+/** A declared edge points at the PRINCIPAL the key was issued under (backend `declared_edges.to`), not at the key itself:
+ *  it reaches whatever that principal holds NOW, so moving a card to another district also cuts the edge to it. */
+export const edgeTargetPrincipal = (e: DeclaredEdge): string => e.to.replace(/^key_/, "");
+export const declaredKeys = (s: State, e: DeclaredEdge): string[] => keysOf(s, edgeTargetPrincipal(e)).map((k) => k.id);
 export const labelOf = (s: State, pid: string) => s.principals[pid]?.label ?? pid;
 
 export function remainingOf(s: State, pid: string): bigint {
@@ -118,12 +122,15 @@ export function simulateCore(s: State, compromised: string[]): SimResultCore {
   }
   for (const e of s.declared) {
     if (!S0.includes(e.from)) continue;
-    const key = s.keys[e.to]; if (!key) continue;
-    addVia(key.id, "declared"); nodeIds.add(`k:${key.id}`); edgeIds.add(e.id);
-    if (!S0.includes(key.principalId)) {
-      nodeIds.add(`p:${key.principalId}`); edgeIds.add(`e:${key.principalId}-holds-${key.id}`);
-      if (!Sx.includes(key.principalId)) Sx.push(key.principalId);
-    }
+    const tp = edgeTargetPrincipal(e);
+    if (S0.includes(tp)) continue;
+    const reached = declaredKeys(s, e);
+    if (!reached.length) continue; // the target district holds nothing any more: nothing to reach
+    edgeIds.add(e.id);
+    for (const kid of reached) { addVia(kid, "declared"); nodeIds.add(`k:${kid}`); }
+    nodeIds.add(`p:${tp}`);
+    for (const kid of reached) edgeIds.add(`e:${tp}-holds-${kid}`);
+    if (!Sx.includes(tp)) Sx.push(tp);
   }
   const vault = s.vaultUsdc;
   const sum = (ps: string[]) => ps.reduce((a, p) => a + remainingOf(s, p), 0n);
@@ -166,7 +173,7 @@ export function simulate(s: State, compromised: string[], change?: ProposedChang
 // ---------- findings (§8.5) ----------
 export function controlledKeys(s: State, pid: string): string[] {
   const ks = new Set(keysOf(s, pid).map((k) => k.id));
-  for (const e of s.declared) if (e.from === pid && s.keys[e.to]) ks.add(e.to);
+  for (const e of s.declared) if (e.from === pid) for (const k of declaredKeys(s, e)) ks.add(k);
   return [...ks];
 }
 /** A lock only strips keys from the Tx AllowList (sets `active=false`); like the backend, a key counts as live until it is deactivated for good. */
@@ -209,7 +216,7 @@ export function computeFindings(s: State, _includeResolved = false): Finding[] {
   for (const e of s.declared) {
     const admin = s.principals[e.from];
     if (e.relation !== "ADMINS" || !admin) continue;
-    const svc = [e.to].filter((id) => { const k = s.keys[id]; return k && isLive(s, k) && (k.kind === "SERVICE" || k.kind === "AGENT") && k.principalId !== admin.id; });
+    const svc = declaredKeys(s, e).filter((id) => { const k = s.keys[id]; return k && isLive(s, k) && (k.kind === "SERVICE" || k.kind === "AGENT") && k.principalId !== admin.id; });
     const own = keysOf(s, admin.id).filter((k) => isLive(s, k));
     if (!svc.length || !own.some((k) => k.kind === "HUMAN")) continue;
     const suggested = suggestedSharedCap(s, [...own.map((k) => k.id), ...svc]);
