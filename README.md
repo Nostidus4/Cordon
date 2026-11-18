@@ -142,7 +142,7 @@ Fuji C-Chain (43113), xem trên Snowtrace:
 
 `escrow` **không có mã contract, có chủ đích**: đó là địa chỉ không khoá (suy ra từ hash, không ai giữ khoá), là đích mà ví quỹ chuyển token tới khi nạp quỹ (backend đọc sự kiện `Transfer` từ ví quỹ tới địa chỉ này). Snowtrace hiện nó như tài khoản thường.
 
-**Tự kiểm chứng** (chỉ đọc, không tốn gas). Dùng RPC chỉ-đọc công khai ở dưới, ai cũng chạy được. Biên nhận deploy và kết quả đã chạy: [docs/qa/D1-D10.md](docs/qa/D1-D10.md).
+**Tự kiểm chứng** (chỉ đọc, không tốn gas). Dùng RPC chỉ-đọc công khai ở dưới, ai cũng chạy được. Giao dịch mẫu có hash thật (thanh toán được phép, bị chặn vì hạn mức khu và whitelist, khoá khẩn cấp bởi một thành viên, nới hạn mức qua 2/3 + timelock, chặn xung đột lợi ích): [docs/EVIDENCE_TXS.md](docs/EVIDENCE_TXS.md), cũng hiện trực tiếp trên trang [/bang-chung](https://nostidus4.github.io/Cordon/bang-chung). Biên nhận deploy và kết quả đã chạy: [docs/qa/D1-D10.md](docs/qa/D1-D10.md).
 
     export RPC=https://cordon-guardian-l1.eastasia.cloudapp.azure.com
     # chain id = 845357 (0xce62d)
