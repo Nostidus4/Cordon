@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../hooks/useAttempts", () => ({ useAttempts: () => ({ data: undefined }) }));
@@ -13,7 +14,7 @@ describe("scene 5 finale", () => {
   });
   it("the end card is a clickable dialog with the three exits", async () => {
     const { EndCard } = await import("../EndCard");
-    const html = renderToStaticMarkup(<MemoryRouter><EndCard /></MemoryRouter>);
+    const html = renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><MemoryRouter><EndCard /></MemoryRouter></QueryClientProvider>);
     expect(html).toContain('data-slot="end-card"');
     expect(html).toContain('role="dialog"');
     expect(html).toContain("pointer-events-auto");

@@ -84,7 +84,8 @@ export function TryScene() {
               <Tile label="Chain chặn" tone="teal"><span className="num flex items-center gap-1.5" style={{ fontSize: "clamp(22px, 2vw, 28px)", color: "var(--teal-ink)" }}><CheckIcon size={19} />{t?.enforced.display ?? "…"}</span></Tile>
             </div>
           </div>
-          <p className="toy-body mb-0 mt-3 flex items-start gap-1.5" style={{ minHeight: 40 }}>
+          <p className="toy-body mb-0 mt-2.5" style={{ fontSize: 12.5 }} data-testid="try-three-numbers">Chain chặn là mức chain giữ được trên các thẻ nó biết. Rủi ro thật tính cả quan hệ tự khai, nên có thể cao hơn.</p>
+          <p className="toy-body mb-0 mt-2 flex items-start gap-1.5" style={{ minHeight: 40 }}>
             <WarnIcon size={15} color="var(--amber-ink)" />
             <span>{done ? <>Nếu <b>{names}</b> bị chiếm, kẻ gian có thể lấy tới <b>{t?.estimated.display}</b> mỗi ngày.</> : "Đỏ đang lan qua các thẻ…"}</span>
           </p>

@@ -19,11 +19,15 @@ export function NodeRejectCard({ attempt, keys }: { attempt: Attempt | null; key
   return (
     <ToyCard tone="red" className="p-4" label="Node từ chối giao dịch" data-testid="node-reject-card">
       <div className="flex items-start justify-between gap-2">
-        <div className="font-toy text-[18px] font-bold leading-tight" style={{ color: "var(--ink)" }}>Node của Guardian L1 từ chối giao dịch</div>
+        <div className="font-toy text-[18px] font-bold leading-tight" style={{ color: "var(--ink)" }}>Thẻ đã bị khoá: máy chủ chain từ chối nhận giao dịch</div>
         {attempt.simulated ? <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-bold" style={{ background: "#ffd9d2", color: "var(--red-d)" }}>mô phỏng</span> : null}
       </div>
+      <p className="m-0 mt-1.5 text-[13px] font-semibold leading-snug" style={{ color: "var(--ink-2)" }}>Thẻ này không còn nằm trong danh sách được phép gửi giao dịch của khu.</p>
       {attempt.errorRaw ? (
-        <pre className="m-0 mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded-xl px-3 py-2 font-mono text-[11px] leading-snug" style={{ background: "#fff3df", color: "var(--red-ink)" }} data-testid="node-reject-raw">{attempt.errorRaw}</pre>
+        <details className="mt-2" data-testid="node-reject-details">
+          <summary className="cursor-pointer text-[12px] font-bold" style={{ color: "var(--ink-2)" }}>chi tiết kỹ thuật</summary>
+          <pre className="m-0 mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded-xl px-3 py-2 font-mono text-[11px] leading-snug" style={{ background: "#fff3df", color: "var(--red-ink)" }} data-testid="node-reject-raw">{attempt.errorRaw}</pre>
+        </details>
       ) : null}
       <p className="m-0 mt-2 flex items-center gap-1.5 text-[13.5px] font-bold" style={{ color: "var(--red-ink)" }}>
         <CrossIcon size={14} />Không có mã giao dịch, không vào block

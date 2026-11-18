@@ -6,6 +6,7 @@ import { DISTRICT_CAP_V2, KEY_CAP, SCENE4_STEPS } from "../shared/scenario4";
 import { deriveView } from "../shared/incident/incidentView";
 import { disp } from "./logic";
 import { useStageStore } from "./stageStore";
+import { useStageReset } from "./useStageReset";
 import { CordonMark } from "../components/brand/Logo";
 import { ArrowRightGlyph, Confetti, ToyButton, ToyCard } from "./ui";
 
@@ -15,6 +16,7 @@ const SCRIPTED_STOLEN = SCENE4_STEPS.filter((s) => s.who === "attacker" && s.exp
 export function EndCard() {
   const nav = useNavigate();
   const setEnded = useStageStore((s) => s.setEnded);
+  const reset = useStageReset(() => { setEnded(false); nav("/"); });
   const { data } = useAttempts();
   const attacker = data?.length ? deriveView(data, false).attackerSpent : 0n;
   useEffect(() => {
@@ -37,7 +39,7 @@ export function EndCard() {
         </div>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <ToyButton color="cream" onClick={() => setEnded(false)}>← Quay lại</ToyButton>
-          <ToyButton color="teal" onClick={() => { setEnded(false); nav("/s/look"); }}>Xem lại từ đầu</ToyButton>
+          <ToyButton color="teal" disabled={reset.pending} onClick={reset.run}>Xem lại từ đầu</ToyButton>
           <Link to="/he-thong" className="ml-auto text-[15px] font-bold underline underline-offset-4" style={{ color: "var(--violet-d)" }}>Xem chi tiết kỹ thuật</Link>
         </div>
       </ToyCard>

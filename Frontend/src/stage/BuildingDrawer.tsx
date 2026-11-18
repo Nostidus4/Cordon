@@ -82,7 +82,7 @@ function Overview({ d, summary, module, topic, run }: { d: BuildingDetail; summa
           </ul>
         )}
       </div>
-      <p className="m-0 border-t-2 border-dashed pt-2 text-[11.5px] font-semibold" style={{ borderColor: "#ecdcbc", color: "var(--ink-2)" }} data-inside>Bên trong: {module} · đề {topic}</p>
+      <p className="m-0 border-t-2 border-dashed pt-2 text-[11.5px] font-semibold" style={{ borderColor: "#ecdcbc", color: "var(--ink-2)" }} data-inside>Bên trong: {module}{topic ? ` · đề ${topic}` : ""}</p>
     </div>
   );
 }

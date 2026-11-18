@@ -16,7 +16,8 @@ const key = (i: number, allowListed: boolean): DistrictKey => ({ address: `0x${i
 describe("NodeRejectCard", () => {
   it("renders the node message, no-tx line and blocked keys on BLOCKED_AT_PROTOCOL", () => {
     const html = renderToStaticMarkup(<NodeRejectCard attempt={att({})} keys={[1, 2, 3, 4, 5].map((i) => key(i, false))} />);
-    expect(html).toContain("Node của Guardian L1 từ chối giao dịch");
+    expect(html).toContain("Thẻ đã bị khoá: máy chủ chain từ chối nhận giao dịch")
+    expect(html).toContain("chi tiết kỹ thuật");
     expect(html).toContain("cannot issue transaction from non-allow listed address: 0xabc");
     expect(html).toContain("Không có mã giao dịch, không vào block");
     expect(html.match(/bị chặn/g)).toHaveLength(5);
