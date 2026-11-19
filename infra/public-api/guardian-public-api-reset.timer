@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly reset of the Cordon public demo state
+
+[Timer]
+OnCalendar=hourly
+Persistent=false
+Unit=guardian-public-api-reset.service
+
+[Install]
+WantedBy=timers.target

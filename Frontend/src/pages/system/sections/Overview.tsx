@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Play, RotateCcw } from "lucide-react";
 import { env } from "../../../lib/api";
+import { switchApiMode } from "../../../config/env";
 import { useAttempts } from "../../../hooks/useAttempts";
 import { useActions } from "../../../hooks/useActions";
 import { useEvents } from "../../../hooks/useEvents";
@@ -26,6 +27,21 @@ const fmtUptime = (s: number) => {
   return h ? `${h}g ${String(m).padStart(2, "0")}p` : m ? `${m}p ${String(x).padStart(2, "0")}s` : `${x}s`;
 };
 
+/** Runtime switch mock <-> backend thật (only when a live API base is configured); reloads the page. */
+function ApiModeToggle() {
+  if (!env.liveAvailable) return null;
+  const live = env.apiMode === "live";
+  const opt = (on: boolean) => ({ background: on ? "var(--ink, #2d2250)" : "#fff", color: on ? "#fff" : "inherit", borderRadius: 999, padding: "4px 12px", fontWeight: 700, fontSize: 13 }) as const;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1" role="group" aria-label="Nguồn dữ liệu" style={{ background: "#fff", borderRadius: 20, padding: "8px 14px", boxShadow: "0 2px 0 var(--line)" }}>
+      <span className="font-toy" style={{ fontWeight: 800, fontSize: 17 }}>Nguồn dữ liệu</span>
+      <button type="button" aria-pressed={!live} disabled={!live} style={opt(!live)} onClick={() => switchApiMode("mock")}>Chạy trong trình duyệt</button>
+      <button type="button" aria-pressed={live} disabled={live} style={opt(live)} onClick={() => switchApiMode("live")}>Nối backend thật (chain giả lập)</button>
+      <span style={{ fontSize: 12, color: "var(--ink-2)" }}>Mọi người dùng backend thật đang dùng chung một trạng thái.</span>
+    </div>
+  );
+}
+
 export function Overview() {
   const { data: health } = useHealth();
   const { data: events } = useEvents();
@@ -38,6 +54,7 @@ export function Overview() {
   const sim = health?.chainMode !== "l1";
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+      <div style={{ gridColumn: "1 / -1" }}><ApiModeToggle /></div>
       <Stat k="Chain" v={sim ? "sim" : "Guardian L1"} tone={sim ? "warn" : "ok"} />
       <Stat k="API" v={env.apiMode} />
       <Stat k="Block mới nhất" v={health ? <Counter value={health.l1Block} className="tnum" /> : "…"} />

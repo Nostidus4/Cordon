@@ -1,0 +1,24 @@
+[Unit]
+Description=Cordon public API (FastAPI, CHAIN_MODE=sim) behind Caddy
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=cordon
+Group=cordon
+Environment=HOME=/opt/cordon
+WorkingDirectory=/opt/cordon/Backend
+EnvironmentFile=/etc/cordon/public-api.env
+# No --reload. Bound to loopback only: Caddy is the only public entry. uvicorn trusts X-Forwarded-For from 127.0.0.1
+# (default), so the per-client rate limit sees the real visitor IP instead of Caddy's.
+ExecStart=/opt/cordon/Backend/.venv/bin/uvicorn guardian.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+MemoryMax=600M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

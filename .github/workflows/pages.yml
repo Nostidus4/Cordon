@@ -32,6 +32,8 @@ jobs:
         env:
           VITE_API_MODE: mock
           VITE_BASE: /Cordon/
+          # Default stays mock; visitors can switch to this public sim-chain backend (?api=live or /he-thong toggle)
+          VITE_API_BASE: https://cordon-guardian-l1.eastasia.cloudapp.azure.com/api
           # /he-thong/bang-chung reads the real Guardian L1 through the public read-only proxy (infra/l1/AZURE.md)
           VITE_L1_RPC_URL: https://cordon-guardian-l1.eastasia.cloudapp.azure.com
         run: |
