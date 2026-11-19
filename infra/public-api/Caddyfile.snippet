@@ -1,0 +1,13 @@
+# Full /etc/caddy/Caddyfile on the VM. /api/* -> public sim backend; everything else -> read-only RPC proxy (as before).
+# CORS is handled by each upstream (FastAPI via CORS_ORIGINS, readonly_rpc_proxy.py itself); do not add headers here.
+cordon-guardian-l1.eastasia.cloudapp.azure.com {
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000 {
+			# SSE (/api/stream): send bytes to the client immediately, no buffering
+			flush_interval -1
+		}
+	}
+	handle {
+		reverse_proxy 127.0.0.1:9670
+	}
+}

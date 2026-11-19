@@ -38,7 +38,8 @@ Dịch vụ systemd (tự bật lại khi sập hoặc khi máy khởi động l
 |---|---|
 | `avalanchego` | node validator, cấu hình `/etc/avalanchego/config.json` (chứa khoá validator, quyền 600) |
 | `l1-readonly-rpc` | proxy chỉ-đọc ở `127.0.0.1:9670` |
-| `caddy` | HTTPS ở cổng 443, chuyển vào proxy chỉ-đọc |
+| `caddy` | HTTPS ở cổng 443: `/api/*` tới backend công khai (sim), còn lại tới proxy chỉ-đọc |
+| `guardian-public-api` | backend FastAPI `CHAIN_MODE=sim` ở `127.0.0.1:8000`, reset mỗi giờ bằng `guardian-public-api-reset.timer` ([infra/public-api/](../public-api/README.md)) |
 
 ```sh
 ssh -i ~/.ssh/cordon_azure cordon@cordon-guardian-l1.eastasia.cloudapp.azure.com

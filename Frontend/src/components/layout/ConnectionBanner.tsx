@@ -1,4 +1,4 @@
-import { env } from "../../config/env";
+import { env, switchApiMode } from "../../config/env";
 import { useConnStore } from "../../store/connStore";
 
 /** Live mode only: small cream pill while the API/stream is unreachable and react-query serves cached data. */
@@ -8,8 +8,11 @@ export function ConnectionBanner() {
   if (env.apiMode !== "live" || !down) return null;
   return (
     <div role="status" className="pointer-events-none fixed inset-x-0 bottom-3 z-[300] flex justify-center">
-      <span className="rounded-full border-2 px-4 py-1.5 text-sm font-bold" style={{ background: "#fff8ee", borderColor: "#e9d5b0", color: "#2d2250", boxShadow: "0 3px 0 #e9d5b0" }}>
-        Đang dùng dữ liệu đã lưu lúc {new Date(at).toLocaleTimeString("vi-VN", { hour12: false })}
+      <span className="pointer-events-auto flex items-center gap-3 rounded-full border-2 px-4 py-1.5 text-sm font-bold" style={{ background: "#fff8ee", borderColor: "#e9d5b0", color: "#2d2250", boxShadow: "0 3px 0 #e9d5b0" }}>
+        <span>Đang dùng dữ liệu đã lưu lúc {new Date(at).toLocaleTimeString("vi-VN", { hour12: false })}</span>
+        <button type="button" onClick={() => switchApiMode("mock")} className="rounded-full border-2 px-3 py-0.5 font-bold" style={{ background: "#fff", borderColor: "#e9d5b0", color: "#2d2250" }}>
+          Chuyển về bản chạy thử
+        </button>
       </span>
     </div>
   );

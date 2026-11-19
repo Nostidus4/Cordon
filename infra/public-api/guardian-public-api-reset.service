@@ -1,0 +1,9 @@
+[Unit]
+Description=Reset Cordon public demo state (POST /api/demo/reset)
+After=guardian-public-api.service
+
+[Service]
+Type=oneshot
+User=cordon
+# Fails (and is retried next hour) if the API is down. If DEMO_SIGNING_TOKEN is set, add: -H "X-Demo-Token: ..." via EnvironmentFile.
+ExecStart=/usr/bin/curl -fsS -m 30 -X POST http://127.0.0.1:8000/api/demo/reset

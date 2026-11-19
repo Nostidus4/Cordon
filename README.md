@@ -4,7 +4,7 @@
 
 ![Thành phố Cordon trong sự cố ban đêm](docs/images/city_hero_night_incident.jpg)
 
-**Demo trực tuyến:** https://nostidus4.github.io/Cordon/ (chạy hoàn toàn trong trình duyệt với **chain giả lập**, không cần server; chain thật xem phần [Avalanche](#avalanche)).
+**Demo trực tuyến:** https://nostidus4.github.io/Cordon/ (mặc định chạy hoàn toàn trong trình duyệt với **chain giả lập**, không cần server; mở [`?api=live`](https://nostidus4.github.io/Cordon/?api=live) hoặc nút "Nguồn dữ liệu" ở `/he-thong` để nối **backend FastAPI thật** (vẫn chain giả lập, mọi người dùng chung trạng thái, tự reset mỗi giờ; [infra/public-api/](infra/public-api/)); chain thật xem phần [Avalanche](#avalanche)).
 
 ## Cho giám khảo: xem gì trước
 
